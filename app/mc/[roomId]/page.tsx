@@ -1,299 +1,429 @@
-// app/mc/[roomId]/page.tsx
-// =============================================
-// MC Control Room — Lobby view
-// แสดง Room Code, player list, ปุ่ม Start Game, End Game
-// Real-time subscription สำหรับ player list
-// =============================================
-
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
-import { MC_TIPS, MAX_PLAYERS } from '@/lib/constants';
+import { supabase } from '@/lib/supabase';
+import {
+  PHASE_DISPLAY,
+  PHASE_TIMERS,
+  TOTAL_ROUNDS,
+  GOLDEN_DEAL_ROUNDS,
+  COMPANIES,
+  MC_TIPS,
+  EVENTS,
+  GOLDEN_DEALS,
+} from '@/lib/constants';
+import { getAllGameSteps } from '@/lib/game-engine';
 
-// Supabase client (browser-side)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
-interface Room {
-  id: string;
-  status: string;
-  current_round: number;
-  current_phase: string;
-  created_at: string;
-}
-
-interface Player {
-  id: string;
-  name: string;
-  money: number;
-  joined_at: string;
-}
-
-export default function MCControlPage() {
+// ==============================================
+// MC Control Room — หน้าควบคุมเกมของ MC
+// ==============================================
+export default function MCControlRoom() {
   const params = useParams();
   const router = useRouter();
   const roomId = params.roomId as string;
 
-  const [room, setRoom] = useState<Room | null>(null);
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // --- State ---
+  const [room, setRoom] = useState<any>(null);
+  const [players, setPlayers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState('');
+  const [timeLeft, setTimeLeft] = useState(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // --- เช็ค PIN session ---
+  // --- PIN Check ---
   useEffect(() => {
-    const session = localStorage.getItem('mc_pin_verified');
-    if (session !== 'true') {
+    const pinOk = localStorage.getItem('mc_pin_verified');
+    if (!pinOk) {
       router.push('/mc');
       return;
     }
-    loadRoomData();
-  }, [roomId]);
+  }, [router]);
 
-  // --- โหลดข้อมูลห้อง ---
-  const loadRoomData = useCallback(async () => {
-    try {
-      // โหลดข้อมูลห้อง
-      const { data: roomData, error: roomError } = await supabase
+  // --- Fetch room + players ---
+  useEffect(() => {
+    async function fetchData() {
+      const { data: roomData } = await supabase
         .from('rooms')
         .select('*')
         .eq('id', roomId)
         .single();
 
-      if (roomError || !roomData) {
-        setError('ไม่พบห้องนี้');
+      if (!roomData) {
+        setError('Room not found');
+        setLoading(false);
         return;
       }
-
       setRoom(roomData);
 
-      // โหลดผู้เล่น
-      const { data: playersData } = await supabase
+      const { data: playerData } = await supabase
         .from('players')
-        .select('id, name, money, joined_at')
+        .select('*')
         .eq('room_id', roomId)
         .order('joined_at', { ascending: true });
 
-      setPlayers(playersData || []);
-    } catch {
-      setError('เกิดข้อผิดพลาด');
-    } finally {
-      setIsLoading(false);
+      setPlayers(playerData || []);
+      setLoading(false);
     }
+    fetchData();
   }, [roomId]);
 
-  // --- Realtime subscription ---
+  // --- Realtime subscriptions ---
   useEffect(() => {
-    // Subscribe to players table changes
-    const playersChannel = supabase
-      .channel(`players-${roomId}`)
+    const roomChannel = supabase
+      .channel(`mc-room-${roomId}`)
       .on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'players',
-          filter: `room_id=eq.${roomId}`,
-        },
-        () => {
-          // Reload player list when any change happens
-          loadRoomData();
+        { event: '*', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` },
+        (payload) => {
+          setRoom(payload.new);
         }
       )
       .subscribe();
 
-    // Subscribe to room changes
-    const roomChannel = supabase
-      .channel(`room-${roomId}`)
+    const playerChannel = supabase
+      .channel(`mc-players-${roomId}`)
       .on(
         'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'rooms',
-          filter: `id=eq.${roomId}`,
-        },
-        (payload) => {
-          setRoom(payload.new as Room);
+        { event: '*', schema: 'public', table: 'players', filter: `room_id=eq.${roomId}` },
+        () => {
+          // Re-fetch all players on any change
+          supabase
+            .from('players')
+            .select('*')
+            .eq('room_id', roomId)
+            .order('joined_at', { ascending: true })
+            .then(({ data }) => {
+              if (data) setPlayers(data);
+            });
         }
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(playersChannel);
       supabase.removeChannel(roomChannel);
+      supabase.removeChannel(playerChannel);
     };
-  }, [roomId, loadRoomData]);
+  }, [roomId]);
 
-  // --- End Game ---
-  async function handleEndGame() {
-    if (!confirm('⚠️ จบเกมเลย?\n\nจะข้ามไปหน้า Final Summary ทันที')) return;
-    if (!confirm('ยืนยันอีกครั้ง — จบเกม ย้อนกลับไม่ได้!')) return;
-
-    try {
-      await fetch('/api/rooms', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          roomId,
-          status: 'finished',
-          phase: 'final',
-        }),
-      });
-    } catch {
-      alert('เกิดข้อผิดพลาด');
+  // --- Timer logic ---
+  const startTimer = useCallback((phase: string) => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    const duration = PHASE_TIMERS[phase];
+    if (!duration) {
+      setTimeLeft(0);
+      return;
     }
-  }
+    setTimeLeft(duration);
+    timerRef.current = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          if (timerRef.current) clearInterval(timerRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }, []);
 
-  // --- Open Display ---
-  function openDisplay() {
-    const displayUrl = `/display/${roomId}`;
-    window.open(displayUrl, '_blank');
-  }
+  // Start timer when phase changes
+  useEffect(() => {
+    if (room?.current_phase && room.status === 'playing') {
+      startTimer(room.current_phase);
+    }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [room?.current_phase, room?.status, startTimer]);
 
-  // --- Loading / Error ---
-  if (isLoading) {
+  // --- API Actions ---
+  const handleAction = async (action: 'start' | 'next' | 'end') => {
+    setActionLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/game/phase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ room_id: roomId, action }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Something went wrong');
+      }
+    } catch (err) {
+      setError('Network error');
+    }
+    setActionLoading(false);
+  };
+
+  // --- End Game with confirmation ---
+  const [showEndConfirm, setShowEndConfirm] = useState(false);
+  const handleEndGame = () => {
+    if (!showEndConfirm) {
+      setShowEndConfirm(true);
+      return;
+    }
+    handleAction('end');
+    setShowEndConfirm(false);
+  };
+
+  // --- Render helpers ---
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${String(s).padStart(2, '0')}`;
+  };
+
+  const getTimerColor = () => {
+    if (timeLeft <= 10) return '#FF4444';
+    if (timeLeft <= 30) return '#F59E0B';
+    return '#00FFB2';
+  };
+
+  if (loading) {
     return (
       <div className="min-h-screen bg-[#0D1117] flex items-center justify-center">
-        <div className="text-[#00FFB2] text-xl animate-pulse">
-          Loading room...
-        </div>
+        <div className="text-[#00FFB2] text-xl">Loading...</div>
       </div>
     );
   }
 
-  if (error || !room) {
+  if (!room) {
     return (
       <div className="min-h-screen bg-[#0D1117] flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-400 text-xl mb-4">❌ {error}</p>
-          <button
-            onClick={() => router.push('/mc')}
-            className="text-[#00FFB2] underline"
-          >
-            กลับหน้า MC
-          </button>
-        </div>
+        <div className="text-red-400 text-xl">Room not found</div>
       </div>
     );
   }
 
-  const currentTip = MC_TIPS[room.current_phase] || '';
+  const phase = room.current_phase || 'lobby';
+  const round = room.current_round || 1;
+  const phaseInfo = PHASE_DISPLAY[phase] || PHASE_DISPLAY.lobby;
+  const allSteps = getAllGameSteps();
+  const currentStepIndex = allSteps.findIndex(
+    (s) => s.round === round && s.phase === phase
+  );
+  const timerDuration = PHASE_TIMERS[phase] || 0;
+  const timerPercent = timerDuration > 0 ? (timeLeft / timerDuration) * 100 : 0;
 
   return (
     <div className="min-h-screen bg-[#0D1117] text-white p-4">
-      {/* --- Header --- */}
-      <div className="flex items-center justify-between mb-6">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-2xl font-bold">
-            MC <span className="text-[#00FFB2]">CONTROL</span>
-          </h1>
-          <p className="text-gray-400 text-sm">
-            Room: <span className="text-[#00FFB2] font-mono text-lg">{room.id}</span>
-            {' '} | Round {room.current_round} | Phase: {room.current_phase}
+          <h1 className="text-xl font-bold text-[#00FFB2]">MC Control</h1>
+          <p className="text-sm text-gray-400">
+            Room: <span className="text-[#00D4FF] font-mono tracking-wider">{roomId}</span>
           </p>
         </div>
-
-        {/* End Game button — แสดงตลอด */}
         <button
-          onClick={handleEndGame}
-          className="bg-transparent border border-red-500 text-red-400 px-4 py-2 rounded-lg text-sm hover:bg-red-500/10 transition-colors"
+          onClick={() => window.open(`/display/${roomId}`, '_blank')}
+          className="text-sm text-[#00D4FF] border border-[#00D4FF] px-3 py-1 rounded hover:bg-[#00D4FF]/10"
         >
-          ⛔ End Game
+          Open Display ↗
         </button>
       </div>
 
-      {/* --- MC Tip --- */}
-      {currentTip && (
-        <div className="bg-[#161B22] border border-[#00FFB2]/20 rounded-lg p-3 mb-6">
-          <p className="text-[#00FFB2] text-sm">💡 {currentTip}</p>
+      {/* Progress Bar */}
+      {phase !== 'lobby' && (
+        <div className="flex gap-[2px] mb-4">
+          {allSteps.map((step, i) => (
+            <div
+              key={`${step.round}-${step.phase}`}
+              className="flex-1 h-1 rounded-full"
+              style={{
+                backgroundColor:
+                  i < currentStepIndex
+                    ? '#0a6847'
+                    : i === currentStepIndex
+                    ? '#00FFB2'
+                    : '#2a2d35',
+              }}
+            />
+          ))}
         </div>
       )}
 
-      {/* --- Room Info Card --- */}
-      <div className="bg-[#161B22] border border-gray-700 rounded-xl p-6 mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <p className="text-gray-400 text-sm">Room Code</p>
-            <p className="text-5xl font-mono font-bold text-[#00FFB2] tracking-widest">
-              {room.id}
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="text-gray-400 text-sm">Status</p>
-            <p className={`text-lg font-bold ${
-              room.status === 'lobby' ? 'text-yellow-400' :
-              room.status === 'playing' ? 'text-green-400' :
-              'text-gray-400'
-            }`}>
-              {room.status === 'lobby' ? '⏳ Lobby' :
-               room.status === 'playing' ? '🎮 Playing' :
-               '✅ Finished'}
-            </p>
-          </div>
-        </div>
-
-        {/* Open Display button */}
-        <button
-          onClick={openDisplay}
-          className="w-full bg-[#00D4FF]/10 border border-[#00D4FF]/30 text-[#00D4FF] py-3 rounded-lg hover:bg-[#00D4FF]/20 transition-colors"
-        >
-          📺 เปิดหน้า Display (สำหรับจอใหญ่)
-        </button>
-      </div>
-
-      {/* --- Player List --- */}
-      <div className="bg-[#161B22] border border-gray-700 rounded-xl p-6 mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold">
-            👥 ผู้เล่น ({players.length})
-          </h2>
-          {players.length >= 2 && room.status === 'lobby' && (
-            <span className="text-[#00FFB2] text-sm">✅ พร้อมเริ่ม</span>
+      {/* Phase Info Card */}
+      <div className="bg-[#161b22] rounded-lg p-4 mb-3">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-gray-400 text-sm uppercase tracking-wider">
+            {phaseInfo.icon} {phaseInfo.name}
+          </span>
+          {phase !== 'lobby' && phase !== 'final' && (
+            <span className="bg-[#00FFB2] text-[#0D1117] text-xs font-bold px-3 py-1 rounded-full">
+              Round {round}/{TOTAL_ROUNDS}
+            </span>
           )}
         </div>
 
-        {players.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-gray-500 text-lg">รอเด็กสแกน QR เข้าห้อง...</p>
-            <p className="text-gray-600 text-sm mt-2">
-              ให้เด็กเปิดหน้า Display บนจอใหญ่แล้วสแกน QR Code
-            </p>
+        {/* Player count + submitted */}
+        {phase !== 'lobby' && phase !== 'final' && (
+          <div className="text-gray-400 text-sm mt-1">
+            Players: {players.length} connected
           </div>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            {players.map((player, index) => (
-              <div
-                key={player.id}
-                className="bg-[#0D1117] rounded-lg px-3 py-2 flex items-center gap-2"
-              >
-                <span className="text-gray-500 text-sm font-mono">
-                  {String(index + 1).padStart(2, '0')}
-                </span>
-                <span className="text-white truncate">{player.name}</span>
-              </div>
-            ))}
+        )}
+
+        {/* Player list in lobby */}
+        {phase === 'lobby' && (
+          <div className="mt-3 space-y-1">
+            {players.length === 0 ? (
+              <p className="text-gray-500 text-sm">No players yet...</p>
+            ) : (
+              players.map((p) => (
+                <div
+                  key={p.id}
+                  className="flex justify-between text-sm border-b border-gray-800 pb-1"
+                >
+                  <span className="text-[#00FFB2]">{p.name}</span>
+                  <span className="text-gray-500">฿{(parseFloat(p.money) || 0).toLocaleString()}</span>
+                </div>
+              ))
+            )}
+            <p className="text-gray-500 text-xs mt-2">
+              {players.length} player{players.length !== 1 ? 's' : ''} in lobby
+            </p>
           </div>
         )}
       </div>
 
-      {/* --- Action Buttons --- */}
-      {room.status === 'lobby' && (
-        <div className="space-y-3">
-          <button
-            disabled={players.length < 1} // MVP: อนุญาต 1 คนก็เริ่มได้ (สำหรับทดสอบ)
-            className="w-full bg-[#00FFB2] text-[#0D1117] font-bold py-4 rounded-xl text-xl hover:bg-[#00D4FF] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+      {/* Timer */}
+      {timerDuration > 0 && phase !== 'lobby' && phase !== 'final' && (
+        <div className="flex items-center gap-3 bg-[#161b22] rounded-lg px-4 py-3 mb-3">
+          <div className="flex-1 h-2 bg-[#2a2d35] rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-1000"
+              style={{
+                width: `${timerPercent}%`,
+                backgroundColor: getTimerColor(),
+              }}
+            />
+          </div>
+          <span
+            className={`font-mono text-lg font-bold min-w-[50px] text-right ${
+              timeLeft <= 10 && timeLeft > 0 ? 'animate-pulse' : ''
+            }`}
+            style={{ color: getTimerColor() }}
           >
-            🚀 Start Game ({players.length} players)
-          </button>
-          <p className="text-gray-500 text-center text-sm">
-            * ปุ่ม Start Game จะทำงานจริงใน Task B3
-          </p>
+            {formatTime(timeLeft)}
+          </span>
         </div>
       )}
+
+      {/* MC Tip */}
+      <div className="border-l-4 border-[#00D4FF] bg-[#1a1f2e] rounded-r-lg p-3 mb-3">
+        <p className="text-gray-400 text-sm">💡 {phaseInfo.mcTip}</p>
+        {MC_TIPS[round] && phase !== 'lobby' && phase !== 'final' && (
+          <p className="text-gray-500 text-xs mt-1">📌 Round tip: {MC_TIPS[round]}</p>
+        )}
+      </div>
+
+      {/* Event info for MC (during event phase) */}
+      {phase === 'event' && EVENTS[round - 1] && (
+        <div className="bg-[#161b22] rounded-lg p-3 mb-3 border border-[#FF6B6B]/30">
+          <p className="text-[#FF6B6B] text-sm font-bold">
+            {EVENTS[round - 1].emoji} {EVENTS[round - 1].title}
+          </p>
+          <p className="text-gray-400 text-xs mt-1">{EVENTS[round - 1].description}</p>
+        </div>
+      )}
+
+      {/* Golden Deal info for MC */}
+      {phase === 'golden_deal' && (
+        <div className="bg-[#161b22] rounded-lg p-3 mb-3 border border-[#F59E0B]/30">
+          {(() => {
+            const deal = GOLDEN_DEALS.find((d) => d.round === round);
+            if (!deal) return null;
+            return (
+              <>
+                <p className="text-[#F59E0B] text-sm font-bold">✨ {deal.name}</p>
+                <p className="text-gray-400 text-xs mt-1">{deal.description}</p>
+                <p className={`text-xs mt-1 ${deal.is_trap ? 'text-red-400' : 'text-green-400'}`}>
+                  Actual return: {deal.actual_return > 0 ? '+' : ''}{deal.actual_return}%
+                  {deal.is_trap ? ' ⚠️ TRAP!' : ''}
+                </p>
+              </>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* Error */}
+      {error && (
+        <div className="bg-red-900/30 border border-red-500 rounded-lg p-3 mb-3 text-red-400 text-sm">
+          {error}
+        </div>
+      )}
+
+      {/* Action Buttons */}
+      <div className="space-y-2">
+        {/* Start Game */}
+        {phase === 'lobby' && (
+          <button
+            onClick={() => handleAction('start')}
+            disabled={actionLoading || players.length === 0}
+            className="w-full py-3 rounded-lg font-bold text-[#0D1117] bg-[#00FFB2] hover:bg-[#00FFB2]/90 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {actionLoading ? 'Starting...' : `Start Game (${players.length} players)`}
+          </button>
+        )}
+
+        {/* Next Phase */}
+        {room.status === 'playing' && phase !== 'final' && (() => {
+          // คำนวณชื่อปุ่ม
+          const isRebalance = phase === 'rebalance';
+          const nextLabel = isRebalance
+            ? `Next Round → Round ${round + 1}`
+            : `Next → ${(() => {
+                // หา phase ถัดไป
+                const { getNextPhase } = require('@/lib/game-engine');
+                const next = getNextPhase(phase, round);
+                return next ? PHASE_DISPLAY[next.phase]?.name || next.phase : 'End';
+              })()}`;
+
+          return (
+            <button
+              onClick={() => handleAction('next')}
+              disabled={actionLoading}
+              className="w-full py-3 rounded-lg font-bold text-[#0D1117] bg-[#00D4FF] hover:bg-[#00D4FF]/90 disabled:opacity-50"
+            >
+              {actionLoading ? 'Loading...' : nextLabel}
+            </button>
+          );
+        })()}
+
+        {/* End Game */}
+        {room.status === 'playing' && phase !== 'final' && (
+          <div className="flex justify-end mt-2">
+            {showEndConfirm ? (
+              <div className="flex items-center gap-2">
+                <span className="text-red-400 text-sm">End game now?</span>
+                <button
+                  onClick={handleEndGame}
+                  disabled={actionLoading}
+                  className="px-4 py-2 rounded bg-red-600 text-white text-sm font-bold hover:bg-red-700"
+                >
+                  Yes, End Game
+                </button>
+                <button
+                  onClick={() => setShowEndConfirm(false)}
+                  className="px-4 py-2 rounded bg-gray-700 text-white text-sm hover:bg-gray-600"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowEndConfirm(true)}
+                className="px-4 py-2 rounded bg-red-900/50 text-red-400 text-sm border border-red-800 hover:bg-red-900"
+              >
+                End Game
+              </button>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

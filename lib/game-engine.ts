@@ -1,63 +1,99 @@
-// =============================================
-// Market Wars — Game Engine
-// คำนวณผลตอบแทน, สร้าง Room Code, utility functions
-// =============================================
+import { ROOM_CODE_CONFIG, GOLDEN_DEAL_ROUNDS, TOTAL_ROUNDS } from './constants';
 
-import { ROOM_CODE_CONFIG } from './constants';
-
-/**
- * สร้าง Room Code 4 ตัวอักษร (ไม่รวม O, I, L)
- * เช่น "MKTW", "ABCD", "XYZH"
- */
+// ==============================================
+// Room Code Generator
+// ==============================================
 export function generateRoomCode(): string {
-  const { chars, length } = ROOM_CODE_CONFIG;
+  const { characters, length } = ROOM_CODE_CONFIG;
   let code = '';
   for (let i = 0; i < length; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
+    code += characters.charAt(Math.floor(Math.random() * characters.length));
   }
   return code;
 }
 
-/**
- * คำนวณ weighted return จาก portfolio
- * portfolio = { robosnack: 30, zoomzoom: 70 } (%)
- * returns = { robosnack: 5, zoomzoom: 15 } (%)
- * result = (30*5 + 70*15) / 100 = 12%
- */
-export function calculatePortfolioReturn(
-  portfolio: Record<string, number>,
-  returns: Record<string, number>
-): number {
-  let totalReturn = 0;
-  for (const [companyId, allocation] of Object.entries(portfolio)) {
-    const companyReturn = returns[companyId] ?? 0;
-    totalReturn += (allocation / 100) * companyReturn;
+// ==============================================
+// Phase State Machine
+// ==============================================
+
+// Phase order สำหรับรอบที่กำหนด
+// รอบปกติ (1,3,5): research → invest → attack → event → results → leaderboard → rebalance
+// รอบ Golden Deal (2,4,6): research → invest → attack → event → golden_deal → results → leaderboard → rebalance
+// รอบสุดท้าย (6): ...leaderboard → final (ไม่มี rebalance)
+export function getPhaseOrder(round: number): string[] {
+  const phases = ['research', 'invest', 'attack', 'event'];
+
+  // เพิ่ม Golden Deal ถ้าเป็นรอบ 2, 4, 6
+  if (GOLDEN_DEAL_ROUNDS.includes(round)) {
+    phases.push('golden_deal');
   }
-  return Math.round(totalReturn * 100) / 100; // ปัดทศนิยม 2 ตำแหน่ง
+
+  phases.push('results', 'leaderboard');
+
+  // รอบสุดท้ายไปจบที่ final แทน rebalance
+  if (round >= TOTAL_ROUNDS) {
+    phases.push('final');
+  } else {
+    phases.push('rebalance');
+  }
+
+  return phases;
 }
 
-/**
- * คำนวณเงินหลังจากได้ผลตอบแทน
- */
-export function calculateMoneyAfterReturn(
-  money: number,
-  returnPct: number
-): number {
-  return Math.round(money * (1 + returnPct / 100));
+// คำนวณ phase ถัดไป
+// return null ถ้าไม่มี phase ถัดไป (เกมจบแล้ว)
+export function getNextPhase(
+  currentPhase: string,
+  currentRound: number,
+): { phase: string; round: number; status: string } | null {
+
+  // จาก lobby → เริ่มเกม
+  if (currentPhase === 'lobby') {
+    return { phase: 'research', round: 1, status: 'playing' };
+  }
+
+  // ถ้าอยู่ที่ final แล้ว → ไม่มี next
+  if (currentPhase === 'final') {
+    return null;
+  }
+
+  const order = getPhaseOrder(currentRound);
+  const currentIndex = order.indexOf(currentPhase);
+
+  // ถ้าหา phase ปัจจุบันไม่เจอใน order (ไม่ควรเกิด)
+  if (currentIndex === -1) {
+    return null;
+  }
+
+  // ยังไม่ถึง phase สุดท้ายของรอบ → เลื่อนไป phase ถัดไป
+  if (currentIndex < order.length - 1) {
+    const nextPhase = order[currentIndex + 1];
+    return {
+      phase: nextPhase,
+      round: currentRound,
+      status: nextPhase === 'final' ? 'finished' : 'playing',
+    };
+  }
+
+  // ถ้าอยู่ที่ rebalance (phase สุดท้ายของรอบ) → ขึ้นรอบใหม่
+  if (currentPhase === 'rebalance') {
+    return {
+      phase: 'research',
+      round: currentRound + 1,
+      status: 'playing',
+    };
+  }
+
+  // ไม่ควรมาถึงจุดนี้
+  return null;
 }
 
-/**
- * ใช้ Attack multiplier
- * ถ้าถูกโจมตีและขาดทุน → ขาดทุน x multiplier
- */
-export function applyAttackMultiplier(
-  returnPct: number,
-  wasAttacked: boolean,
-  attackBlocked: boolean,
-  multiplier: number
-): number {
-  if (wasAttacked && !attackBlocked && returnPct < 0) {
-    return returnPct * multiplier;
+// ดึงรายการ phase ทั้งหมดของเกม (ใช้สำหรับ progress bar)
+export function getAllGameSteps(): { round: number; phase: string }[] {
+  const steps: { round: number; phase: string }[] = [];
+  for (let r = 1; r <= TOTAL_ROUNDS; r++) {
+    const phases = getPhaseOrder(r);
+    phases.forEach((p) => steps.push({ round: r, phase: p }));
   }
-  return returnPct;
+  return steps;
 }

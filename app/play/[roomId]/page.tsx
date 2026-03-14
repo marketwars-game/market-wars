@@ -1,493 +1,445 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
-import { STARTING_MONEY, COMPANIES } from '@/lib/constants';
+import { useEffect, useState, useRef, Suspense } from 'react';
+import { useParams, useSearchParams } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
+import {
+  PHASE_DISPLAY,
+  PHASE_TIMERS,
+  TOTAL_ROUNDS,
+  COMPANIES,
+  STARTING_MONEY,
+  GOLDEN_DEALS,
+} from '@/lib/constants';
 
-// ============================================================
-// หน้าผู้เล่น — /play/[roomId]
-//
-// 2 สถานะ:
-//   1. ยังไม่ได้ join → แสดง form ใส่ชื่อ (กรณีเข้าจาก QR ตรง)
-//   2. join แล้ว → แสดง Lobby (รอ MC เริ่มเกม)
-//
-// ใช้ Supabase Realtime subscribe:
-//   - players table → เห็นคนอื่นเข้ามา
-//   - rooms table → เห็นเมื่อ MC เริ่มเกม (phase change)
-// ============================================================
+// ==============================================
+// Player Screen — มือถือเด็ก
+// ==============================================
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+function PlayerContent() {
+  const params = useParams();
+  const roomId = params.roomId as string;
 
-// ============================================================
-// Mini Join Form — แสดงเมื่อเข้าจาก QR โดยตรง (ยังไม่มี player data)
-// ============================================================
-function MiniJoinForm({ 
-  roomId, 
-  onJoined 
-}: { 
-  roomId: string; 
-  onJoined: (player: PlayerData) => void;
-}) {
+  const [room, setRoom] = useState<any>(null);
+  const [player, setPlayer] = useState<any>(null);
+  const [players, setPlayers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // --- Join form state (if not joined yet) ---
   const [name, setName] = useState('');
-  const [error, setError] = useState('');
-  const [isJoining, setIsJoining] = useState(false);
+  const [joining, setJoining] = useState(false);
+  const [joinError, setJoinError] = useState('');
   const [showDuplicatePopup, setShowDuplicatePopup] = useState(false);
-  const [duplicateName, setDuplicateName] = useState('');
 
-  const callJoinAPI = async (forceReconnect: boolean) => {
-    const res = await fetch('/api/players', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: name.trim(),
-        room_id: roomId,
-        force_reconnect: forceReconnect,
-      }),
-    });
-    const data = await res.json();
-    return { res, data };
-  };
-
-  const onJoinSuccess = (data: { player: { id: string; name: string }; room: { id: string } }) => {
-    const playerData: PlayerData = {
-      id: data.player.id,
-      name: data.player.name,
-      room_id: data.room.id,
-    };
-    localStorage.setItem(`mw_player_${roomId}`, JSON.stringify(playerData));
-    onJoined(playerData);
-  };
-
-  const handleJoin = async () => {
-    setError('');
-    setShowDuplicatePopup(false);
-    if (!name.trim()) {
-      setError('ใส่ชื่อของเธอก่อนนะ!');
-      return;
-    }
-    if (name.trim().length > 20) {
-      setError('ชื่อยาวเกินไป (ไม่เกิน 20 ตัว)');
-      return;
-    }
-
-    setIsJoining(true);
-
-    try {
-      const { res, data } = await callJoinAPI(false);
-
-      if (!res.ok) {
-        setError(data.error || 'เข้าร่วมไม่สำเร็จ');
-        setIsJoining(false);
-        return;
-      }
-
-      if (data.duplicate) {
-        setDuplicateName(data.existing_name);
-        setShowDuplicatePopup(true);
-        setIsJoining(false);
-        return;
-      }
-
-      onJoinSuccess(data);
-
-    } catch (err) {
-      console.error('Join error:', err);
-      setError('เชื่อมต่อไม่ได้ ลองใหม่');
-      setIsJoining(false);
-    }
-  };
-
-  const handleReconnect = async () => {
-    setIsJoining(true);
-    setShowDuplicatePopup(false);
-
-    try {
-      const { res, data } = await callJoinAPI(true);
-      if (!res.ok) {
-        setError(data.error || 'เข้าร่วมไม่สำเร็จ');
-        setIsJoining(false);
-        return;
-      }
-      onJoinSuccess(data);
-    } catch (err) {
-      console.error('Reconnect error:', err);
-      setError('เชื่อมต่อไม่ได้ ลองใหม่');
-      setIsJoining(false);
-    }
-  };
-
-  const handleChangeName = () => {
-    setShowDuplicatePopup(false);
-    setName('');
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !showDuplicatePopup) handleJoin();
-  };
-
-  return (
-    <div className="min-h-screen bg-[#0D1117] flex flex-col items-center justify-center p-4">
-      <div className="text-center mb-6">
-        <h1 className="text-3xl font-black tracking-wider">
-          <span className="text-[#00FFB2]">MARKET</span>{' '}
-          <span className="text-[#00D4FF]">WARS</span>
-        </h1>
-        <p className="text-gray-500 text-sm mt-1">Room: <span className="text-white font-mono">{roomId}</span></p>
-      </div>
-
-      <div className="w-full max-w-sm bg-[#161B22] rounded-2xl p-6 border border-gray-800">
-        <h2 className="text-white text-lg font-bold text-center mb-4">
-          🎮 ใส่ชื่อเข้าเกม
-        </h2>
-
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="ชื่อเล่นของเธอ..."
-          maxLength={20}
-          autoFocus
-          className="w-full bg-[#0D1117] border border-gray-700 rounded-xl px-4 py-3 text-white text-lg placeholder:text-gray-600 focus:outline-none focus:border-[#00D4FF] focus:ring-1 focus:ring-[#00D4FF] transition-colors mb-4"
-          disabled={isJoining}
-        />
-
-        {error && (
-          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm text-center">
-            {error}
-          </div>
-        )}
-
-        {/* Duplicate Name Popup */}
-        {showDuplicatePopup && (
-          <div className="mb-4 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl">
-            <p className="text-yellow-300 text-sm font-semibold text-center mb-1">
-              ⚠️ ชื่อ &quot;{duplicateName}&quot; มีคนใช้แล้ว
-            </p>
-            <p className="text-gray-400 text-xs text-center mb-3">
-              เธอคือ {duplicateName} คนเดิมที่เข้ามาก่อนหน้าใช่ไหม?
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={handleReconnect}
-                className="flex-1 py-2 rounded-lg bg-[#00FFB2] text-[#0D1117] text-sm font-bold hover:opacity-90 transition-opacity"
-              >
-                ✅ ใช่ เข้าเกมต่อ
-              </button>
-              <button
-                onClick={handleChangeName}
-                className="flex-1 py-2 rounded-lg bg-gray-700 text-white text-sm font-bold hover:opacity-90 transition-opacity"
-              >
-                ❌ ไม่ใช่ เปลี่ยนชื่อ
-              </button>
-            </div>
-          </div>
-        )}
-
-        <button
-          onClick={handleJoin}
-          disabled={isJoining || !name.trim() || showDuplicatePopup}
-          className="w-full py-3 rounded-xl font-bold text-lg transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed bg-gradient-to-r from-[#00FFB2] to-[#00D4FF] text-[#0D1117] hover:opacity-90 active:scale-[0.98]"
-        >
-          {isJoining ? '⏳ กำลังเข้าห้อง...' : '🚀 เข้าเกม!'}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ============================================================
-// Lobby Screen — แสดงหลัง join สำเร็จ
-// ============================================================
-function LobbyScreen({
-  playerData,
-  roomId,
-}: {
-  playerData: PlayerData;
-  roomId: string;
-}) {
-  const router = useRouter();
-  const [players, setPlayers] = useState<{ id: string; name: string; money: number }[]>([]);
-  const [roomStatus, setRoomStatus] = useState<string>('lobby');
-  const [roomPhase, setRoomPhase] = useState<string>('lobby');
-
-  // โหลด player list ครั้งแรก
-  const loadPlayers = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('players')
-      .select('id, name, money')
-      .eq('room_id', roomId)
-      .order('joined_at', { ascending: true });
-
-    if (!error && data) {
-      setPlayers(data);
-    }
-  }, [roomId]);
-
-  // โหลด room status ครั้งแรก
-  const loadRoom = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('rooms')
-      .select('status, current_phase')
-      .eq('id', roomId)
-      .single();
-
-    if (!error && data) {
-      setRoomStatus(data.status);
-      setRoomPhase(data.current_phase);
-    }
-  }, [roomId]);
-
+  // --- Check localStorage for existing player ---
   useEffect(() => {
-    loadPlayers();
-    loadRoom();
+    const saved = localStorage.getItem(`mw_player_${roomId}`);
+    if (saved) {
+      try {
+        setPlayer(JSON.parse(saved));
+      } catch {}
+    }
+  }, [roomId]);
 
-    // Subscribe to players table — เห็นคนอื่นเข้ามา real-time
-    const playersChannel = supabase
-      .channel(`players-${roomId}`)
+  // --- Fetch room + players ---
+  useEffect(() => {
+    async function fetchData() {
+      const { data: roomData } = await supabase
+        .from('rooms')
+        .select('*')
+        .eq('id', roomId)
+        .single();
+      setRoom(roomData);
+
+      const { data: playerData } = await supabase
+        .from('players')
+        .select('*')
+        .eq('room_id', roomId)
+        .order('joined_at', { ascending: true });
+      setPlayers(playerData || []);
+      setLoading(false);
+    }
+    fetchData();
+  }, [roomId]);
+
+  // --- Realtime ---
+  useEffect(() => {
+    const roomChannel = supabase
+      .channel(`player-room-${roomId}`)
       .on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'players',
-          filter: `room_id=eq.${roomId}`,
-        },
-        () => {
-          // Reload ทั้งหมดเมื่อมีการเปลี่ยนแปลง
-          loadPlayers();
-        }
+        { event: '*', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` },
+        (payload) => setRoom(payload.new)
       )
       .subscribe();
 
-    // Subscribe to rooms table — เห็นเมื่อ MC เริ่มเกม
-    const roomChannel = supabase
-      .channel(`room-${roomId}`)
+    const playerChannel = supabase
+      .channel(`player-players-${roomId}`)
       .on(
         'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'rooms',
-          filter: `id=eq.${roomId}`,
-        },
-        (payload) => {
-          const newRoom = payload.new as { status: string; current_phase: string };
-          setRoomStatus(newRoom.status);
-          setRoomPhase(newRoom.current_phase);
+        { event: '*', schema: 'public', table: 'players', filter: `room_id=eq.${roomId}` },
+        () => {
+          supabase
+            .from('players')
+            .select('*')
+            .eq('room_id', roomId)
+            .order('joined_at', { ascending: true })
+            .then(({ data }) => {
+              if (data) setPlayers(data);
+              // Update own player data too
+              if (player?.id) {
+                const me = data?.find((p) => p.id === player.id);
+                if (me) {
+                  setPlayer(me);
+                  localStorage.setItem(`mw_player_${roomId}`, JSON.stringify(me));
+                }
+              }
+            });
         }
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(playersChannel);
       supabase.removeChannel(roomChannel);
+      supabase.removeChannel(playerChannel);
     };
-  }, [roomId, loadPlayers, loadRoom]);
+  }, [roomId, player?.id]);
 
-  // ถ้า MC เริ่มเกม (status เปลี่ยนจาก lobby → playing)
-  // ตรงนี้ Task B3 จะเพิ่ม logic เปลี่ยนหน้าจอ
-  // ตอนนี้แค่แสดงข้อความว่าเกมเริ่มแล้ว
-  const gameStarted = roomStatus === 'playing';
-  const gameFinished = roomStatus === 'finished';
+  // --- Timer ---
+  useEffect(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (!room || room.status !== 'playing') return;
 
-  if (gameFinished) {
+    const duration = PHASE_TIMERS[room.current_phase];
+    if (!duration) { setTimeLeft(0); return; }
+
+    setTimeLeft(duration);
+    timerRef.current = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) { clearInterval(timerRef.current!); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [room?.current_phase, room?.status]);
+
+  // --- Join handler ---
+  const handleJoin = async (forceReconnect = false) => {
+    setJoining(true);
+    setJoinError('');
+    try {
+      const res = await fetch('/api/players', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          room_id: roomId,
+          force_reconnect: forceReconnect,
+        }),
+      });
+      const data = await res.json();
+
+      if (data.duplicate && !forceReconnect) {
+        setShowDuplicatePopup(true);
+        setJoining(false);
+        return;
+      }
+
+      if (!res.ok) {
+        setJoinError(data.error || 'Failed to join');
+        setJoining(false);
+        return;
+      }
+
+      setPlayer(data.player);
+      localStorage.setItem(`mw_player_${roomId}`, JSON.stringify(data.player));
+      setShowDuplicatePopup(false);
+    } catch {
+      setJoinError('Network error');
+    }
+    setJoining(false);
+  };
+
+  // --- Render ---
+  if (loading) {
     return (
-      <div className="min-h-screen bg-[#0D1117] flex flex-col items-center justify-center p-4">
-        <div className="text-center">
-          <p className="text-4xl mb-4">🏁</p>
-          <h2 className="text-white text-xl font-bold mb-2">เกมจบแล้ว!</h2>
-          <p className="text-gray-400">ขอบคุณที่เข้าร่วม Market Wars</p>
-        </div>
+      <div className="min-h-screen bg-[#0D1117] flex items-center justify-center">
+        <div className="text-[#00FFB2] text-xl animate-pulse">Loading...</div>
       </div>
     );
   }
 
-  if (gameStarted) {
+  const phase = room?.current_phase || 'lobby';
+  const round = room?.current_round || 1;
+  const phaseInfo = PHASE_DISPLAY[phase] || PHASE_DISPLAY.lobby;
+  const timerDuration = PHASE_TIMERS[phase] || 0;
+  const timerPercent = timerDuration > 0 ? (timeLeft / timerDuration) * 100 : 0;
+  const timerColor = timeLeft <= 10 ? '#FF4444' : timeLeft <= 30 ? '#F59E0B' : '#00FFB2';
+
+  // === NOT JOINED YET ===
+  if (!player) {
     return (
-      <div className="min-h-screen bg-[#0D1117] flex flex-col items-center justify-center p-4">
-        <div className="text-center">
-          <p className="text-4xl mb-4 animate-bounce">🎮</p>
-          <h2 className="text-[#00FFB2] text-xl font-bold mb-2">เกมเริ่มแล้ว!</h2>
-          <p className="text-gray-400 text-sm">รอ MC เปลี่ยน phase...</p>
-          <p className="text-gray-500 text-xs mt-2">Phase: {roomPhase} | Round: (coming in B3)</p>
-        </div>
-      </div>
-    );
-  }
-
-  // === Lobby UI ===
-  return (
-    <div className="min-h-screen bg-[#0D1117] flex flex-col">
-      {/* Header */}
-      <div className="bg-[#161B22] border-b border-gray-800 p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-black tracking-wider">
-              <span className="text-[#00FFB2]">MARKET</span>{' '}
-              <span className="text-[#00D4FF]">WARS</span>
-            </h1>
-          </div>
-          <div className="text-right">
-            <p className="text-gray-400 text-xs">ROOM</p>
-            <p className="text-white font-mono font-bold text-lg">{roomId}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Player Info Card */}
-      <div className="p-4">
-        <div className="bg-gradient-to-r from-[#00FFB2]/10 to-[#00D4FF]/10 border border-[#00FFB2]/30 rounded-2xl p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-400 text-xs">นักลงทุน</p>
-              <p className="text-white text-xl font-bold">{playerData.name}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-gray-400 text-xs">เงินเริ่มต้น</p>
-              <p className="text-[#00FFB2] text-xl font-mono font-bold">
-                ฿{STARTING_MONEY.toLocaleString()}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Waiting Message */}
-      <div className="px-4 mb-4">
-        <div className="bg-[#161B22] rounded-xl p-4 text-center border border-gray-800">
-          <p className="text-2xl mb-2 animate-pulse">⏳</p>
-          <p className="text-white font-semibold">รอ MC เริ่มเกม...</p>
-          <p className="text-gray-500 text-sm mt-1">เตรียมตัวให้พร้อม!</p>
-        </div>
-      </div>
-
-      {/* 6 Companies Preview */}
-      <div className="px-4 mb-4">
-        <p className="text-gray-400 text-xs uppercase tracking-wider mb-2">
-          6 บริษัทที่จะลงทุน
+      <div className="min-h-screen bg-[#0D1117] text-white flex flex-col items-center justify-center p-6">
+        <h1 className="text-2xl font-bold text-[#00FFB2] mb-1">MARKET WARS</h1>
+        <p className="text-gray-400 text-sm mb-6">
+          Room: <span className="text-[#00D4FF] font-mono">{roomId}</span>
         </p>
-        <div className="grid grid-cols-3 gap-2">
-          {COMPANIES.map((company) => (
-            <div
-              key={company.id}
-              className="bg-[#161B22] rounded-xl p-3 border border-gray-800 text-center"
-            >
-              <p className="text-2xl mb-1">{company.icon}</p>
-              <p className="text-white text-xs font-semibold leading-tight">{company.name}</p>
-              <p className="text-gray-500 text-[10px] mt-0.5">{company.type}</p>
-            </div>
-          ))}
-        </div>
-      </div>
 
-      {/* Player List */}
-      <div className="px-4 flex-1">
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-gray-400 text-xs uppercase tracking-wider">
-            นักลงทุนในห้อง
-          </p>
-          <p className="text-[#00FFB2] text-sm font-mono font-bold">
-            {players.length} คน
-          </p>
-        </div>
-
-        <div className="space-y-2 pb-6">
-          {players.map((player, index) => (
-            <div
-              key={player.id}
-              className={`flex items-center gap-3 p-3 rounded-xl border ${
-                player.id === playerData.id
-                  ? 'bg-[#00FFB2]/10 border-[#00FFB2]/30'
-                  : 'bg-[#161B22] border-gray-800'
-              }`}
-            >
-              <span className="text-gray-500 text-sm font-mono w-6 text-right">
-                {index + 1}.
-              </span>
-              <span className={`text-sm font-semibold flex-1 ${
-                player.id === playerData.id ? 'text-[#00FFB2]' : 'text-white'
-              }`}>
-                {player.name}
-                {player.id === playerData.id && (
-                  <span className="text-[#00FFB2]/60 text-xs ml-1">(เธอ)</span>
-                )}
-              </span>
-              <span className="text-gray-500 text-xs font-mono">
-                ฿{player.money.toLocaleString()}
-              </span>
-            </div>
-          ))}
-
-          {players.length === 0 && (
-            <div className="text-center py-8">
-              <p className="text-gray-600 text-sm">ยังไม่มีใครเข้ามา...</p>
-            </div>
+        <div className="w-full max-w-xs">
+          <input
+            type="text"
+            placeholder="Enter your name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            maxLength={20}
+            className="w-full bg-[#161b22] border border-gray-700 rounded-lg px-4 py-3 text-white text-center text-lg focus:border-[#00FFB2] focus:outline-none mb-3"
+          />
+          <button
+            onClick={() => handleJoin(false)}
+            disabled={joining || !name.trim()}
+            className="w-full py-3 rounded-lg font-bold text-[#0D1117] bg-[#00FFB2] hover:bg-[#00FFB2]/90 disabled:opacity-50"
+          >
+            {joining ? 'Joining...' : 'Join Game'}
+          </button>
+          {joinError && (
+            <p className="text-red-400 text-sm text-center mt-2">{joinError}</p>
           )}
         </div>
+
+        {/* Duplicate name popup */}
+        {showDuplicatePopup && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+            <div className="bg-[#161b22] rounded-xl p-6 max-w-sm w-full">
+              <p className="text-white text-center mb-4">
+                Name &quot;{name}&quot; is already taken. Is this you?
+              </p>
+              <button
+                onClick={() => handleJoin(true)}
+                className="w-full py-2 rounded-lg bg-[#00FFB2] text-[#0D1117] font-bold mb-2"
+              >
+                Yes, reconnect me
+              </button>
+              <button
+                onClick={() => {
+                  setShowDuplicatePopup(false);
+                  setName('');
+                }}
+                className="w-full py-2 rounded-lg bg-gray-700 text-white"
+              >
+                No, change name
+              </button>
+            </div>
+          </div>
+        )}
       </div>
+    );
+  }
+
+  // === JOINED — Show game content ===
+  return (
+    <div className="min-h-screen bg-[#0D1117] text-white p-4">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <span className="text-[#00FFB2] font-bold">{player.name}</span>
+          <span className="text-gray-500 text-sm ml-2">
+            ฿{(parseFloat(player.money) || 0).toLocaleString()}
+          </span>
+        </div>
+        {phase !== 'lobby' && phase !== 'final' && (
+          <span className="bg-[#00FFB2] text-[#0D1117] text-xs font-bold px-2 py-1 rounded-full">
+            R{round}
+          </span>
+        )}
+      </div>
+
+      {/* Phase info */}
+      <div className="text-center py-4">
+        <div className="text-3xl mb-1">{phaseInfo.icon}</div>
+        <h2 className="text-xl font-bold text-[#00FFB2]">{phaseInfo.name}</h2>
+        {phase !== 'lobby' && phase !== 'final' && (
+          <p className="text-gray-500 text-xs">Round {round}</p>
+        )}
+        <p className="text-gray-400 text-sm mt-2">{phaseInfo.playerMessage}</p>
+      </div>
+
+      {/* Timer */}
+      {timerDuration > 0 && room?.status === 'playing' && (
+        <div className="flex items-center gap-2 mb-4 px-2">
+          <div className="flex-1 h-1.5 bg-[#2a2d35] rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-1000"
+              style={{ width: `${timerPercent}%`, backgroundColor: timerColor }}
+            />
+          </div>
+          <span
+            className={`font-mono text-sm font-bold ${
+              timeLeft <= 10 && timeLeft > 0 ? 'animate-pulse' : ''
+            }`}
+            style={{ color: timerColor }}
+          >
+            {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}
+          </span>
+        </div>
+      )}
+
+      {/* === Phase-specific placeholder content === */}
+
+      {/* Lobby */}
+      {phase === 'lobby' && (
+        <div className="bg-[#161b22] rounded-lg p-4">
+          <p className="text-[#00FFB2] font-bold mb-2">You&apos;re in! 🎉</p>
+          <p className="text-gray-400 text-sm mb-3">
+            Starting money: ฿{STARTING_MONEY.toLocaleString()}
+          </p>
+          <p className="text-gray-500 text-xs mb-2">Players in lobby:</p>
+          <div className="flex flex-wrap gap-1">
+            {players.map((p) => (
+              <span
+                key={p.id}
+                className={`text-xs px-2 py-1 rounded-full ${
+                  p.id === player.id
+                    ? 'bg-[#00FFB2]/20 text-[#00FFB2]'
+                    : 'bg-gray-800 text-gray-400'
+                }`}
+              >
+                {p.name}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Invest placeholder */}
+      {phase === 'invest' && (
+        <div className="bg-[#161b22] rounded-lg p-4">
+          {COMPANIES.map((c) => (
+            <div
+              key={c.id}
+              className="flex items-center justify-between py-2 border-b border-gray-800"
+            >
+              <div className="flex items-center gap-2">
+                <span>{c.icon}</span>
+                <span className="text-sm" style={{ color: c.color }}>{c.name}</span>
+              </div>
+              <span className="text-gray-500 text-sm">0%</span>
+            </div>
+          ))}
+          <p className="text-gray-600 text-xs mt-3 text-center">
+            (Investment UI in Task B4)
+          </p>
+        </div>
+      )}
+
+      {/* Attack placeholder */}
+      {phase === 'attack' && (
+        <div className="bg-[#161b22] rounded-lg p-4 text-center">
+          <div className="flex justify-center gap-3 mb-3">
+            <span className="bg-red-600 text-white px-3 py-2 rounded-lg text-sm">⚔️ Attack</span>
+            <span className="bg-[#00D4FF] text-[#0D1117] px-3 py-2 rounded-lg text-sm">🛡️ Defend</span>
+            <span className="bg-purple-600 text-white px-3 py-2 rounded-lg text-sm">🔍 Spy</span>
+          </div>
+          <p className="text-gray-600 text-xs">(PvP UI in Task B9)</p>
+        </div>
+      )}
+
+      {/* Event — watch screen */}
+      {phase === 'event' && (
+        <div className="bg-[#161b22] rounded-lg p-6 text-center">
+          <div className="text-4xl mb-2">📺</div>
+          <p className="text-gray-400">Watch the big screen!</p>
+        </div>
+      )}
+
+      {/* Golden Deal placeholder */}
+      {phase === 'golden_deal' && (() => {
+        const deal = GOLDEN_DEALS.find((d) => d.round === round);
+        return (
+          <div className="bg-[#161b22] rounded-lg p-4 text-center">
+            <div className="text-3xl mb-2">✨</div>
+            <p className="text-[#F59E0B] font-bold">{deal?.name || 'Golden Deal'}</p>
+            <p className="text-gray-500 text-xs mt-2">(Golden Deal UI in Task B10)</p>
+          </div>
+        );
+      })()}
+
+      {/* Results placeholder */}
+      {phase === 'results' && (
+        <div className="bg-[#161b22] rounded-lg p-4 text-center">
+          <div className="text-3xl mb-2">📊</div>
+          <p className="text-gray-400">Results loading...</p>
+          <p className="text-gray-600 text-xs mt-2">(Results UI in Task B5)</p>
+        </div>
+      )}
+
+      {/* Leaderboard placeholder */}
+      {phase === 'leaderboard' && (
+        <div className="bg-[#161b22] rounded-lg p-4">
+          <div className="text-center mb-3">
+            <span className="text-2xl">🏆</span>
+          </div>
+          {players
+            .sort((a, b) => Number(b.money) - Number(a.money))
+            .slice(0, 5)
+            .map((p, i) => (
+              <div
+                key={p.id}
+                className={`flex justify-between py-1 text-sm ${
+                  p.id === player.id ? 'text-[#00FFB2] font-bold' : 'text-gray-400'
+                }`}
+              >
+                <span>#{i + 1} {p.name}</span>
+                <span>฿{(parseFloat(p.money) || 0).toLocaleString()}</span>
+              </div>
+            ))}
+        </div>
+      )}
+
+      {/* Rebalance placeholder */}
+      {phase === 'rebalance' && (
+        <div className="bg-[#161b22] rounded-lg p-4 text-center">
+          <div className="text-3xl mb-2">🔄</div>
+          <p className="text-gray-400">Adjust your portfolio</p>
+          <p className="text-gray-600 text-xs mt-2">(Rebalance UI in Task B7)</p>
+        </div>
+      )}
+
+      {/* Research placeholder */}
+      {phase === 'research' && (
+        <div className="bg-[#161b22] rounded-lg p-4 text-center">
+          <div className="text-3xl mb-2">🔍</div>
+          <p className="text-gray-400">Answer quiz to unlock news!</p>
+          <p className="text-gray-600 text-xs mt-2">(Quiz UI in Task B8)</p>
+        </div>
+      )}
+
+      {/* Final */}
+      {phase === 'final' && (
+        <div className="bg-[#161b22] rounded-lg p-6 text-center">
+          <div className="text-4xl mb-2">🏆</div>
+          <p className="text-[#00FFB2] text-2xl font-bold mb-1">Game Over!</p>
+          <p className="text-xl text-[#FFD700]">
+            ฿{(parseFloat(player.money) || 0).toLocaleString()}
+          </p>
+          <p className="text-gray-500 text-sm mt-2">Your final money</p>
+        </div>
+      )}
     </div>
   );
 }
 
-// ============================================================
-// Type
-// ============================================================
-interface PlayerData {
-  id: string;
-  name: string;
-  room_id: string;
-}
-
-// ============================================================
-// Main Page Component
-// ============================================================
+// Wrap with Suspense for useSearchParams
 export default function PlayerPage() {
-  const params = useParams();
-  const roomId = (params.roomId as string)?.toUpperCase();
-
-  const [playerData, setPlayerData] = useState<PlayerData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // เช็ค localStorage ว่า join แล้วหรือยัง
-  useEffect(() => {
-    if (!roomId) return;
-
-    const saved = localStorage.getItem(`mw_player_${roomId}`);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved) as PlayerData;
-        setPlayerData(parsed);
-      } catch {
-        // Invalid data → ให้ join ใหม่
-        localStorage.removeItem(`mw_player_${roomId}`);
-      }
-    }
-    setIsLoading(false);
-  }, [roomId]);
-
-  if (isLoading) {
-    return (
+  return (
+    <Suspense fallback={
       <div className="min-h-screen bg-[#0D1117] flex items-center justify-center">
-        <div className="text-gray-400 animate-pulse">Loading...</div>
+        <div className="text-[#00FFB2]">Loading...</div>
       </div>
-    );
-  }
-
-  // ยังไม่ได้ join → แสดง form ใส่ชื่อ
-  if (!playerData) {
-    return (
-      <MiniJoinForm
-        roomId={roomId}
-        onJoined={(player) => setPlayerData(player)}
-      />
-    );
-  }
-
-  // Join แล้ว → แสดง Lobby
-  return <LobbyScreen playerData={playerData} roomId={roomId} />;
+    }>
+      <PlayerContent />
+    </Suspense>
+  );
 }
