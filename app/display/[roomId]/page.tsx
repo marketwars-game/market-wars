@@ -193,7 +193,7 @@ export default function DisplayPage() {
               Players Joined
             </h2>
             <span className="bg-[#00FFB2]/10 text-[#00FFB2] px-4 py-1 rounded-full text-xl font-mono font-bold">
-              {players.length}/{MAX_PLAYERS}
+              {players.length}
             </span>
           </div>
 

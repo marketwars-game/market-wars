@@ -249,7 +249,7 @@ export default function MCControlPage() {
       <div className="bg-[#161B22] border border-gray-700 rounded-xl p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold">
-            👥 ผู้เล่น ({players.length}/{MAX_PLAYERS})
+            👥 ผู้เล่น ({players.length})
           </h2>
           {players.length >= 2 && room.status === 'lobby' && (
             <span className="text-[#00FFB2] text-sm">✅ พร้อมเริ่ม</span>
