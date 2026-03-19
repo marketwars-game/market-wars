@@ -1,3 +1,4 @@
+// FILE: app/mc/[roomId]/page.tsx — MC Control screen
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -181,6 +182,12 @@ export default function MCControlRoom() {
     return '#00FFB2';
   };
 
+  // ✅ B4: Count players who submitted portfolio
+  const submittedCount = players.filter((p) => {
+    const portfolio = p.portfolio || {};
+    return Object.values(portfolio).some((v: any) => Number(v) > 0);
+  }).length;
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0D1117] flex items-center justify-center">
@@ -287,6 +294,30 @@ export default function MCControlRoom() {
           </div>
         )}
       </div>
+
+      {/* ✅ B4: Portfolio Submitted Count — show during invest/rebalance */}
+      {(phase === 'invest' || phase === 'rebalance') && (
+        <div className="rounded-lg p-3 mb-3" style={{ background: '#00D4FF15', border: '1px solid #00D4FF30' }}>
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-mono" style={{ color: '#00D4FF' }}>
+              📊 Portfolio Submitted
+            </span>
+            <span className="text-lg font-bold font-mono" style={{ color: '#00FFB2' }}>
+              {submittedCount}/{players.length}
+            </span>
+          </div>
+          {submittedCount < players.length && (
+            <p className="text-xs mt-1" style={{ color: '#ffffff40' }}>
+              กด Next Phase ได้เลย — คนที่ไม่ส่ง = เงินไม่ลงทุนรอบนี้
+            </p>
+          )}
+          {submittedCount === players.length && players.length > 0 && (
+            <p className="text-xs mt-1" style={{ color: '#00FFB2' }}>
+              ✓ ทุกคนส่งแล้ว! กด Next Phase ได้เลย
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Timer */}
       {timerDuration > 0 && phase !== 'lobby' && phase !== 'final' && (

@@ -1,3 +1,4 @@
+// FILE: app/display/[roomId]/page.tsx — Display screen
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
@@ -100,6 +101,12 @@ export default function DisplayScreen() {
 
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [room?.current_phase, room?.status]);
+
+  // ✅ B4: Count players who submitted portfolio
+  const submittedCount = players.filter((p) => {
+    const portfolio = p.portfolio || {};
+    return Object.values(portfolio).some((v: any) => Number(v) > 0);
+  }).length;
 
   // --- Render ---
   if (loading) {
@@ -206,6 +213,18 @@ export default function DisplayScreen() {
           {/* Phase-specific content */}
           <p className="text-xl text-[#00D4FF]">{phaseInfo.displayMessage}</p>
 
+          {/* ✅ B4: Submitted count during invest/rebalance */}
+          {(phase === 'invest' || phase === 'rebalance') && (
+            <div className="mt-8">
+              <p className="text-6xl font-bold font-mono" style={{ color: '#00FFB2' }}>
+                {submittedCount}/{players.length}
+              </p>
+              <p className="text-2xl font-mono mt-2" style={{ color: '#ffffff60' }}>
+                portfolios submitted
+              </p>
+            </div>
+          )}
+
           {/* Event Reveal */}
           {phase === 'event' && EVENTS[round - 1] && (
             <div className="mt-8 bg-[#161b22] rounded-xl p-6 border border-[#FF6B6B]/30 max-w-lg mx-auto">
@@ -260,7 +279,7 @@ export default function DisplayScreen() {
             </div>
           )}
 
-          {/* Companies during invest phase */}
+          {/* Companies during invest phase — show below submitted count */}
           {phase === 'invest' && (
             <div className="mt-6 grid grid-cols-3 gap-3 max-w-lg mx-auto">
               {COMPANIES.map((c) => (

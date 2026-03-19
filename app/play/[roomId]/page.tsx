@@ -1,3 +1,4 @@
+// FILE: app/play/[roomId]/page.tsx — Player game screen
 'use client';
 
 import { useEffect, useState, useRef, Suspense } from 'react';
@@ -11,6 +12,7 @@ import {
   STARTING_MONEY,
   GOLDEN_DEALS,
 } from '@/lib/constants';
+import InvestmentPanel from '@/components/player/InvestmentPanel';
 
 // ==============================================
 // Player Screen — มือถือเด็ก
@@ -256,17 +258,19 @@ function PlayerContent() {
         )}
       </div>
 
-      {/* Phase info */}
-      <div className="text-center py-4">
-        <div className="text-3xl mb-1">{phaseInfo.icon}</div>
-        <h2 className="text-xl font-bold text-[#00FFB2]">{phaseInfo.name}</h2>
-        {phase !== 'lobby' && phase !== 'final' && (
-          <p className="text-gray-500 text-xs">Round {round}</p>
-        )}
-        <p className="text-gray-400 text-sm mt-2">{phaseInfo.playerMessage}</p>
-      </div>
+      {/* Phase info — hide for invest/rebalance since InvestmentPanel has its own header */}
+      {phase !== 'invest' && phase !== 'rebalance' && (
+        <div className="text-center py-4">
+          <div className="text-3xl mb-1">{phaseInfo.icon}</div>
+          <h2 className="text-xl font-bold text-[#00FFB2]">{phaseInfo.name}</h2>
+          {phase !== 'lobby' && phase !== 'final' && (
+            <p className="text-gray-500 text-xs">Round {round}</p>
+          )}
+          <p className="text-gray-400 text-sm mt-2">{phaseInfo.playerMessage}</p>
+        </div>
+      )}
 
-      {/* Timer */}
+      {/* Timer — show for all timed phases */}
       {timerDuration > 0 && room?.status === 'playing' && (
         <div className="flex items-center gap-2 mb-4 px-2">
           <div className="flex-1 h-1.5 bg-[#2a2d35] rounded-full overflow-hidden">
@@ -286,7 +290,7 @@ function PlayerContent() {
         </div>
       )}
 
-      {/* === Phase-specific placeholder content === */}
+      {/* === Phase-specific content === */}
 
       {/* Lobby */}
       {phase === 'lobby' && (
@@ -313,25 +317,15 @@ function PlayerContent() {
         </div>
       )}
 
-      {/* Invest placeholder */}
+      {/* ✅ B4: Invest — InvestmentPanel */}
       {phase === 'invest' && (
-        <div className="bg-[#161b22] rounded-lg p-4">
-          {COMPANIES.map((c) => (
-            <div
-              key={c.id}
-              className="flex items-center justify-between py-2 border-b border-gray-800"
-            >
-              <div className="flex items-center gap-2">
-                <span>{c.icon}</span>
-                <span className="text-sm" style={{ color: c.color }}>{c.name}</span>
-              </div>
-              <span className="text-gray-500 text-sm">0%</span>
-            </div>
-          ))}
-          <p className="text-gray-600 text-xs mt-3 text-center">
-            (Investment UI in Task B4)
-          </p>
-        </div>
+        <InvestmentPanel
+          playerId={player.id}
+          roomId={roomId}
+          money={parseFloat(player.money) || 0}
+          currentPortfolio={player.portfolio || {}}
+          isRebalance={false}
+        />
       )}
 
       {/* Attack placeholder */}
@@ -398,13 +392,15 @@ function PlayerContent() {
         </div>
       )}
 
-      {/* Rebalance placeholder */}
+      {/* ✅ B4: Rebalance — InvestmentPanel with prefill */}
       {phase === 'rebalance' && (
-        <div className="bg-[#161b22] rounded-lg p-4 text-center">
-          <div className="text-3xl mb-2">🔄</div>
-          <p className="text-gray-400">Adjust your portfolio</p>
-          <p className="text-gray-600 text-xs mt-2">(Rebalance UI in Task B7)</p>
-        </div>
+        <InvestmentPanel
+          playerId={player.id}
+          roomId={roomId}
+          money={parseFloat(player.money) || 0}
+          currentPortfolio={player.portfolio || {}}
+          isRebalance={true}
+        />
       )}
 
       {/* Research placeholder */}
