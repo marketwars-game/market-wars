@@ -182,10 +182,9 @@ export default function MCControlRoom() {
     return '#00FFB2';
   };
 
-  // ✅ B4: Count players who submitted portfolio
+  // ✅ B4 fix: Count players who submitted portfolio THIS round
   const submittedCount = players.filter((p) => {
-    const portfolio = p.portfolio || {};
-    return Object.values(portfolio).some((v: any) => Number(v) > 0);
+    return p.portfolio_submitted_round === room?.current_round;
   }).length;
 
   if (loading) {

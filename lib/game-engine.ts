@@ -17,11 +17,17 @@ export function generateRoomCode(): string {
 // ==============================================
 
 // Phase order สำหรับรอบที่กำหนด
-// รอบปกติ (1,3,5): research → invest → attack → event → results → leaderboard → rebalance
-// รอบ Golden Deal (2,4,6): research → invest → attack → event → golden_deal → results → leaderboard → rebalance
-// รอบสุดท้าย (6): ...leaderboard → final (ไม่มี rebalance)
+// รอบ 1: research → invest → attack → event → results → leaderboard
+// รอบ 2-5: research → rebalance → attack → event → [golden_deal] → results → leaderboard
+// รอบ 6 (สุดท้าย): research → rebalance → attack → event → golden_deal → results → leaderboard → final
+//
+// ✅ B4 fix: รอบ 2+ ใช้ rebalance แทน invest (prefill จาก portfolio เดิม)
+// ✅ B4 fix: ลบ rebalance ท้ายรอบออก เพราะ rebalance อยู่ต้นรอบถัดไปแล้ว
 export function getPhaseOrder(round: number): string[] {
-  const phases = ['research', 'invest', 'attack', 'event'];
+  // รอบ 1 ใช้ invest (เริ่มจาก 0%), รอบ 2+ ใช้ rebalance (prefill จากรอบก่อน)
+  const investPhase = round === 1 ? 'invest' : 'rebalance';
+
+  const phases = ['research', investPhase, 'attack', 'event'];
 
   // เพิ่ม Golden Deal ถ้าเป็นรอบ 2, 4, 6
   if (GOLDEN_DEAL_ROUNDS.includes(round)) {
@@ -30,12 +36,12 @@ export function getPhaseOrder(round: number): string[] {
 
   phases.push('results', 'leaderboard');
 
-  // รอบสุดท้ายไปจบที่ final แทน rebalance
+  // รอบสุดท้ายไปจบที่ final
   if (round >= TOTAL_ROUNDS) {
     phases.push('final');
-  } else {
-    phases.push('rebalance');
   }
+
+  // ไม่มี rebalance ท้ายรอบอีกแล้ว — rebalance อยู่ต้นรอบถัดไปแทน
 
   return phases;
 }
@@ -75,8 +81,8 @@ export function getNextPhase(
     };
   }
 
-  // ถ้าอยู่ที่ rebalance (phase สุดท้ายของรอบ) → ขึ้นรอบใหม่
-  if (currentPhase === 'rebalance') {
+  // ถ้าอยู่ที่ leaderboard (phase สุดท้ายของรอบ) → ขึ้นรอบใหม่
+  if (currentPhase === 'leaderboard') {
     return {
       phase: 'research',
       round: currentRound + 1,

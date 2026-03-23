@@ -102,11 +102,13 @@ export default function DisplayScreen() {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [room?.current_phase, room?.status]);
 
-  // ✅ B4: Count players who submitted portfolio
-  const submittedCount = players.filter((p) => {
-    const portfolio = p.portfolio || {};
-    return Object.values(portfolio).some((v: any) => Number(v) > 0);
-  }).length;
+   // ✅ B4 fix: Count players who submitted portfolio THIS round
+   console.log('DEBUG round:', room?.current_round, typeof room?.current_round);
+   console.log('DEBUG players:', players.map(p => ({ name: p.name, psr: p.portfolio_submitted_round, type: typeof p.portfolio_submitted_round })));
+   const submittedCount = players.filter((p) => {
+     return p.portfolio_submitted_round === room?.current_round;
+   }).length;
+   console.log('DEBUG submittedCount:', submittedCount);
 
   // --- Render ---
   if (loading) {
@@ -129,6 +131,11 @@ export default function DisplayScreen() {
 
   const phase = room.current_phase || 'lobby';
   const round = room.current_round || 1;
+
+  console.log('DEBUG2 round:', round, typeof round);
+  console.log('DEBUG2 players psr:', players.map(p => ({ name: p.name, psr: p.portfolio_submitted_round, type: typeof p.portfolio_submitted_round })));
+  console.log('DEBUG2 submittedCount:', submittedCount);
+  
   const phaseInfo = PHASE_DISPLAY[phase] || PHASE_DISPLAY.lobby;
   const timerDuration = PHASE_TIMERS[phase] || 0;
   const timerPercent = timerDuration > 0 ? (timeLeft / timerDuration) * 100 : 0;

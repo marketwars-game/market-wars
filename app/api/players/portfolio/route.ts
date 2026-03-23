@@ -51,7 +51,7 @@ export async function PATCH(request: NextRequest) {
     // --- Check room is in a valid phase for portfolio submission ---
     const { data: room, error: roomError } = await supabase
       .from('rooms')
-      .select('status, current_phase')
+      .select('status, current_phase, current_round')
       .eq('id', room_id)
       .single();
 
@@ -77,10 +77,10 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    // --- Update portfolio ---
+    // --- Update portfolio + mark which round it was submitted ---
     const { data: player, error: updateError } = await supabase
       .from('players')
-      .update({ portfolio })
+      .update({ portfolio, portfolio_submitted_round: room.current_round })
       .eq('id', player_id)
       .eq('room_id', room_id)
       .select()
