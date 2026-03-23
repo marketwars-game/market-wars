@@ -173,7 +173,7 @@ export default function InvestmentPanel({
               allocations[c.id] > 0 ? (
                 <div key={c.id} className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm">{c.emoji}</span>
+                    <span className="text-sm">{c.icon}</span>
                     <span className="text-xs text-white">{c.name}</span>
                   </div>
                   <div className="flex items-center gap-3">
@@ -280,7 +280,7 @@ export default function InvestmentPanel({
           >
             <div className="flex items-center gap-3">
               {/* Emoji + Info */}
-              <div className="text-2xl">{c.emoji}</div>
+              <div className="text-2xl">{c.icon}</div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
                   <span className="font-bold text-sm text-white truncate">{c.name}</span>
