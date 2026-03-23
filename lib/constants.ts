@@ -17,18 +17,19 @@ export const ROOM_CODE_CONFIG = {
 };
 
 // --- Phase Flow ---
-// ลำดับ phase ในแต่ละรอบ (Golden Deal อยู่หลัง event ก่อน results)
+// ลำดับ phase ในแต่ละรอบ (Golden Deal อยู่หลัง event_result ก่อน results)
 export const GAME_PHASES = [
-  'lobby',       // ก่อนเริ่มเกม
-  'research',    // ตอบ quiz ปลดล็อกข่าว
-  'invest',      // เลือกลงทุน 6 บริษัท
-  'attack',      // เลือก โจมตี/ป้องกัน/สอดแนม
-  'event',       // MC เปิดข่าวเหตุการณ์
-  'golden_deal', // ดีลพิเศษ (เฉพาะรอบ 2, 4, 6)
-  'results',     // ผลตอบแทนรอบนี้
-  'leaderboard', // อันดับ 1-20
-  'rebalance',   // ปรับพอร์ตก่อนรอบถัดไป
-  'final',       // สรุปจบเกม
+  'lobby',        // ก่อนเริ่มเกม
+  'research',     // ตอบ quiz ปลดล็อกข่าว
+  'invest',       // เลือกลงทุน 6 บริษัท
+  'attack',       // เลือก โจมตี/ป้องกัน/สอดแนม
+  'event',        // MC เปิดข่าวเหตุการณ์
+  'event_result', // ✅ B5: เฉลย % return แต่ละบริษัท
+  'golden_deal',  // ดีลพิเศษ (เฉพาะรอบ 2, 4, 6)
+  'results',      // ผลตอบแทนรอบนี้
+  'leaderboard',  // อันดับ 1-20
+  'rebalance',    // ปรับพอร์ตก่อนรอบถัดไป
+  'final',        // สรุปจบเกม
 ] as const;
 
 export const GOLDEN_DEAL_ROUNDS = [2, 4, 6];
@@ -90,7 +91,15 @@ export const PHASE_DISPLAY: Record<string, {
     icon: '📰',
     displayMessage: 'Breaking news!',
     playerMessage: 'Watch the big screen!',
-    mcTip: 'Read the event aloud and explain the impact! Press Next when done.',
+    mcTip: 'อ่านข่าวให้เด็กฟัง แล้วถามว่า "คิดว่าข่าวนี้จะกระทบหุ้นตัวไหนบ้าง?" ให้เด็กแสดงความเห็นก่อนกด Next เพื่อเฉลย',
+    hasTimer: false,
+  },
+  event_result: {
+    name: 'Market Impact',
+    icon: '📊',
+    displayMessage: 'Market impact revealed!',
+    playerMessage: 'Watch the big screen!',
+    mcTip: 'อธิบายว่าทำไมแต่ละบริษัทถึงได้/เสียแบบนี้ เชื่อมกับข่าว แล้วกด Next',
     hasTimer: false,
   },
   golden_deal: {
@@ -103,10 +112,10 @@ export const PHASE_DISPLAY: Record<string, {
   },
   results: {
     name: 'Round Results',
-    icon: '📊',
-    displayMessage: 'Calculating returns...',
+    icon: '💰',
+    displayMessage: 'Returns calculated!',
     playerMessage: 'See your returns this round!',
-    mcTip: 'Let players react to their results. Press Next for leaderboard.',
+    mcTip: 'ให้เด็กดูผลตัวเองบนมือถือ ถามว่า "ใครได้เยอะสุด? ใครขาดทุน?" แล้วกด Next ไป Leaderboard',
     hasTimer: false,
   },
   leaderboard: {
@@ -194,42 +203,51 @@ export const COMPANIES = [
 ];
 
 // --- Events (เหตุการณ์แต่ละรอบ) ---
+// ✅ B5: เพิ่ม image field — null ตอนนี้ ใส่ path รูปจริงตอน polish
+// เมื่อใส่รูป: image: '/events/round1-news.jpg'
+// รูปเก็บใน public/events/
 export const EVENTS = [
   {
     round: 1,
     title: 'iPhone ใหม่ขายดี!',
     emoji: '📱',
     description: 'Apple เปิดตัว iPhone รุ่นใหม่ ยอดขายทะลุเป้า หุ้นเทคพุ่ง!',
+    image: null as string | null,
   },
   {
     round: 2,
     title: 'โรคระบาดทั่วโลก!',
     emoji: '🦠',
     description: 'โรคระบาดครั้งใหญ่ คนอยู่บ้าน ธุรกิจออนไลน์บูม แต่ร้านอาหารรอด!',
+    image: null as string | null,
   },
   {
     round: 3,
     title: 'เศรษฐกิจฟื้นตัว!',
     emoji: '📈',
     description: 'วัคซีนมาแล้ว! เศรษฐกิจเริ่มกลับมา ทุกอุตสาหกรรมฟื้นตัว',
+    image: null as string | null,
   },
   {
     round: 4,
     title: 'สงคราม น้ำมันแพง!',
     emoji: '⛽',
     description: 'เกิดสงคราม น้ำมันราคาพุ่ง บริษัทพลังงานได้กำไร แต่ที่เหลือลำบาก',
+    image: null as string | null,
   },
   {
     round: 5,
     title: 'AI บูม! เทคพุ่ง!',
     emoji: '🤖',
     description: 'AI ปฏิวัติโลก! บริษัทเทคกำไรมหาศาล ทุกคนอยากลงทุนเทค',
+    image: null as string | null,
   },
   {
     round: 6,
     title: 'ขึ้นดอกเบี้ย!',
     emoji: '🏦',
     description: 'ธนาคารกลางขึ้นดอกเบี้ย หุ้นทุกตัวชะลอ แต่ฝากเงินได้ดอกเบี้ยดี',
+    image: null as string | null,
   },
 ];
 

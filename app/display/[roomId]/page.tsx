@@ -1,4 +1,7 @@
 // FILE: app/display/[roomId]/page.tsx — Display screen
+// VERSION: B5 — Event (news only) + Event Result (stagger animation) + Results (pills + top earners)
+// LAST MODIFIED: Task B5 (23 Mar 2026)
+// HISTORY: B1 created | B3 phase sync + timer | B4 submitted count | B5 event_result + results UI
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
@@ -12,6 +15,7 @@ import {
   COMPANIES,
   EVENTS,
   GOLDEN_DEALS,
+  RETURN_TABLE,
 } from '@/lib/constants';
 
 // ==============================================
@@ -224,14 +228,75 @@ export default function DisplayScreen() {
             </div>
           )}
 
-          {/* Event Reveal */}
+          {/* ✅ B5: Event Reveal — ข่าวอย่างเดียว MC อธิบาย + เด็กแสดงความเห็น */}
           {phase === 'event' && EVENTS[round - 1] && (
-            <div className="mt-8 bg-[#161b22] rounded-xl p-6 border border-[#FF6B6B]/30 max-w-lg mx-auto">
-              <div className="text-5xl mb-3">{EVENTS[round - 1].emoji}</div>
-              <h3 className="text-2xl font-bold text-[#FF6B6B] mb-2">
+            <div className="mt-8 bg-[#161b22] rounded-xl p-8 border border-[#FF6B6B]/30 max-w-lg mx-auto">
+              {/* ถ้ามีรูป ใช้รูป / ไม่มี ใช้ emoji */}
+              {EVENTS[round - 1].image ? (
+                <img
+                  src={EVENTS[round - 1].image!}
+                  alt={EVENTS[round - 1].title}
+                  className="w-full rounded-lg mb-4 max-h-64 object-cover"
+                />
+              ) : (
+                <div className="text-7xl mb-4">{EVENTS[round - 1].emoji}</div>
+              )}
+              <h3 className="text-3xl font-bold text-[#FF6B6B] mb-3">
                 {EVENTS[round - 1].title}
               </h3>
-              <p className="text-gray-300">{EVENTS[round - 1].description}</p>
+              <p className="text-lg text-gray-300 leading-relaxed">
+                {EVENTS[round - 1].description}
+              </p>
+            </div>
+          )}
+
+          {/* ✅ B5: Event Result — เฉลย % return แต่ละบริษัท + stagger animation */}
+          {phase === 'event_result' && EVENTS[round - 1] && (
+            <div className="mt-8 max-w-lg mx-auto">
+              {/* สรุปข่าวเล็กๆ ด้านบน */}
+              <div className="bg-[#161b22] rounded-lg p-3 mb-4 border border-[#FF6B6B]/20 flex items-center gap-3 justify-center">
+                <span className="text-2xl">{EVENTS[round - 1].emoji}</span>
+                <span className="text-sm text-gray-400">{EVENTS[round - 1].title}</span>
+              </div>
+
+              {/* Return grid — stagger fade-in */}
+              <style>{`
+                @keyframes fadeSlideUp {
+                  from { opacity: 0; transform: translateY(16px); }
+                  to { opacity: 1; transform: translateY(0); }
+                }
+                .return-card {
+                  opacity: 0;
+                  animation: fadeSlideUp 0.4s ease-out forwards;
+                }
+              `}</style>
+              <div className="grid grid-cols-3 gap-3">
+                {COMPANIES.map((c, i) => {
+                  const returnPct = RETURN_TABLE[c.id]?.[round - 1] || 0;
+                  const isPositive = returnPct >= 0;
+                  return (
+                    <div
+                      key={c.id}
+                      className="return-card bg-[#161b22] rounded-lg p-4 text-center"
+                      style={{
+                        animationDelay: `${0.8 + i * 0.2}s`,
+                        borderBottom: `3px solid ${c.color}`,
+                      }}
+                    >
+                      <div className="text-xs font-bold mb-1" style={{ color: c.color }}>
+                        {c.name}
+                      </div>
+                      <div
+                        className="text-2xl font-bold"
+                        style={{ color: isPositive ? '#22c55e' : '#ef4444' }}
+                      >
+                        {isPositive ? '+' : ''}{returnPct}%
+                      </div>
+                      <div className="text-xs text-gray-600 mt-1">{c.type}</div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
 
@@ -270,11 +335,75 @@ export default function DisplayScreen() {
             </div>
           )}
 
-          {/* Results placeholder */}
+          {/* ✅ B5: Results — market return pills + top 3 earners */}
           {phase === 'results' && (
-            <div className="mt-8 text-gray-400">
-              <p className="text-lg">Results calculating...</p>
-              <p className="text-sm mt-2">(Full results UI in Task B5)</p>
+            <div className="mt-8 max-w-lg mx-auto">
+              {/* Market returns pills */}
+              <div className="flex flex-wrap gap-2 justify-center mb-6">
+                {COMPANIES.map((c) => {
+                  const returnPct = RETURN_TABLE[c.id]?.[round - 1] || 0;
+                  const isPositive = returnPct >= 0;
+                  return (
+                    <div
+                      key={c.id}
+                      className="bg-[#161b22] rounded-full px-3 py-1.5 flex items-center gap-2"
+                    >
+                      <div
+                        className="w-2 h-2 rounded-full"
+                        style={{ backgroundColor: c.color }}
+                      />
+                      <span className="text-xs text-gray-400">{c.name}</span>
+                      <span
+                        className="text-sm font-bold"
+                        style={{ color: isPositive ? '#22c55e' : '#ef4444' }}
+                      >
+                        {isPositive ? '+' : ''}{returnPct}%
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Top 3 earners this round */}
+              <div className="text-xs tracking-widest text-gray-600 text-center mb-3">
+                TOP EARNERS THIS ROUND
+              </div>
+              <div className="space-y-2">
+                {(() => {
+                  const earners = players
+                    .map((p) => ({
+                      id: p.id,
+                      name: p.name,
+                      profit: p.round_returns?.[String(round)]?.total_return || 0,
+                    }))
+                    .sort((a, b) => b.profit - a.profit)
+                    .slice(0, 3);
+
+                  const medals = ['🥇', '🥈', '🥉'];
+
+                  return earners.map((p, i) => (
+                    <div
+                      key={p.id}
+                      className="bg-[#161b22] rounded-lg px-4 py-3 flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-lg">{medals[i]}</span>
+                        <span className="text-base font-bold text-gray-200">{p.name}</span>
+                      </div>
+                      <span
+                        className="text-lg font-bold"
+                        style={{ color: p.profit >= 0 ? '#22c55e' : '#ef4444' }}
+                      >
+                        {p.profit >= 0 ? '+' : '-'}฿{Math.abs(p.profit).toLocaleString()}
+                      </span>
+                    </div>
+                  ));
+                })()}
+              </div>
+
+              <p className="text-gray-600 text-sm text-center mt-4">
+                Check your phone for personal results!
+              </p>
             </div>
           )}
 

@@ -1,7 +1,12 @@
+// FILE: app/api/game/phase/route.ts
+// VERSION: B5 — เพิ่ม auto-calculate returns เมื่อเข้า results phase
+// LAST MODIFIED: Task B5 (23 Mar 2026)
+// HISTORY: B3 created | B4 bug fix phase flow | B5 auto-calculate + event_result phase
+
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getNextPhase, getPhaseOrder } from '@/lib/game-engine';
-import { GOLDEN_DEAL_ROUNDS, TOTAL_ROUNDS } from '@/lib/constants';
+import { GOLDEN_DEAL_ROUNDS, TOTAL_ROUNDS, RETURN_TABLE, COMPANIES } from '@/lib/constants';
 
 // ใช้ Supabase client แบบ server-side (ไม่ต้องผ่าน browser)
 const supabase = createClient(
@@ -154,6 +159,65 @@ export async function POST(request: Request) {
           { error: 'Failed to advance phase' },
           { status: 500 }
         );
+      }
+
+      // ✅ B5: Auto-calculate returns when entering results phase
+      if (next.phase === 'results') {
+        const currentRound = next.round;
+        const roundIndex = currentRound - 1;
+
+        // ดึงผู้เล่นทั้งหมด
+        const { data: allPlayers } = await supabase
+          .from('players')
+          .select('id, money, portfolio, round_returns')
+          .eq('room_id', room_id);
+
+        if (allPlayers) {
+          for (const player of allPlayers) {
+            const money = parseFloat(player.money) || 0;
+            const portfolio = player.portfolio || {};
+            const existingReturns = player.round_returns || {};
+
+            // ข้ามถ้ารอบนี้คำนวณไปแล้ว (ป้องกันกดซ้ำ)
+            if (existingReturns[String(currentRound)]) continue;
+
+            // คำนวณ return แต่ละบริษัท
+            const returns: Record<string, number> = {};
+            let totalReturn = 0;
+
+            for (const company of COMPANIES) {
+              const allocationPct = parseFloat(portfolio[company.id]) || 0;
+              if (allocationPct <= 0) continue;
+
+              const returnPct = RETURN_TABLE[company.id]?.[roundIndex] || 0;
+              const investedAmount = money * (allocationPct / 100);
+              const returnAmount = Math.round(investedAmount * (returnPct / 100));
+
+              returns[company.id] = returnAmount;
+              totalReturn += returnAmount;
+            }
+
+            const moneyAfter = money + totalReturn;
+
+            // อัปเดต player — money + round_returns
+            await supabase
+              .from('players')
+              .update({
+                money: moneyAfter,
+                round_returns: {
+                  ...existingReturns,
+                  [String(currentRound)]: {
+                    money_before: money,
+                    money_after: moneyAfter,
+                    total_return: totalReturn,
+                    returns,
+                    portfolio_used: { ...portfolio },
+                  },
+                },
+              })
+              .eq('id', player.id);
+          }
+        }
       }
 
       return NextResponse.json({

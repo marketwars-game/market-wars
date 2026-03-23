@@ -17,17 +17,18 @@ export function generateRoomCode(): string {
 // ==============================================
 
 // Phase order สำหรับรอบที่กำหนด
-// รอบ 1: research → invest → attack → event → results → leaderboard
-// รอบ 2-5: research → rebalance → attack → event → [golden_deal] → results → leaderboard
-// รอบ 6 (สุดท้าย): research → rebalance → attack → event → golden_deal → results → leaderboard → final
+// รอบ 1: research → invest → attack → event → event_result → results → leaderboard
+// รอบ 2-5: research → rebalance → attack → event → event_result → [golden_deal] → results → leaderboard
+// รอบ 6 (สุดท้าย): research → rebalance → attack → event → event_result → golden_deal → results → leaderboard → final
 //
 // ✅ B4 fix: รอบ 2+ ใช้ rebalance แทน invest (prefill จาก portfolio เดิม)
 // ✅ B4 fix: ลบ rebalance ท้ายรอบออก เพราะ rebalance อยู่ต้นรอบถัดไปแล้ว
+// ✅ B5: เพิ่ม event_result phase หลัง event — เฉลย % return แต่ละบริษัท ก่อนคำนวณเงิน
 export function getPhaseOrder(round: number): string[] {
   // รอบ 1 ใช้ invest (เริ่มจาก 0%), รอบ 2+ ใช้ rebalance (prefill จากรอบก่อน)
   const investPhase = round === 1 ? 'invest' : 'rebalance';
 
-  const phases = ['research', investPhase, 'attack', 'event'];
+  const phases = ['research', investPhase, 'attack', 'event', 'event_result'];
 
   // เพิ่ม Golden Deal ถ้าเป็นรอบ 2, 4, 6
   if (GOLDEN_DEAL_ROUNDS.includes(round)) {

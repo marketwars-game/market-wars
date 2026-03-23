@@ -1,4 +1,7 @@
 // FILE: app/mc/[roomId]/page.tsx — MC Control screen
+// VERSION: B5 — เพิ่ม event_result return table + results summary
+// LAST MODIFIED: Task B5 (23 Mar 2026)
+// HISTORY: B1 created | B3 phase control + timer | B4 submitted count + bug fix | B5 event_result + results
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -13,6 +16,7 @@ import {
   MC_TIPS,
   EVENTS,
   GOLDEN_DEALS,
+  RETURN_TABLE,
 } from '@/lib/constants';
 import { getAllGameSteps } from '@/lib/game-engine';
 
@@ -359,6 +363,76 @@ export default function MCControlRoom() {
         </div>
       )}
 
+      {/* ✅ B5: Event Result info for MC — แสดง return table */}
+      {phase === 'event_result' && EVENTS[round - 1] && (
+        <div className="bg-[#161b22] rounded-lg p-3 mb-3 border border-[#00D4FF]/30">
+          <p className="text-[#00D4FF] text-sm font-bold mb-2">
+            📊 Market Impact — Round {round}
+          </p>
+          <div className="grid grid-cols-2 gap-1">
+            {COMPANIES.map((c) => {
+              const returnPct = RETURN_TABLE[c.id]?.[round - 1] || 0;
+              return (
+                <div key={c.id} className="flex justify-between text-xs py-0.5">
+                  <span style={{ color: c.color }}>{c.name}</span>
+                  <span style={{ color: returnPct >= 0 ? '#22c55e' : '#ef4444' }}>
+                    {returnPct > 0 ? '+' : ''}{returnPct}%
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ✅ B5: Results summary for MC — สรุปหลัง auto-calculate */}
+      {phase === 'results' && (
+        <div className="bg-[#161b22] rounded-lg p-3 mb-3 border border-[#22c55e]/30">
+          <p className="text-[#22c55e] text-sm font-bold mb-2">
+            💰 Round {round} Results
+          </p>
+          {(() => {
+            const profits = players
+              .map((p) => p.round_returns?.[String(round)]?.total_return || 0);
+            const avg = profits.length > 0
+              ? Math.round(profits.reduce((a, b) => a + b, 0) / profits.length)
+              : 0;
+            const topEarner = players
+              .map((p) => ({
+                name: p.name,
+                profit: p.round_returns?.[String(round)]?.total_return || 0,
+              }))
+              .sort((a, b) => b.profit - a.profit)[0];
+            const lossCount = profits.filter((p) => p < 0).length;
+
+            return (
+              <div className="space-y-1">
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-400">Average return:</span>
+                  <span style={{ color: avg >= 0 ? '#22c55e' : '#ef4444' }}>
+                    {avg >= 0 ? '+' : '-'}฿{Math.abs(avg).toLocaleString()}
+                  </span>
+                </div>
+                {topEarner && (
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-400">Top earner:</span>
+                    <span className="text-[#22c55e]">
+                      {topEarner.name} {topEarner.profit >= 0 ? '+' : ''}฿{Math.abs(topEarner.profit).toLocaleString()}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-400">Players with loss:</span>
+                  <span className={lossCount > 0 ? 'text-[#ef4444]' : 'text-gray-500'}>
+                    {lossCount}
+                  </span>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
       {/* Golden Deal info for MC */}
       {phase === 'golden_deal' && (
         <div className="bg-[#161b22] rounded-lg p-3 mb-3 border border-[#F59E0B]/30">
@@ -401,12 +475,11 @@ export default function MCControlRoom() {
 
         {/* Next Phase */}
         {room.status === 'playing' && phase !== 'final' && (() => {
-          // คำนวณชื่อปุ่ม
-          const isRebalance = phase === 'rebalance';
-          const nextLabel = isRebalance
+          // คำนวณชื่อปุ่ม — ใช้ require pattern เดิมจาก B3
+          const isLeaderboard = phase === 'leaderboard';
+          const nextLabel = isLeaderboard
             ? `Next Round → Round ${round + 1}`
             : `Next → ${(() => {
-                // หา phase ถัดไป
                 const { getNextPhase } = require('@/lib/game-engine');
                 const next = getNextPhase(phase, round);
                 return next ? PHASE_DISPLAY[next.phase]?.name || next.phase : 'End';

@@ -1,4 +1,7 @@
 // FILE: app/play/[roomId]/page.tsx — Player game screen
+// VERSION: B5 — เพิ่ม event_result phase + ResultsPanel component
+// LAST MODIFIED: Task B5 (23 Mar 2026)
+// HISTORY: B2 created | B3 phase sync + timer | B4 InvestmentPanel | B5 event_result + ResultsPanel
 'use client';
 
 import { useEffect, useState, useRef, Suspense } from 'react';
@@ -13,6 +16,7 @@ import {
   GOLDEN_DEALS,
 } from '@/lib/constants';
 import InvestmentPanel from '@/components/player/InvestmentPanel';
+import ResultsPanel from '@/components/player/ResultsPanel';
 
 // ==============================================
 // Player Screen — มือถือเด็ก
@@ -348,6 +352,15 @@ function PlayerContent() {
         </div>
       )}
 
+      {/* ✅ B5: Event Result — ดูจอใหญ่เฉลยผล */}
+      {phase === 'event_result' && (
+        <div className="bg-[#161b22] rounded-lg p-6 text-center">
+          <div className="text-4xl mb-2">📺</div>
+          <p className="text-gray-400">Watch the big screen!</p>
+          <p className="text-gray-600 text-xs mt-1">Market impact being revealed...</p>
+        </div>
+      )}
+
       {/* Golden Deal placeholder */}
       {phase === 'golden_deal' && (() => {
         const deal = GOLDEN_DEALS.find((d) => d.round === round);
@@ -360,13 +373,9 @@ function PlayerContent() {
         );
       })()}
 
-      {/* Results placeholder */}
+      {/* ✅ B5: Results — detailed breakdown */}
       {phase === 'results' && (
-        <div className="bg-[#161b22] rounded-lg p-4 text-center">
-          <div className="text-3xl mb-2">📊</div>
-          <p className="text-gray-400">Results loading...</p>
-          <p className="text-gray-600 text-xs mt-2">(Results UI in Task B5)</p>
-        </div>
+        <ResultsPanel round={round} player={player} />
       )}
 
       {/* Leaderboard placeholder */}
