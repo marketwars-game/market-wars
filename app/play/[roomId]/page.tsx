@@ -1,7 +1,7 @@
 // FILE: app/play/[roomId]/page.tsx — Player game screen
-// VERSION: B5 — เพิ่ม event_result phase + ResultsPanel component
-// LAST MODIFIED: Task B5 (23 Mar 2026)
-// HISTORY: B2 created | B3 phase sync + timer | B4 InvestmentPanel | B5 event_result + ResultsPanel
+// VERSION: B7-v2 — Final phase + fix stale player data (playerIdRef + DB sync)
+// LAST MODIFIED: 25 Mar 2026
+// HISTORY: B2 created | B3 phase sync + timer | B4 InvestmentPanel | B5 event_result + ResultsPanel | B6 leaderboard | B7 final phase
 'use client';
 
 import { useEffect, useState, useRef, Suspense } from 'react';
@@ -33,6 +33,9 @@ function PlayerContent() {
   const [timeLeft, setTimeLeft] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // ✅ B7 fix: useRef เก็บ player.id เพื่อให้ Realtime callback ไม่ stale
+  const playerIdRef = useRef<string | null>(null);
+
   // --- Join form state (if not joined yet) ---
   const [name, setName] = useState('');
   const [joining, setJoining] = useState(false);
@@ -44,12 +47,15 @@ function PlayerContent() {
     const saved = localStorage.getItem(`mw_player_${roomId}`);
     if (saved) {
       try {
-        setPlayer(JSON.parse(saved));
+        const parsed = JSON.parse(saved);
+        setPlayer(parsed);
+        playerIdRef.current = parsed.id; // ✅ B7 fix: sync ref
       } catch {}
     }
   }, [roomId]);
 
   // --- Fetch room + players ---
+  // ✅ B7 fix: sync player ตัวเองจาก database ด้วย ไม่พึ่ง localStorage อย่างเดียว
   useEffect(() => {
     async function fetchData() {
       const { data: roomData } = await supabase
@@ -65,12 +71,23 @@ function PlayerContent() {
         .eq('room_id', roomId)
         .order('joined_at', { ascending: true });
       setPlayers(playerData || []);
+
+      // ✅ B7 fix: ถ้ามี player.id จาก localStorage → sync ข้อมูลจาก database (source of truth)
+      if (playerIdRef.current && playerData) {
+        const me = playerData.find((p) => p.id === playerIdRef.current);
+        if (me) {
+          setPlayer(me);
+          localStorage.setItem(`mw_player_${roomId}`, JSON.stringify(me));
+        }
+      }
+
       setLoading(false);
     }
     fetchData();
   }, [roomId]);
 
   // --- Realtime ---
+  // ✅ B7 fix: ใช้ playerIdRef.current แทน player?.id เพื่อหลีกเลี่ยง stale closure
   useEffect(() => {
     const roomChannel = supabase
       .channel(`player-room-${roomId}`)
@@ -94,9 +111,10 @@ function PlayerContent() {
             .order('joined_at', { ascending: true })
             .then(({ data }) => {
               if (data) setPlayers(data);
-              // Update own player data too
-              if (player?.id) {
-                const me = data?.find((p) => p.id === player.id);
+              // ✅ B7 fix: ใช้ ref แทน closure — ได้ player.id ล่าสุดเสมอ
+              const pid = playerIdRef.current;
+              if (pid) {
+                const me = data?.find((p) => p.id === pid);
                 if (me) {
                   setPlayer(me);
                   localStorage.setItem(`mw_player_${roomId}`, JSON.stringify(me));
@@ -111,7 +129,7 @@ function PlayerContent() {
       supabase.removeChannel(roomChannel);
       supabase.removeChannel(playerChannel);
     };
-  }, [roomId, player?.id]);
+  }, [roomId]); // ✅ B7 fix: ลบ player?.id — ใช้ ref แทน ไม่ต้อง re-subscribe
 
   // --- Timer ---
   useEffect(() => {
@@ -161,6 +179,7 @@ function PlayerContent() {
       }
 
       setPlayer(data.player);
+      playerIdRef.current = data.player.id; // ✅ B7 fix: sync ref ตอน join
       localStorage.setItem(`mw_player_${roomId}`, JSON.stringify(data.player));
       setShowDuplicatePopup(false);
     } catch {
@@ -378,28 +397,143 @@ function PlayerContent() {
         <ResultsPanel round={round} player={player} />
       )}
 
-      {/* Leaderboard placeholder */}
-      {phase === 'leaderboard' && (
-        <div className="bg-[#161b22] rounded-lg p-4">
-          <div className="text-center mb-3">
-            <span className="text-2xl">🏆</span>
-          </div>
-          {players
-            .sort((a, b) => Number(b.money) - Number(a.money))
-            .slice(0, 5)
-            .map((p, i) => (
-              <div
-                key={p.id}
-                className={`flex justify-between py-1 text-sm ${
-                  p.id === player.id ? 'text-[#00FFB2] font-bold' : 'text-gray-400'
-                }`}
-              >
-                <span>#{i + 1} {p.name}</span>
-                <span>฿{(parseFloat(p.money) || 0).toLocaleString()}</span>
+      {/* ✅ B6: Leaderboard — Your Rank + Top 5 + movement */}
+      {phase === 'leaderboard' && (() => {
+        // --- คำนวณ rank + movement ---
+        const currentRanked = [...players]
+          .sort((a, b) => (parseFloat(b.money) || 0) - (parseFloat(a.money) || 0));
+
+        let myRank = 0;
+        let myMovement = 0;
+        const prevRankMap: Record<string, number> = {};
+
+        if (round > 1) {
+          const previousRanked = [...players]
+            .sort((a, b) => {
+              const aBefore = a.round_returns?.[String(round)]?.money_before || parseFloat(a.money) || 0;
+              const bBefore = b.round_returns?.[String(round)]?.money_before || parseFloat(b.money) || 0;
+              return bBefore - aBefore;
+            });
+          previousRanked.forEach((p, i) => { prevRankMap[p.id] = i + 1; });
+        }
+
+        const rankedPlayers = currentRanked.map((p, i) => {
+          const rank = i + 1;
+          const movement = round > 1
+            ? (prevRankMap[p.id] || rank) - rank
+            : 0;
+          if (p.id === player.id) {
+            myRank = rank;
+            myMovement = movement;
+          }
+          return { ...p, rank, movement, money: parseFloat(p.money) || 0 };
+        });
+
+        const top5 = rankedPlayers.slice(0, 5);
+        const myMoney = parseFloat(player.money) || 0;
+        const isInTop5 = myRank >= 1 && myRank <= 5;
+        const medals = ['🥇', '🥈', '🥉'];
+
+        return (
+          <div className="bg-[#161b22] rounded-lg p-4">
+            {/* === YOUR RANK ตัวใหญ่ === */}
+            <div className="text-center mb-4">
+              <div className="text-[10px] tracking-[3px] text-gray-600 mb-1">
+                YOUR RANK
               </div>
-            ))}
-        </div>
-      )}
+              <div className="text-5xl font-bold text-[#00FFB2]">
+                #{myRank}
+              </div>
+              <div className="text-xs text-gray-500 mt-1">
+                of {rankedPlayers.length} players
+              </div>
+              <div className="text-xl font-bold text-white mt-2">
+                ฿{myMoney.toLocaleString()}
+              </div>
+              {/* Movement badge — เฉพาะรอบ 2+ */}
+              {round > 1 && (
+                <div className="mt-2">
+                  <span
+                    className="inline-block text-xs px-3 py-1 rounded-full"
+                    style={{
+                      background: myMovement > 0 ? 'rgba(34,197,94,0.15)' :
+                                  myMovement < 0 ? 'rgba(239,68,68,0.15)' :
+                                                   'rgba(107,114,128,0.15)',
+                      color: myMovement > 0 ? '#22c55e' :
+                             myMovement < 0 ? '#ef4444' : '#888',
+                    }}
+                  >
+                    {myMovement > 0 ? `↑${myMovement} from last round` :
+                     myMovement < 0 ? `↓${Math.abs(myMovement)} from last round` :
+                                      '— same position'}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* === Divider === */}
+            <div className="border-t border-gray-800 my-3" />
+
+            {/* === TOP 5 === */}
+            <div className="text-[10px] tracking-[2px] text-gray-600 mb-2">TOP 5</div>
+            <div className="space-y-1">
+              {top5.map((p, i) => {
+                const isMe = p.id === player.id;
+                return (
+                  <div
+                    key={p.id}
+                    className={`flex items-center py-1.5 px-2 rounded text-sm ${
+                      isMe ? 'bg-[#00FFB2]/10' : ''
+                    }`}
+                  >
+                    <span className="w-6 text-center">
+                      {i < 3 ? medals[i] : <span className="text-xs text-gray-500">#{p.rank}</span>}
+                    </span>
+                    <span
+                      className={`flex-1 ml-1 ${
+                        isMe ? 'text-[#00FFB2] font-bold' :
+                        i === 0 ? 'text-[#FFD700]' :
+                        i === 1 ? 'text-gray-300' :
+                        i === 2 ? 'text-[#CD9B6A]' : 'text-gray-400'
+                      }`}
+                    >
+                      {isMe ? `You (${p.name})` : p.name}
+                    </span>
+                    <span
+                      className={`${
+                        isMe ? 'text-[#00FFB2] font-bold' :
+                        i === 0 ? 'text-[#FFD700]' :
+                        i === 1 ? 'text-gray-300' :
+                        i === 2 ? 'text-[#CD9B6A]' : 'text-gray-400'
+                      }`}
+                    >
+                      ฿{p.money.toLocaleString()}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* === ถ้าไม่อยู่ Top 5 แสดงตัวเองแยก === */}
+            {!isInTop5 && (
+              <>
+                <div className="border-t border-dashed border-gray-700 my-2" />
+                <div className="flex items-center py-1.5 px-2 rounded text-sm bg-[#00FFB2]/10">
+                  <span className="w-6 text-center text-xs text-[#00FFB2] font-bold">
+                    #{myRank}
+                  </span>
+                  <span className="flex-1 ml-1 text-[#00FFB2] font-bold">
+                    You ({player.name})
+                  </span>
+                  <span className="text-[#00FFB2] font-bold">
+                    ฿{myMoney.toLocaleString()}
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
+        );
+      })()}
 
       {/* ✅ B4: Rebalance — InvestmentPanel with prefill */}
       {phase === 'rebalance' && (
@@ -421,17 +555,143 @@ function PlayerContent() {
         </div>
       )}
 
-      {/* Final */}
-      {phase === 'final' && (
-        <div className="bg-[#161b22] rounded-lg p-6 text-center">
-          <div className="text-4xl mb-2">🏆</div>
-          <p className="text-[#00FFB2] text-2xl font-bold mb-1">Game Over!</p>
-          <p className="text-xl text-[#FFD700]">
-            ฿{(parseFloat(player.money) || 0).toLocaleString()}
-          </p>
-          <p className="text-gray-500 text-sm mt-2">Your final money</p>
-        </div>
-      )}
+      {/* ✅ B7: Final — Your Rank + Profit + Round-by-round + Top 5 */}
+      {phase === 'final' && (() => {
+        const myMoney = parseFloat(player.money) || 0;
+        const sorted = [...players].sort((a, b) => (parseFloat(b.money) || 0) - (parseFloat(a.money) || 0));
+        const myRank = sorted.findIndex(p => p.id === player.id) + 1;
+        const totalProfit = myMoney - STARTING_MONEY;
+        const totalReturnPct = ((totalProfit) / STARTING_MONEY) * 100;
+        const top5 = sorted.slice(0, 5);
+        const isInTop5 = top5.some(p => p.id === player.id);
+        const medals = ['🥇', '🥈', '🥉'];
+
+        // Round-by-round returns จาก round_returns JSONB
+        const roundReturns: { round: number; pct: number }[] = [];
+        for (let r = 1; r <= TOTAL_ROUNDS; r++) {
+          const rr = player.round_returns?.[String(r)];
+          if (rr) {
+            const before = parseFloat(rr.money_before) || STARTING_MONEY;
+            const after = parseFloat(rr.money_after) || before;
+            const pct = before > 0 ? ((after - before) / before) * 100 : 0;
+            roundReturns.push({ round: r, pct });
+          }
+        }
+        const maxAbsPct = Math.max(...roundReturns.map(r => Math.abs(r.pct)), 1);
+
+        return (
+          <>
+            {/* Game Over card — Your Rank */}
+            <div className="bg-[#161b22] rounded-lg p-5 text-center mb-3">
+              <div className="text-4xl mb-2">🏆</div>
+              <p className="text-xs text-gray-500 mb-1">Your final rank</p>
+              <p className="text-5xl font-bold text-[#00FFB2] leading-none">#{myRank}</p>
+              <p className="text-xs text-gray-500 mt-1">of {sorted.length} players</p>
+            </div>
+
+            {/* Profit summary */}
+            <div className="bg-[#161b22] rounded-lg p-4 text-center mb-3">
+              <p className="text-xs text-gray-500 mb-1">Total profit</p>
+              <p className={`text-3xl font-bold ${totalProfit >= 0 ? 'text-[#00FFB2]' : 'text-[#FF4444]'}`}>
+                {totalProfit >= 0 ? '+' : '-'}฿{Math.abs(totalProfit).toLocaleString()}
+              </p>
+              <p className={`text-sm mt-1 ${totalProfit >= 0 ? 'text-[#00FFB2]' : 'text-[#FF4444]'}`}>
+                {totalReturnPct >= 0 ? '+' : ''}{totalReturnPct.toFixed(1)}% from ฿{STARTING_MONEY.toLocaleString()}
+              </p>
+            </div>
+
+            {/* Round-by-round bar chart */}
+            {roundReturns.length > 0 && (
+              <div className="bg-[#161b22] rounded-lg p-4 mb-3">
+                <p className="text-xs text-gray-500 text-center mb-3">Round-by-round returns</p>
+                <div className="flex gap-1.5 items-end justify-center" style={{ height: '80px' }}>
+                  {roundReturns.map((r) => {
+                    const barH = Math.max(4, (Math.abs(r.pct) / maxAbsPct) * 64);
+                    const isPos = r.pct >= 0;
+                    return (
+                      <div key={r.round} className="flex-1 text-center">
+                        <div
+                          className="mx-auto rounded-t"
+                          style={{
+                            height: `${barH}px`,
+                            backgroundColor: isPos ? '#00FFB2' : '#FF4444',
+                          }}
+                        />
+                        <p className="text-[10px] mt-0.5" style={{ color: isPos ? '#00FFB2' : '#FF4444' }}>
+                          {isPos ? '+' : ''}{r.pct.toFixed(0)}%
+                        </p>
+                        <p className="text-[10px] text-gray-600">R{r.round}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Top 5 */}
+            <div className="bg-[#161b22] rounded-lg p-3 mb-3">
+              <p className="text-xs text-gray-500 text-center mb-2">Top 5</p>
+              {top5.map((p, i) => {
+                const isMe = p.id === player.id;
+                return (
+                  <div
+                    key={p.id}
+                    className={`flex items-center py-1.5 px-1 text-sm ${
+                      i < top5.length - 1 ? 'border-b border-gray-800' : ''
+                    } ${isMe ? 'bg-[#00FFB2]/10 rounded' : ''}`}
+                  >
+                    <span className={`w-6 text-center text-xs ${
+                      isMe ? 'text-[#00FFB2] font-bold' :
+                      i < 3 ? (i === 0 ? 'text-[#FFD700]' : i === 1 ? 'text-gray-300' : 'text-[#CD9B6A]') : 'text-gray-500'
+                    }`}>
+                      {i < 3 ? medals[i] : `#${i + 1}`}
+                    </span>
+                    <span className={`flex-1 ml-1 ${
+                      isMe ? 'text-[#00FFB2] font-bold' :
+                      i === 0 ? 'text-[#FFD700]' :
+                      i === 1 ? 'text-gray-300' :
+                      i === 2 ? 'text-[#CD9B6A]' : 'text-gray-400'
+                    }`}>
+                      {isMe ? `You (${p.name})` : p.name}
+                    </span>
+                    <span className={`${
+                      isMe ? 'text-[#00FFB2] font-bold' :
+                      i === 0 ? 'text-[#FFD700]' :
+                      i === 1 ? 'text-gray-300' :
+                      i === 2 ? 'text-[#CD9B6A]' : 'text-gray-400'
+                    }`}>
+                      ฿{(parseFloat(p.money) || 0).toLocaleString()}
+                    </span>
+                  </div>
+                );
+              })}
+
+              {/* ถ้าไม่อยู่ Top 5 แสดงตัวเองแยก */}
+              {!isInTop5 && (
+                <>
+                  <div className="border-t border-dashed border-gray-700 my-2" />
+                  <div className="flex items-center py-1.5 px-2 rounded text-sm bg-[#00FFB2]/10">
+                    <span className="w-6 text-center text-xs text-[#00FFB2] font-bold">
+                      #{myRank}
+                    </span>
+                    <span className="flex-1 ml-1 text-[#00FFB2] font-bold">
+                      You ({player.name})
+                    </span>
+                    <span className="text-[#00FFB2] font-bold">
+                      ฿{myMoney.toLocaleString()}
+                    </span>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Thank you */}
+            <div className="text-center py-2">
+              <p className="text-sm text-[#00FFB2]">Thank you for playing!</p>
+            </div>
+          </>
+        );
+      })()}
     </div>
   );
 }

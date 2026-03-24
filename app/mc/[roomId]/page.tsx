@@ -1,7 +1,7 @@
 // FILE: app/mc/[roomId]/page.tsx — MC Control screen
-// VERSION: B5 — เพิ่ม event_result return table + results summary
-// LAST MODIFIED: Task B5 (23 Mar 2026)
-// HISTORY: B1 created | B3 phase control + timer | B4 submitted count + bug fix | B5 event_result + results
+// VERSION: B7-v1 — Final phase: game stats + full leaderboard + button fix round 6
+// LAST MODIFIED: 25 Mar 2026
+// HISTORY: B1 created | B3 phase control + timer | B4 submitted count + bug fix | B5 event_result + results | B6 leaderboard | B7 final phase
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -17,6 +17,7 @@ import {
   EVENTS,
   GOLDEN_DEALS,
   RETURN_TABLE,
+  STARTING_MONEY,
 } from '@/lib/constants';
 import { getAllGameSteps } from '@/lib/game-engine';
 
@@ -385,53 +386,67 @@ export default function MCControlRoom() {
         </div>
       )}
 
-      {/* ✅ B5: Results summary for MC — สรุปหลัง auto-calculate */}
-      {phase === 'results' && (
-        <div className="bg-[#161b22] rounded-lg p-3 mb-3 border border-[#22c55e]/30">
-          <p className="text-[#22c55e] text-sm font-bold mb-2">
-            💰 Round {round} Results
-          </p>
-          {(() => {
-            const profits = players
-              .map((p) => p.round_returns?.[String(round)]?.total_return || 0);
-            const avg = profits.length > 0
-              ? Math.round(profits.reduce((a, b) => a + b, 0) / profits.length)
-              : 0;
-            const topEarner = players
-              .map((p) => ({
-                name: p.name,
-                profit: p.round_returns?.[String(round)]?.total_return || 0,
-              }))
-              .sort((a, b) => b.profit - a.profit)[0];
-            const lossCount = profits.filter((p) => p < 0).length;
+      {/* ✅ B5+B7: Results summary for MC — สรุป + รายชื่อทุกคน */}
+      {phase === 'results' && (() => {
+        const playerResults = players
+          .map((p) => ({
+            id: p.id,
+            name: p.name,
+            profit: p.round_returns?.[String(round)]?.total_return || 0,
+          }))
+          .sort((a, b) => b.profit - a.profit);
+        const profits = playerResults.map(p => p.profit);
+        const avg = profits.length > 0
+          ? Math.round(profits.reduce((a, b) => a + b, 0) / profits.length)
+          : 0;
+        const profitCount = profits.filter(p => p > 0).length;
+        const lossCount = profits.filter(p => p < 0).length;
+        const evenCount = profits.filter(p => p === 0).length;
 
-            return (
-              <div className="space-y-1">
-                <div className="flex justify-between text-xs">
-                  <span className="text-gray-400">Average return:</span>
-                  <span style={{ color: avg >= 0 ? '#22c55e' : '#ef4444' }}>
-                    {avg >= 0 ? '+' : '-'}฿{Math.abs(avg).toLocaleString()}
-                  </span>
-                </div>
-                {topEarner && (
-                  <div className="flex justify-between text-xs">
-                    <span className="text-gray-400">Top earner:</span>
-                    <span className="text-[#22c55e]">
-                      {topEarner.name} {topEarner.profit >= 0 ? '+' : ''}฿{Math.abs(topEarner.profit).toLocaleString()}
-                    </span>
+        return (
+          <div className="bg-[#161b22] rounded-lg p-3 mb-3 border border-[#22c55e]/30">
+            <p className="text-[#22c55e] text-sm font-bold mb-2">
+              💰 Round {round} Results
+            </p>
+
+            {/* Summary line */}
+            <div className="flex justify-between text-xs mb-2 pb-2 border-b border-gray-800">
+              <span className="text-gray-400">
+                Avg: <span style={{ color: avg >= 0 ? '#22c55e' : '#ef4444' }}>
+                  {avg >= 0 ? '+' : '-'}฿{Math.abs(avg).toLocaleString()}
+                </span>
+              </span>
+              <span className="text-gray-400">
+                <span className="text-[#22c55e]">{profitCount}</span> profit /
+                <span className="text-[#ef4444]"> {lossCount}</span> loss
+                {evenCount > 0 && <span className="text-gray-500"> / {evenCount} even</span>}
+              </span>
+            </div>
+
+            {/* ✅ B7: รายชื่อทุกคน + ผลตอบแทน */}
+            <div className="max-h-48 overflow-y-auto space-y-0.5">
+              {playerResults.map((p, i) => (
+                <div
+                  key={p.id}
+                  className="flex items-center justify-between text-xs py-1 px-1 border-b border-gray-800/30"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-gray-600 w-5 text-right">{i + 1}.</span>
+                    <span className="text-gray-300">{p.name}</span>
                   </div>
-                )}
-                <div className="flex justify-between text-xs">
-                  <span className="text-gray-400">Players with loss:</span>
-                  <span className={lossCount > 0 ? 'text-[#ef4444]' : 'text-gray-500'}>
-                    {lossCount}
+                  <span
+                    className="font-bold"
+                    style={{ color: p.profit > 0 ? '#22c55e' : p.profit < 0 ? '#ef4444' : '#666' }}
+                  >
+                    {p.profit > 0 ? '+' : p.profit < 0 ? '-' : ''}
+                    {p.profit !== 0 ? `฿${Math.abs(p.profit).toLocaleString()}` : '฿0'}
                   </span>
                 </div>
-              </div>
-            );
-          })()}
-        </div>
-      )}
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Golden Deal info for MC */}
       {phase === 'golden_deal' && (
@@ -452,6 +467,187 @@ export default function MCControlRoom() {
           })()}
         </div>
       )}
+
+      {/* ✅ B6: Leaderboard — Full list ทุกคน + movement */}
+      {phase === 'leaderboard' && (() => {
+        const currentRanked = [...players]
+          .sort((a, b) => (parseFloat(b.money) || 0) - (parseFloat(a.money) || 0));
+
+        const prevRankMap: Record<string, number> = {};
+        if (round > 1) {
+          const previousRanked = [...players]
+            .sort((a, b) => {
+              const aBefore = a.round_returns?.[String(round)]?.money_before || parseFloat(a.money) || 0;
+              const bBefore = b.round_returns?.[String(round)]?.money_before || parseFloat(b.money) || 0;
+              return bBefore - aBefore;
+            });
+          previousRanked.forEach((p, i) => { prevRankMap[p.id] = i + 1; });
+        }
+
+        const rankedPlayers = currentRanked.map((p, i) => ({
+          id: p.id,
+          name: p.name,
+          money: parseFloat(p.money) || 0,
+          rank: i + 1,
+          movement: round > 1 ? (prevRankMap[p.id] || i + 1) - (i + 1) : 0,
+        }));
+
+        const medals = ['🥇', '🥈', '🥉'];
+
+        return (
+          <div className="bg-[#161b22] rounded-lg p-3 mb-3 border border-[#FFD700]/30">
+            <p className="text-[#FFD700] text-sm font-bold mb-2">
+              🏆 Leaderboard — Round {round}
+            </p>
+            <div className="max-h-64 overflow-y-auto space-y-0.5">
+              {rankedPlayers.map((p, i) => (
+                <div
+                  key={p.id}
+                  className={`flex items-center text-xs py-1 ${
+                    i < 3 ? 'font-bold' : ''
+                  }`}
+                >
+                  <span className="w-6 text-center">
+                    {i < 3 ? medals[i] : <span className="text-gray-500">#{p.rank}</span>}
+                  </span>
+                  <span
+                    className="flex-1 ml-1"
+                    style={{
+                      color: i === 0 ? '#FFD700' :
+                             i === 1 ? '#E0E0E0' :
+                             i === 2 ? '#CD9B6A' : '#999',
+                    }}
+                  >
+                    {p.name}
+                  </span>
+                  {round > 1 && (
+                    <span
+                      className="text-[10px] mr-2"
+                      style={{
+                        color: p.movement > 0 ? '#22c55e' :
+                               p.movement < 0 ? '#ef4444' : '#555',
+                      }}
+                    >
+                      {p.movement > 0 ? `↑${p.movement}` :
+                       p.movement < 0 ? `↓${Math.abs(p.movement)}` : '—'}
+                    </span>
+                  )}
+                  <span
+                    style={{
+                      color: i === 0 ? '#FFD700' :
+                             i === 1 ? '#E0E0E0' :
+                             i === 2 ? '#CD9B6A' : '#999',
+                    }}
+                  >
+                    ฿{p.money.toLocaleString()}
+                  </span>
+                </div>
+              ))}
+            </div>
+            {/* MC Tip */}
+            <div className="mt-2 bg-[#0D1117] rounded p-2 text-[#00D4FF] text-xs">
+              💡 ประกาศ Top 3! ถามเด็กว่าใครขึ้นมาเยอะสุด? แล้วกด Next
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ✅ B7: Final — MC game stats + full leaderboard + tip */}
+      {phase === 'final' && (() => {
+        const sorted = [...players].sort((a, b) => (parseFloat(b.money) || 0) - (parseFloat(a.money) || 0));
+        const totalPlayers = sorted.length;
+        const avgReturn = totalPlayers > 0
+          ? sorted.reduce((sum, p) => {
+              const money = parseFloat(p.money) || 0;
+              return sum + ((money - STARTING_MONEY) / STARTING_MONEY) * 100;
+            }, 0) / totalPlayers
+          : 0;
+        const profitCount = sorted.filter(p => (parseFloat(p.money) || 0) > STARTING_MONEY).length;
+        const lossCount = sorted.filter(p => (parseFloat(p.money) || 0) < STARTING_MONEY).length;
+        const biggestWinner = sorted[0];
+        const biggestWinnerPct = biggestWinner ? (((parseFloat(biggestWinner.money) || 0) - STARTING_MONEY) / STARTING_MONEY) * 100 : 0;
+        const medals = ['🥇', '🥈', '🥉'];
+
+        return (
+          <>
+            {/* MC Tip */}
+            <div className="rounded-lg p-3 mb-3" style={{ background: '#FFD70015', border: '1px solid #FFD70030' }}>
+              <p className="text-xs" style={{ color: '#FFD700' }}>
+                💡 ประกาศ Top 3! สรุป 5 บทเรียนการลงทุน: กระจายความเสี่ยง, อย่าตามกระแส, ข่าวมีผลต่อหุ้น, ออมก่อนลงทุน, อดทนรอผล
+              </p>
+            </div>
+
+            {/* Game Stats */}
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              <div className="bg-[#161b22] rounded-lg p-3 text-center">
+                <p className="text-[10px] text-gray-500 mb-0.5">Total players</p>
+                <p className="text-lg font-bold text-[#00D4FF]">{totalPlayers}</p>
+              </div>
+              <div className="bg-[#161b22] rounded-lg p-3 text-center">
+                <p className="text-[10px] text-gray-500 mb-0.5">Avg return</p>
+                <p className="text-lg font-bold" style={{ color: avgReturn >= 0 ? '#00FFB2' : '#FF4444' }}>
+                  {avgReturn >= 0 ? '+' : ''}{avgReturn.toFixed(1)}%
+                </p>
+              </div>
+              <div className="bg-[#161b22] rounded-lg p-3 text-center">
+                <p className="text-[10px] text-gray-500 mb-0.5">Biggest winner</p>
+                <p className="text-sm font-bold text-[#FFD700]">
+                  {biggestWinner?.name || '-'} {biggestWinnerPct >= 0 ? '+' : ''}{biggestWinnerPct.toFixed(1)}%
+                </p>
+              </div>
+              <div className="bg-[#161b22] rounded-lg p-3 text-center">
+                <p className="text-[10px] text-gray-500 mb-0.5">Profit / Loss</p>
+                <div className="flex justify-center items-baseline gap-1">
+                  <span className="text-lg font-bold text-[#00FFB2]">{profitCount}</span>
+                  <span className="text-gray-600">/</span>
+                  <span className="text-lg font-bold text-[#FF4444]">{lossCount}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Full Leaderboard */}
+            <div className="bg-[#161b22] rounded-lg p-3 mb-3">
+              <p className="text-xs text-gray-500 mb-2">Full leaderboard</p>
+              <div className="max-h-64 overflow-y-auto space-y-0.5">
+                {sorted.map((p, i) => {
+                  const money = parseFloat(p.money) || 0;
+                  const returnPct = ((money - STARTING_MONEY) / STARTING_MONEY) * 100;
+                  const isTop3 = i < 3;
+                  return (
+                    <div
+                      key={p.id}
+                      className="flex items-center justify-between text-sm py-1 px-1 border-b border-gray-800/50"
+                    >
+                      <div className="flex items-center gap-1">
+                        <span className={`w-6 text-xs ${
+                          isTop3 ? (i === 0 ? 'text-[#FFD700]' : i === 1 ? 'text-gray-300' : 'text-[#CD9B6A]') : 'text-gray-600'
+                        }`}>
+                          {isTop3 ? medals[i] : `#${i + 1}`}
+                        </span>
+                        <span className={`${
+                          isTop3 ? (i === 0 ? 'text-[#FFD700] font-bold' : i === 1 ? 'text-gray-300 font-bold' : 'text-[#CD9B6A] font-bold') : 'text-gray-400'
+                        }`}>
+                          {p.name}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs" style={{ color: returnPct >= 0 ? '#00FFB2' : '#FF4444' }}>
+                          {returnPct >= 0 ? '+' : ''}{returnPct.toFixed(1)}%
+                        </span>
+                        <span className={`${
+                          isTop3 ? (i === 0 ? 'text-[#FFD700]' : i === 1 ? 'text-gray-300' : 'text-[#CD9B6A]') : 'text-gray-500'
+                        }`}>
+                          ฿{money.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        );
+      })()}
 
       {/* Error */}
       {error && (
@@ -476,9 +672,11 @@ export default function MCControlRoom() {
         {/* Next Phase */}
         {room.status === 'playing' && phase !== 'final' && (() => {
           // คำนวณชื่อปุ่ม — ใช้ require pattern เดิมจาก B3
+          // ✅ B7 fix: รอบสุดท้าย leaderboard → "Final Summary" แทน "Round N+1"
           const isLeaderboard = phase === 'leaderboard';
+          const isLastRound = round >= TOTAL_ROUNDS;
           const nextLabel = isLeaderboard
-            ? `Next Round → Round ${round + 1}`
+            ? (isLastRound ? 'Next → Final Summary 🏆' : `Next Round → Round ${round + 1}`)
             : `Next → ${(() => {
                 const { getNextPhase } = require('@/lib/game-engine');
                 const next = getNextPhase(phase, round);

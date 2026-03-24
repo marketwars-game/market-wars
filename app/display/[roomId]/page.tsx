@@ -1,7 +1,7 @@
 // FILE: app/display/[roomId]/page.tsx — Display screen
-// VERSION: B5 — Event (news only) + Event Result (stagger animation) + Results (pills + top earners)
-// LAST MODIFIED: Task B5 (23 Mar 2026)
-// HISTORY: B1 created | B3 phase sync + timer | B4 submitted count | B5 event_result + results UI
+// VERSION: B7-v1 — Final phase: Top 3 podium + game stats + profit/loss count
+// LAST MODIFIED: 25 Mar 2026
+// HISTORY: B1 created | B3 phase sync + timer | B4 submitted count | B5 event_result + results UI | B6 leaderboard | B7 final phase
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
@@ -16,6 +16,7 @@ import {
   EVENTS,
   GOLDEN_DEALS,
   RETURN_TABLE,
+  STARTING_MONEY,
 } from '@/lib/constants';
 
 // ==============================================
@@ -314,26 +315,158 @@ export default function DisplayScreen() {
             );
           })()}
 
-          {/* Leaderboard placeholder */}
-          {phase === 'leaderboard' && (
-            <div className="mt-8 max-w-lg mx-auto">
-              {players
-                .sort((a, b) => Number(b.money) - Number(a.money))
-                .map((p, i) => (
-                  <div
-                    key={p.id}
-                    className={`flex justify-between items-center py-2 border-b border-gray-800 ${
-                      i === 0 ? 'text-yellow-400 font-bold text-lg' :
-                      i === 1 ? 'text-gray-300 font-bold' :
-                      i === 2 ? 'text-amber-600 font-bold' : 'text-gray-400'
-                    }`}
-                  >
-                    <span>#{i + 1} {p.name}</span>
-                    <span>฿{(parseFloat(p.money) || 0).toLocaleString()}</span>
-                  </div>
-                ))}
-            </div>
-          )}
+          {/* ✅ B6: Leaderboard — Top 10 stagger reveal + movement */}
+          {phase === 'leaderboard' && (() => {
+            // --- คำนวณ rank + movement ---
+            const currentRanked = [...players]
+              .sort((a, b) => (parseFloat(b.money) || 0) - (parseFloat(a.money) || 0));
+
+            let rankedPlayers: { id: string; name: string; money: number; rank: number; movement: number }[];
+
+            if (round <= 1) {
+              // รอบ 1: ทุกคนเพิ่งเริ่ม ไม่มี movement
+              rankedPlayers = currentRanked.map((p, i) => ({
+                id: p.id,
+                name: p.name,
+                money: parseFloat(p.money) || 0,
+                rank: i + 1,
+                movement: 0,
+              }));
+            } else {
+              // รอบ 2+: เทียบกับอันดับก่อนรอบนี้ (ใช้ money_before จาก round_returns)
+              const previousRanked = [...players]
+                .sort((a, b) => {
+                  const aBefore = a.round_returns?.[String(round)]?.money_before || parseFloat(a.money) || 0;
+                  const bBefore = b.round_returns?.[String(round)]?.money_before || parseFloat(b.money) || 0;
+                  return bBefore - aBefore;
+                });
+              const prevRankMap: Record<string, number> = {};
+              previousRanked.forEach((p, i) => { prevRankMap[p.id] = i + 1; });
+
+              rankedPlayers = currentRanked.map((p, i) => ({
+                id: p.id,
+                name: p.name,
+                money: parseFloat(p.money) || 0,
+                rank: i + 1,
+                movement: (prevRankMap[p.id] || i + 1) - (i + 1),
+              }));
+            }
+
+            const top10 = rankedPlayers.slice(0, 10);
+            const totalPlayers = rankedPlayers.length;
+            const medals = ['🥇', '🥈', '🥉'];
+
+            return (
+              <div className="mt-8 max-w-lg mx-auto">
+                {/* Stagger animation CSS */}
+                <style>{`
+                  @keyframes leaderboardReveal {
+                    from { opacity: 0; transform: translateX(-20px); }
+                    to { opacity: 1; transform: translateX(0); }
+                  }
+                  .lb-row {
+                    opacity: 0;
+                    animation: leaderboardReveal 0.4s ease-out forwards;
+                  }
+                `}</style>
+
+                <div className="space-y-2">
+                  {/* Reveal ทีละอันดับ — อันดับ 10 โผล่ก่อน, อันดับ 1 โผล่ทีหลัง */}
+                  {top10.map((p, i) => {
+                    const isTop3 = i < 3;
+                    // อันดับ 10 reveal ก่อน (delay น้อย), อันดับ 1 reveal ทีหลัง (delay มาก)
+                    const revealOrder = top10.length - 1 - i;
+                    const delay = 0.5 + revealOrder * 0.3;
+
+                    return (
+                      <div
+                        key={p.id}
+                        className="lb-row"
+                        style={{ animationDelay: `${delay}s` }}
+                      >
+                        {isTop3 ? (
+                          /* Top 3 — การ์ดพิเศษ */
+                          <div
+                            className="flex items-center rounded-lg"
+                            style={{
+                              padding: i === 0 ? '14px 16px' : '10px 16px',
+                              background: i === 0 ? 'rgba(255,215,0,0.12)' :
+                                          i === 1 ? 'rgba(192,192,192,0.08)' :
+                                                    'rgba(205,127,50,0.08)',
+                              borderLeft: `4px solid ${
+                                i === 0 ? '#FFD700' : i === 1 ? '#C0C0C0' : '#CD7F32'
+                              }`,
+                            }}
+                          >
+                            <span className={`${i === 0 ? 'text-2xl' : 'text-xl'} w-9`}>
+                              {medals[i]}
+                            </span>
+                            <span
+                              className={`flex-1 font-bold ${i === 0 ? 'text-lg' : 'text-base'}`}
+                              style={{
+                                color: i === 0 ? '#FFD700' : i === 1 ? '#E0E0E0' : '#CD9B6A',
+                              }}
+                            >
+                              {p.name}
+                            </span>
+                            {/* Movement — เฉพาะรอบ 2+ */}
+                            {round > 1 && (
+                              <span
+                                className="text-sm mr-3"
+                                style={{
+                                  color: p.movement > 0 ? '#22c55e' :
+                                         p.movement < 0 ? '#ef4444' : '#666',
+                                }}
+                              >
+                                {p.movement > 0 ? `↑${p.movement}` :
+                                 p.movement < 0 ? `↓${Math.abs(p.movement)}` : '—'}
+                              </span>
+                            )}
+                            <span
+                              className={`font-bold ${i === 0 ? 'text-lg' : 'text-base'}`}
+                              style={{
+                                color: i === 0 ? '#FFD700' : i === 1 ? '#E0E0E0' : '#CD9B6A',
+                              }}
+                            >
+                              ฿{p.money.toLocaleString()}
+                            </span>
+                          </div>
+                        ) : (
+                          /* อันดับ 4-10 — แถวปกติ */
+                          <div className="flex items-center px-4 py-2 border-b border-gray-800/50">
+                            <span className="text-sm text-gray-500 w-9">#{p.rank}</span>
+                            <span className="flex-1 text-sm text-gray-300">{p.name}</span>
+                            {round > 1 && (
+                              <span
+                                className="text-xs mr-3"
+                                style={{
+                                  color: p.movement > 0 ? '#22c55e' :
+                                         p.movement < 0 ? '#ef4444' : '#555',
+                                }}
+                              >
+                                {p.movement > 0 ? `↑${p.movement}` :
+                                 p.movement < 0 ? `↓${Math.abs(p.movement)}` : '—'}
+                              </span>
+                            )}
+                            <span className="text-sm text-gray-400">
+                              ฿{p.money.toLocaleString()}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* จำนวนคนที่เหลือ */}
+                {totalPlayers > 10 && (
+                  <p className="text-center text-gray-600 text-sm mt-3">
+                    ... +{totalPlayers - 10} more players
+                  </p>
+                )}
+              </div>
+            );
+          })()}
 
           {/* ✅ B5: Results — market return pills + top 3 earners */}
           {phase === 'results' && (
@@ -428,36 +561,116 @@ export default function DisplayScreen() {
         </div>
       )}
 
-      {/* === FINAL === */}
-      {phase === 'final' && (
-        <div className="text-center">
-          <div className="text-7xl mb-4">🏆</div>
-          <h2 className="text-5xl font-bold text-[#FFD700] mb-2">Game Over!</h2>
-          <p className="text-xl text-gray-400 mb-8">Final Results</p>
+      {/* === FINAL — B7: Top 3 Podium + Game Stats + Profit/Loss === */}
+      {phase === 'final' && (() => {
+        const sorted = [...players].sort((a, b) => (parseFloat(b.money) || 0) - (parseFloat(a.money) || 0));
+        const top3 = sorted.slice(0, 3);
+        const totalPlayers = sorted.length;
 
-          {/* Top 3 */}
-          <div className="max-w-md mx-auto">
-            {players
-              .sort((a, b) => Number(b.money) - Number(a.money))
-              .slice(0, 3)
-              .map((p, i) => (
-                <div
-                  key={p.id}
-                  className={`flex justify-between items-center py-3 border-b border-gray-800 text-lg ${
-                    i === 0 ? 'text-yellow-400 font-bold text-2xl' :
-                    i === 1 ? 'text-gray-300 font-bold' :
-                    'text-amber-600 font-bold'
-                  }`}
-                >
-                  <span>{['🥇', '🥈', '🥉'][i]} {p.name}</span>
-                  <span>฿{(parseFloat(p.money) || 0).toLocaleString()}</span>
+        // คำนวณ avg return + profit/loss count
+        const avgReturn = totalPlayers > 0
+          ? sorted.reduce((sum, p) => {
+              const money = parseFloat(p.money) || 0;
+              return sum + ((money - STARTING_MONEY) / STARTING_MONEY) * 100;
+            }, 0) / totalPlayers
+          : 0;
+        const profitCount = sorted.filter(p => (parseFloat(p.money) || 0) > STARTING_MONEY).length;
+        const lossCount = sorted.filter(p => (parseFloat(p.money) || 0) < STARTING_MONEY).length;
+
+        const podiumData = [
+          { index: 1, medal: '🥈', color: '#C0C0C0', size: 'normal', height: 'h-[90px]' },
+          { index: 0, medal: '🥇', color: '#FFD700', size: 'large', height: 'h-[120px]' },
+          { index: 2, medal: '🥉', color: '#CD7F32', size: 'normal', height: 'h-[70px]' },
+        ];
+
+        return (
+          <div className="text-center w-full max-w-2xl">
+            {/* Stagger animation */}
+            <style>{`
+              @keyframes finalReveal {
+                from { opacity: 0; transform: translateY(20px); }
+                to { opacity: 1; transform: translateY(0); }
+              }
+              .final-item {
+                opacity: 0;
+                animation: finalReveal 0.5s ease-out forwards;
+              }
+            `}</style>
+
+            {/* Trophy + Title */}
+            <div className="final-item" style={{ animationDelay: '0.2s' }}>
+              <div className="text-7xl mb-4">🏆</div>
+              <h2 className="text-5xl font-bold text-[#FFD700] mb-1">Game Over!</h2>
+              <p className="text-lg text-gray-400 mb-8">{TOTAL_ROUNDS} rounds completed</p>
+            </div>
+
+            {/* Top 3 Podium */}
+            <div className="flex items-end justify-center gap-3 mb-8 final-item" style={{ animationDelay: '0.8s' }}>
+              {podiumData.map((pod) => {
+                const p = top3[pod.index];
+                if (!p) return null;
+                const money = parseFloat(p.money) || 0;
+                const returnPct = ((money - STARTING_MONEY) / STARTING_MONEY) * 100;
+                const isLarge = pod.size === 'large';
+
+                return (
+                  <div key={p.id} className="text-center" style={{ width: isLarge ? '160px' : '140px' }}>
+                    <div className={`${isLarge ? 'text-4xl' : 'text-3xl'} mb-1`}>{pod.medal}</div>
+                    <div
+                      className="rounded-t-lg flex flex-col items-center justify-center"
+                      style={{
+                        background: `linear-gradient(180deg, ${pod.color}, ${pod.color}88)`,
+                        padding: isLarge ? '20px 8px 16px' : '14px 8px 12px',
+                        minHeight: isLarge ? '120px' : pod.index === 1 ? '90px' : '70px',
+                      }}
+                    >
+                      <p className={`${isLarge ? 'text-lg' : 'text-base'} font-bold text-white`}>
+                        {p.name}
+                      </p>
+                      <p className={`${isLarge ? 'text-xl' : 'text-lg'} font-bold text-white mt-1`}>
+                        ฿{money.toLocaleString()}
+                      </p>
+                      <p className="text-xs text-white/70 mt-0.5">
+                        {returnPct >= 0 ? '+' : ''}{returnPct.toFixed(1)}%
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Game Stats — Players / Avg Return / Profit vs Loss */}
+            <div className="grid grid-cols-3 gap-3 mb-6 final-item" style={{ animationDelay: '1.4s' }}>
+              <div className="bg-[#161b22] rounded-lg p-4 text-center">
+                <p className="text-xs text-gray-500 mb-1">Players</p>
+                <p className="text-2xl font-bold text-[#00D4FF]">{totalPlayers}</p>
+              </div>
+              <div className="bg-[#161b22] rounded-lg p-4 text-center">
+                <p className="text-xs text-gray-500 mb-1">Avg return</p>
+                <p className="text-2xl font-bold" style={{ color: avgReturn >= 0 ? '#00FFB2' : '#FF4444' }}>
+                  {avgReturn >= 0 ? '+' : ''}{avgReturn.toFixed(1)}%
+                </p>
+              </div>
+              <div className="bg-[#161b22] rounded-lg p-4 text-center">
+                <p className="text-xs text-gray-500 mb-1">Profit / Loss</p>
+                <div className="flex justify-center items-baseline gap-1">
+                  <span className="text-xl font-bold text-[#00FFB2]">{profitCount}</span>
+                  <span className="text-gray-600">/</span>
+                  <span className="text-xl font-bold text-[#FF4444]">{lossCount}</span>
                 </div>
-              ))}
-          </div>
+              </div>
+            </div>
 
-          <p className="text-gray-500 text-sm mt-6">(Full summary UI in Task B11)</p>
-        </div>
-      )}
+            {/* Thank you */}
+            <div className="final-item" style={{ animationDelay: '1.8s' }}>
+              <div className="bg-[#161b22] rounded-lg py-4 px-6">
+                <p className="text-base" style={{ color: '#00FFB2' }}>Thank you for playing Market Wars!</p>
+                <p className="text-xs mt-1" style={{ color: '#8b949e' }}>Powered by Dime! Kids Camp</p>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
