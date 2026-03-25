@@ -1,7 +1,7 @@
 // FILE: app/display/[roomId]/page.tsx — Display screen
-// VERSION: B8R-v1 — Refactored: ResearchDisplay + EventDisplay + LeaderboardDisplay + FinalDisplay extracted
+// VERSION: B9-v2 — Fix Top Earners to include duel money
 // LAST MODIFIED: 25 Mar 2026
-// HISTORY: B1 created | B3 phase sync + timer | B4 submitted count | B5 event_result + results UI | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components
+// HISTORY: B1 created | B3 phase sync + timer | B4 submitted count | B5 event_result + results UI | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components | B9 FightDisplay | B9-v2 fix earners
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
@@ -20,6 +20,7 @@ import ResearchDisplay from '@/components/display/ResearchDisplay';
 import EventDisplay from '@/components/display/EventDisplay';
 import LeaderboardDisplay from '@/components/display/LeaderboardDisplay';
 import FinalDisplay from '@/components/display/FinalDisplay';
+import FightDisplay from '@/components/display/FightDisplay';
 
 export default function DisplayScreen() {
   const params = useParams();
@@ -132,6 +133,11 @@ export default function DisplayScreen() {
             </div>
           )}
 
+          {/* === Market Fight (B9) — Component === */}
+          {(phase === 'attack' || phase === 'attack_result') && (
+            <FightDisplay players={players} round={round} />
+          )}
+
           {/* === Event + Event Result + Golden Deal — Component === */}
           {(phase === 'event' || phase === 'event_result' || phase === 'golden_deal') && (
             <EventDisplay round={round} phase={phase as 'event' | 'event_result' | 'golden_deal'} players={players} />
@@ -145,7 +151,7 @@ export default function DisplayScreen() {
               </div>
               <div className="text-xs tracking-widest text-gray-600 text-center mb-3">TOP EARNERS THIS ROUND</div>
               <div className="space-y-2">
-                {(() => { const earners = players.map((p) => ({ id: p.id, name: p.name, profit: p.round_returns?.[String(round)]?.total_return || 0 })).sort((a, b) => b.profit - a.profit).slice(0, 3); const medals = ['🥇', '🥈', '🥉']; return earners.map((p, i) => (<div key={p.id} className="bg-[#161b22] rounded-lg px-4 py-3 flex items-center justify-between"><div className="flex items-center gap-3"><span className="text-lg">{medals[i]}</span><span className="text-base font-bold text-gray-200">{p.name}</span></div><span className="text-lg font-bold" style={{ color: p.profit >= 0 ? '#22c55e' : '#ef4444' }}>{p.profit >= 0 ? '+' : '-'}฿{Math.abs(p.profit).toLocaleString()}</span></div>)); })()}
+                {(() => { const earners = players.map((p) => ({ id: p.id, name: p.name, profit: (p.round_returns?.[String(round)]?.total_return || 0) + (parseFloat(p.duel_money_change) || 0) })).sort((a, b) => b.profit - a.profit).slice(0, 3); const medals = ['🥇', '🥈', '🥉']; return earners.map((p, i) => (<div key={p.id} className="bg-[#161b22] rounded-lg px-4 py-3 flex items-center justify-between"><div className="flex items-center gap-3"><span className="text-lg">{medals[i]}</span><span className="text-base font-bold text-gray-200">{p.name}</span></div><span className="text-lg font-bold" style={{ color: p.profit >= 0 ? '#22c55e' : '#ef4444' }}>{p.profit >= 0 ? '+' : '-'}฿{Math.abs(p.profit).toLocaleString()}</span></div>)); })()}
               </div>
               <p className="text-gray-600 text-sm text-center mt-4">Check your phone for personal results!</p>
             </div>

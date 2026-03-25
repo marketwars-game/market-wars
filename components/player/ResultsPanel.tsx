@@ -1,5 +1,7 @@
 // FILE: components/player/ResultsPanel.tsx
-// ✅ B5: แสดงผลตอบแทนรอบนี้บนมือถือเด็ก — detailed breakdown ทุกบริษัท
+// VERSION: B9-v3 — fix negative money sign
+// LAST MODIFIED: 25 Mar 2026
+// HISTORY: B5 created | B9 duel badge | B9-v2 combined summary
 'use client';
 
 import { COMPANIES, RETURN_TABLE } from '@/lib/constants';
@@ -25,8 +27,18 @@ export default function ResultsPanel({ round, player }: ResultsPanelProps) {
   }
 
   const { money_before, money_after, total_return, returns, portfolio_used } = roundReturns;
-  const isProfit = total_return >= 0;
   const roundIndex = round - 1;
+
+  // ✅ B9: Duel data
+  const duelResult = player.duel_result;
+  const duelMoneyChange = parseFloat(player.duel_money_change) || 0;
+  const duelOpponentName = player.duel_opponent_name || '';
+  const hasDuel = duelResult && duelResult !== 'null' && duelResult !== null;
+
+  // คำนวณยอดรวมสุทธิ (หุ้น + duel)
+  const totalCombined = total_return + (hasDuel ? duelMoneyChange : 0);
+  const isCombinedProfit = totalCombined >= 0;
+  const isStockProfit = total_return >= 0;
 
   // สร้างรายการบริษัทที่ลงทุน (เรียงตาม return มากไปน้อย)
   const investedCompanies = COMPANIES
@@ -52,17 +64,51 @@ export default function ResultsPanel({ round, player }: ResultsPanelProps) {
         </span>
       </div>
 
-      {/* Total Return Card */}
+      {/* ✅ B9: Combined Total Card — หุ้น + duel รวมกัน */}
       <div className="bg-[#161b22] rounded-lg p-4 text-center mb-3">
-        <div className="text-xs text-gray-500 mb-1">Your portfolio return</div>
+        <div className="text-xs text-gray-500 mb-2">รวมรอบนี้</div>
         <div
           className="text-3xl font-bold"
-          style={{ color: isProfit ? '#22c55e' : '#ef4444' }}
+          style={{ color: isCombinedProfit ? '#22c55e' : '#ef4444' }}
         >
-          {isProfit ? '+' : '-'}฿{Math.abs(total_return).toLocaleString()}
+          {isCombinedProfit ? '+' : '-'}฿{Math.abs(totalCombined).toLocaleString()}
         </div>
-        <div className="text-sm text-gray-500 mt-1">
-          ฿{Math.round(money_before).toLocaleString()} → ฿{Math.round(money_after).toLocaleString()}
+
+        {/* แยกรายละเอียด: หุ้น + duel */}
+        <div className="mt-3 space-y-1">
+          {/* ผลจากหุ้น */}
+          <div className="flex items-center justify-between text-sm px-2">
+            <span className="text-gray-400">📈 ผลจากหุ้น</span>
+            <span style={{ color: isStockProfit ? '#22c55e' : '#ef4444' }}>
+              {isStockProfit ? '+' : '-'}฿{Math.abs(total_return).toLocaleString()}
+            </span>
+          </div>
+
+          {/* ผลจาก duel */}
+          {hasDuel && (
+            <div className="flex items-center justify-between text-sm px-2">
+              <span className="text-gray-400">
+                ⚔️ {
+                  duelResult === 'win' ? `ชนะ ${duelOpponentName}` :
+                  duelResult === 'lose' ? `แพ้ ${duelOpponentName}` :
+                  duelResult === 'draw' ? `เสมอ ${duelOpponentName}` :
+                  'Bye'
+                }
+              </span>
+              <span style={{
+                color: duelMoneyChange > 0 ? '#22c55e' : duelMoneyChange < 0 ? '#ef4444' : '#F59E0B'
+              }}>
+                {duelMoneyChange > 0 ? '+' : duelMoneyChange < 0 ? '-' : ''}฿{Math.abs(duelMoneyChange).toLocaleString()}
+              </span>
+            </div>
+          )}
+
+          {/* เส้นคั่น + ยอดเงิน */}
+          <div className="border-t border-gray-800 mt-2 pt-2">
+            <div className="text-sm text-gray-500">
+              ฿{Math.round(money_before - (hasDuel ? duelMoneyChange : 0)).toLocaleString()} → ฿{Math.round(money_after).toLocaleString()}
+            </div>
+          </div>
         </div>
       </div>
 

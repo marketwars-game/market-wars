@@ -1,7 +1,7 @@
 // FILE: app/api/game/phase/route.ts
-// VERSION: B5 — เพิ่ม auto-calculate returns เมื่อเข้า results phase
-// LAST MODIFIED: Task B5 (23 Mar 2026)
-// HISTORY: B3 created | B4 bug fix phase flow | B5 auto-calculate + event_result phase
+// VERSION: B9-v1 — เพิ่ม duel pair ตอนเข้า attack + resolve ตอนออก attack
+// LAST MODIFIED: 25 Mar 2026
+// HISTORY: B3 created | B4 bug fix phase flow | B5 auto-calculate + event_result phase | B9 duel pair/resolve
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
@@ -13,6 +13,20 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
+
+// ✅ B9: Helper — เรียก duel API (pair หรือ resolve)
+async function callDuelAPI(action: string, room_id: string) {
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+    await fetch(`${baseUrl}/api/players/duel`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, room_id }),
+    });
+  } catch (err) {
+    console.error(`Duel ${action} error:`, err);
+  }
+}
 
 // ==============================================
 // POST /api/game/phase
@@ -132,6 +146,11 @@ export async function POST(request: Request) {
         );
       }
 
+      // ✅ B9: ถ้าออกจาก attack phase → resolve duel ก่อนเข้า attack_result
+      if (room.current_phase === 'attack') {
+        await callDuelAPI('resolve', room_id);
+      }
+
       // คำนวณ phase ถัดไปจาก game-engine
       const next = getNextPhase(
         room.current_phase,
@@ -159,6 +178,11 @@ export async function POST(request: Request) {
           { error: 'Failed to advance phase' },
           { status: 500 }
         );
+      }
+
+      // ✅ B9: ถ้าเข้า attack phase → จับคู่สุ่มอัตโนมัติ
+      if (next.phase === 'attack') {
+        await callDuelAPI('pair', room_id);
       }
 
       // ✅ B5: Auto-calculate returns when entering results phase

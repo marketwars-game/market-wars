@@ -1,7 +1,7 @@
 // FILE: lib/constants.ts — Game Configuration (Single Source of Truth)
-// VERSION: B8-v2 — Research Quiz: QUIZ_POOL + ROUND_NEWS + research_reveal/news_feed PHASE_DISPLAY
+// VERSION: B9-v1 — Market Fight: DUEL_CONFIG + attack phase update
 // LAST MODIFIED: 25 Mar 2026
-// HISTORY: B1 created | B3 phase timers + display | B4 companies + events | B5 return table + golden deals | B8 quiz + news (v2: 3-phase)
+// HISTORY: B1 created | B3 phase timers + display | B4 companies + events | B5 return table + golden deals | B8 quiz + news (v2: 3-phase) | B9 duel config + attack phase update
 
 // ==============================================
 // Market Wars — Game Configuration
@@ -15,6 +15,18 @@ export const STARTING_MONEY = 10000;
 export const ALLOCATION_STEP = 10; // ทีละ 10%
 export const ATTACK_MULTIPLIER = 1.5;
 
+// --- Duel Config (B9: Market Fight) ---
+export const DUEL_CONFIG = {
+  WIN_AMOUNT: 500,     // ชนะได้ +฿500
+  LOSE_AMOUNT: 300,    // แพ้เสีย -฿300
+  DRAW_AMOUNT: 0,      // เสมอ ฿0
+  MOVES: ['rock', 'paper', 'scissors'] as const,
+  MOVE_EMOJI: { rock: '✊', paper: '✋', scissors: '✌️' } as Record<string, string>,
+  MOVE_LABEL: { rock: 'ค้อน', paper: 'กระดาษ', scissors: 'กรรไกร' } as Record<string, string>,
+  // rock > scissors > paper > rock
+  WINS_AGAINST: { rock: 'scissors', scissors: 'paper', paper: 'rock' } as Record<string, string>,
+};
+
 // --- Room Code ---
 export const ROOM_CODE_CONFIG = {
   characters: 'ABCDEFGHJKMNPQRSTUVWXYZ', // ไม่มี O, I, L (สับสนกับ 0, 1)
@@ -27,7 +39,8 @@ export const GAME_PHASES = [
   'lobby',        // ก่อนเริ่มเกม
   'research',     // ตอบ quiz ปลดล็อกข่าว
   'invest',       // เลือกลงทุน 6 บริษัท
-  'attack',       // เลือก โจมตี/ป้องกัน/สอดแนม
+  'attack',       // ⚔️ Market Fight — เป่ายิงฉุบ
+  'attack_result', // ✅ B9: สรุปผล duel
   'event',        // MC เปิดข่าวเหตุการณ์
   'event_result', // ✅ B5: เฉลย % return แต่ละบริษัท
   'golden_deal',  // ดีลพิเศษ (เฉพาะรอบ 2, 4, 6)
@@ -44,7 +57,7 @@ export const GOLDEN_DEAL_ROUNDS = [2, 4, 6];
 export const PHASE_TIMERS: Record<string, number> = {
   research: 90,      // ตอบ quiz 2 ข้อ
   invest: 120,       // เลือกลงทุน 6 บริษัท
-  attack: 60,        // เลือก action + เป้าหมาย
+  attack: 30,        // ✅ B9: เป่ายิงฉุบ — เลือก 1 move
   golden_deal: 60,   // แข่ง quiz ชิงดีล
   rebalance: 90,     // ปรับพอร์ต
 };
@@ -100,12 +113,20 @@ export const PHASE_DISPLAY: Record<string, {
     hasTimer: true,
   },
   attack: {
-    name: 'Attack & Defend',
+    name: 'Market Fight',
     icon: '⚔️',
-    displayMessage: 'Players choosing actions...',
-    playerMessage: 'Choose: Attack, Defend, or Spy?',
-    mcTip: 'PvP phase! Wait for all players to choose, then press Next.',
+    displayMessage: 'เลือก ค้อน กรรไกร กระดาษ!',
+    playerMessage: 'เป่ายิงฉุบกับคู่ของคุณ!',
+    mcTip: 'รอเด็กเลือก ✊✌️✋ แล้วกด Next เพื่อเปิดผล — คนที่ไม่กดจะแพ้อัตโนมัติ',
     hasTimer: true,
+  },
+  attack_result: {
+    name: 'Fight Results',
+    icon: '⚔️',
+    displayMessage: 'ผลการต่อสู้!',
+    playerMessage: 'ดูผลเป่ายิงฉุบของคุณ!',
+    mcTip: 'ให้เด็กดูผลบนมือถือ ถามว่า "ใครชนะบ้าง?" แล้วกด Next ไป Event',
+    hasTimer: false,
   },
   event: {
     name: 'Event Reveal',

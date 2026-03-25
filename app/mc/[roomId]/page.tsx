@@ -1,7 +1,7 @@
 // FILE: app/mc/[roomId]/page.tsx — MC Control screen
-// VERSION: B8R-v1 — Refactored: ResearchMC + ResultsMC + LeaderboardMC + FinalMC extracted
+// VERSION: B9-v1 — Market Fight stats UI added for attack phase
 // LAST MODIFIED: 25 Mar 2026
-// HISTORY: B1 created | B3 phase control + timer | B4 submitted count + bug fix | B5 event_result + results | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components
+// HISTORY: B1 created | B3 phase control + timer | B4 submitted count + bug fix | B5 event_result + results | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components | B9 attack stats
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -142,6 +142,53 @@ export default function MCControlRoom() {
           {submittedCount === players.length && players.length > 0 && <p className="text-xs mt-1" style={{ color: '#00FFB2' }}>✓ ทุกคนส่งแล้ว! กด Next Phase ได้เลย</p>}
         </div>
       )}
+
+      {/* === Market Fight stats (B9) === */}
+      {(phase === 'attack' || phase === 'attack_result') && (() => {
+        const playersWithOpponent = players.filter(p => p.duel_opponent_id);
+        const duelSubmitted = players.filter(p => p.duel_submitted_round >= round && p.duel_opponent_id).length;
+        const byeCount = players.filter(p => p.duel_result === 'bye').length;
+        const hasResults = players.some(p => p.duel_result === 'win' || p.duel_result === 'lose' || p.duel_result === 'draw');
+        const winCount = players.filter(p => p.duel_result === 'win').length;
+        const loseCount = players.filter(p => p.duel_result === 'lose').length;
+        const drawCount = players.filter(p => p.duel_result === 'draw').length;
+        return (
+          <div className="rounded-lg p-3 mb-3" style={{ background: '#EF444415', border: '1px solid #EF444430' }}>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-mono" style={{ color: '#EF4444' }}>⚔️ {phase === 'attack' ? 'Market Fight' : 'Fight Results'}</span>
+              {phase === 'attack' && (
+                <span className="text-lg font-bold font-mono" style={{ color: '#00FFB2' }}>
+                  {duelSubmitted}/{playersWithOpponent.length}
+                  <span className="text-xs text-gray-500 ml-1">กดแล้ว</span>
+                </span>
+              )}
+            </div>
+            {/* Move breakdown */}
+            <div className="flex justify-around mt-2 mb-2">
+              <div className="text-center">
+                <div className="text-xl">✊</div>
+                <div className="text-sm font-bold text-white">{players.filter(p => p.duel_move === 'rock').length}</div>
+              </div>
+              <div className="text-center">
+                <div className="text-xl">✌️</div>
+                <div className="text-sm font-bold text-white">{players.filter(p => p.duel_move === 'scissors').length}</div>
+              </div>
+              <div className="text-center">
+                <div className="text-xl">✋</div>
+                <div className="text-sm font-bold text-white">{players.filter(p => p.duel_move === 'paper').length}</div>
+              </div>
+            </div>
+            {byeCount > 0 && <p className="text-xs" style={{ color: '#ffffff40' }}>🍀 {byeCount} คน Bye (ไม่มีคู่)</p>}
+            {hasResults && (
+              <div className="grid grid-cols-3 gap-2 mt-2 pt-2 border-t border-gray-800">
+                <div className="text-center"><span className="text-sm font-bold text-[#00FFB2]">{winCount}</span><span className="text-xs text-gray-500 ml-1">ชนะ</span></div>
+                <div className="text-center"><span className="text-sm font-bold text-[#EF4444]">{loseCount}</span><span className="text-xs text-gray-500 ml-1">แพ้</span></div>
+                <div className="text-center"><span className="text-sm font-bold text-[#F59E0B]">{drawCount}</span><span className="text-xs text-gray-500 ml-1">เสมอ</span></div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Timer */}
       {timerDuration > 0 && phase !== 'lobby' && phase !== 'final' && (

@@ -1,7 +1,7 @@
 // FILE: components/mc/ResultsMC.tsx — MC Results Summary + Player List
-// VERSION: B8R-v1 — Extracted from mc/[roomId]/page.tsx
+// VERSION: B9-v1 — รวม duel_money_change ในการคำนวณ profit
 // LAST MODIFIED: 25 Mar 2026
-// HISTORY: B5 created (inline) | B7 added player list | B8R extracted to component
+// HISTORY: B5 created (inline) | B7 added player list | B8R extracted to component | B9 include duel money
 'use client';
 
 interface ResultsMCProps {
@@ -10,7 +10,12 @@ interface ResultsMCProps {
 }
 
 export default function ResultsMC({ round, players }: ResultsMCProps) {
-  const playerResults = players.map((p) => ({ id: p.id, name: p.name, profit: p.round_returns?.[String(round)]?.total_return || 0 })).sort((a, b) => b.profit - a.profit);
+  const playerResults = players.map((p) => {
+    const stockProfit = p.round_returns?.[String(round)]?.total_return || 0;
+    const duelProfit = parseFloat(p.duel_money_change) || 0;
+    return { id: p.id, name: p.name, profit: stockProfit + duelProfit, stockProfit, duelProfit };
+  }).sort((a, b) => b.profit - a.profit);
+
   const profits = playerResults.map(p => p.profit);
   const avg = profits.length > 0 ? Math.round(profits.reduce((a, b) => a + b, 0) / profits.length) : 0;
   const profitCount = profits.filter(p => p > 0).length;
@@ -30,6 +35,7 @@ export default function ResultsMC({ round, players }: ResultsMCProps) {
             <div className="flex items-center gap-1.5">
               <span className="text-gray-600 w-5 text-right">{i + 1}.</span>
               <span className="text-gray-300">{p.name}</span>
+              {p.duelProfit !== 0 && <span className="text-gray-600">⚔️</span>}
             </div>
             <span className="font-bold" style={{ color: p.profit > 0 ? '#22c55e' : p.profit < 0 ? '#ef4444' : '#666' }}>
               {p.profit > 0 ? '+' : p.profit < 0 ? '-' : ''}{p.profit !== 0 ? `฿${Math.abs(p.profit).toLocaleString()}` : '฿0'}

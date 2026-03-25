@@ -1,7 +1,7 @@
 // FILE: app/play/[roomId]/page.tsx — Player game screen
-// VERSION: B8R-v1 — Refactored: ResearchQuiz + LeaderboardView + FinalView extracted
+// VERSION: B9-v1 — MarketFight component replaces attack placeholder
 // LAST MODIFIED: 25 Mar 2026
-// HISTORY: B2 created | B3 phase sync + timer | B4 InvestmentPanel | B5 event_result + ResultsPanel | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components
+// HISTORY: B2 created | B3 phase sync + timer | B4 InvestmentPanel | B5 event_result + ResultsPanel | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components | B9 MarketFight
 'use client';
 
 import { useEffect, useState, useRef, Suspense } from 'react';
@@ -22,6 +22,7 @@ import ResultsPanel from '@/components/player/ResultsPanel';
 import ResearchQuiz from '@/components/player/ResearchQuiz';
 import LeaderboardView from '@/components/player/LeaderboardView';
 import FinalView from '@/components/player/FinalView';
+import MarketFight from '@/components/player/MarketFight';
 
 function PlayerContent() {
   const params = useParams();
@@ -170,7 +171,7 @@ function PlayerContent() {
       </div>
 
       {/* Phase info — hide for phases with custom UI */}
-      {!['invest', 'rebalance', 'research', 'research_reveal', 'news_feed'].includes(phase) && (
+      {!['invest', 'rebalance', 'research', 'research_reveal', 'news_feed', 'attack', 'attack_result'].includes(phase) && (
         <div className="text-center py-4">
           <div className="text-3xl mb-1">{phaseInfo.icon}</div>
           <h2 className="text-xl font-bold text-[#00FFB2]">{phaseInfo.name}</h2>
@@ -214,12 +215,15 @@ function PlayerContent() {
         />
       )}
 
-      {/* === Attack placeholder === */}
-      {phase === 'attack' && (
-        <div className="bg-[#161b22] rounded-lg p-4 text-center">
-          <div className="flex justify-center gap-3 mb-3"><span className="bg-red-600 text-white px-3 py-2 rounded-lg text-sm">⚔️ Attack</span><span className="bg-[#00D4FF] text-[#0D1117] px-3 py-2 rounded-lg text-sm">🛡️ Defend</span><span className="bg-purple-600 text-white px-3 py-2 rounded-lg text-sm">🔍 Spy</span></div>
-          <p className="text-gray-600 text-xs">(PvP UI in Task B9)</p>
-        </div>
+      {/* === Market Fight (B9) — Component === */}
+      {(phase === 'attack' || phase === 'attack_result') && (
+        <MarketFight
+          playerId={player.id}
+          roomId={roomId}
+          round={round}
+          player={player}
+          players={players}
+        />
       )}
 
       {/* === Event / Event Result — watch big screen === */}

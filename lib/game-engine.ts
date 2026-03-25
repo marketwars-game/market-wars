@@ -1,7 +1,7 @@
 // FILE: lib/game-engine.ts — State Machine + Room Code Generator
-// VERSION: B8-v2 — เพิ่ม research_reveal + news_feed phases
+// VERSION: B9-v1 — เพิ่ม attack_result phase
 // LAST MODIFIED: 25 Mar 2026
-// HISTORY: B1 created | B3 state machine | B4 fix phase flow | B5 event_result | B8 research_reveal + news_feed
+// HISTORY: B1 created | B3 state machine | B4 fix phase flow | B5 event_result | B8 research_reveal + news_feed | B9 attack_result
 
 import { ROOM_CODE_CONFIG, GOLDEN_DEAL_ROUNDS, TOTAL_ROUNDS } from './constants';
 
@@ -22,17 +22,17 @@ export function generateRoomCode(): string {
 // ==============================================
 
 // Phase order สำหรับรอบที่กำหนด
-// ✅ B8: เพิ่ม research_reveal (เฉลย quiz) + news_feed (ข่าวรอบนี้)
+// ✅ B9: เพิ่ม attack_result (สรุปผล duel) หลัง attack ก่อน event
 //
-// รอบ 1: research → research_reveal → news_feed → invest → attack → event → event_result → results → leaderboard
-// รอบ 2-5: research → research_reveal → news_feed → rebalance → attack → event → event_result → [golden_deal] → results → leaderboard
-// รอบ 6: research → research_reveal → news_feed → rebalance → attack → event → event_result → golden_deal → results → leaderboard → final
+// รอบ 1: research → research_reveal → news_feed → invest → attack → attack_result → event → event_result → results → leaderboard
+// รอบ 2-5: research → research_reveal → news_feed → rebalance → attack → attack_result → event → event_result → [golden_deal] → results → leaderboard
+// รอบ 6: ... → attack_result → event → event_result → golden_deal → results → leaderboard → final
 export function getPhaseOrder(round: number): string[] {
   // รอบ 1 ใช้ invest (เริ่มจาก 0%), รอบ 2+ ใช้ rebalance (prefill จากรอบก่อน)
   const investPhase = round === 1 ? 'invest' : 'rebalance';
 
-  // ✅ B8: research → research_reveal → news_feed → invest/rebalance
-  const phases = ['research', 'research_reveal', 'news_feed', investPhase, 'attack', 'event', 'event_result'];
+  // ✅ B9: attack → attack_result → event
+  const phases = ['research', 'research_reveal', 'news_feed', investPhase, 'attack', 'attack_result', 'event', 'event_result'];
 
   // เพิ่ม Golden Deal ถ้าเป็นรอบ 2, 4, 6
   if (GOLDEN_DEAL_ROUNDS.includes(round)) {
