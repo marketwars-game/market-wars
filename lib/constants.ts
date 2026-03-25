@@ -1,7 +1,7 @@
 // FILE: lib/constants.ts — Game Configuration (Single Source of Truth)
-// VERSION: B9-v1 — Market Fight: DUEL_CONFIG + attack phase update
-// LAST MODIFIED: 25 Mar 2026
-// HISTORY: B1 created | B3 phase timers + display | B4 companies + events | B5 return table + golden deals | B8 quiz + news (v2: 3-phase) | B9 duel config + attack phase update
+// VERSION: B10-v1 — Golden Deal disabled (GOLDEN_DEAL_ROUNDS = [])
+// LAST MODIFIED: 26 Mar 2026
+// HISTORY: B1 created | B3 phase timers + display | B4 companies + events | B5 return table + golden deals | B8 quiz + news (v2: 3-phase) | B9 duel config + attack phase update | B10 disable golden deal
 
 // ==============================================
 // Market Wars — Game Configuration
@@ -50,7 +50,9 @@ export const GAME_PHASES = [
   'final',        // สรุปจบเกม
 ] as const;
 
-export const GOLDEN_DEAL_ROUNDS = [2, 4, 6];
+// ✅ B10: ปิด Golden Deal ชั่วคราว — เปิดกลับโดยเปลี่ยนเป็น [2, 4, 6]
+export const GOLDEN_DEAL_ROUNDS: number[] = [];
+// export const GOLDEN_DEAL_ROUNDS = [2, 4, 6]; // ← ค่าเดิม เปิดกลับเมื่อพร้อม
 
 // --- Phase Timers (วินาที) ---
 // เฉพาะ phase ที่เด็กต้องทำอะไร (Pressure timer — แค่แสดง MC ยังกดเอง)

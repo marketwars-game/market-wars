@@ -1,7 +1,7 @@
 // FILE: lib/game-engine.ts — State Machine + Room Code Generator
-// VERSION: B9-v1 — เพิ่ม attack_result phase
-// LAST MODIFIED: 25 Mar 2026
-// HISTORY: B1 created | B3 state machine | B4 fix phase flow | B5 event_result | B8 research_reveal + news_feed | B9 attack_result
+// VERSION: B10-v1 — Golden Deal disabled (phase flow unchanged, controlled by GOLDEN_DEAL_ROUNDS)
+// LAST MODIFIED: 26 Mar 2026
+// HISTORY: B1 created | B3 state machine | B4 fix phase flow | B5 event_result | B8 research_reveal + news_feed | B9 attack_result | B10 disable golden deal
 
 import { ROOM_CODE_CONFIG, GOLDEN_DEAL_ROUNDS, TOTAL_ROUNDS } from './constants';
 
@@ -23,10 +23,10 @@ export function generateRoomCode(): string {
 
 // Phase order สำหรับรอบที่กำหนด
 // ✅ B9: เพิ่ม attack_result (สรุปผล duel) หลัง attack ก่อน event
+// ✅ B10: ปิด Golden Deal ชั่วคราว — ทุกรอบวิ่งเหมือนกัน (ควบคุมจาก GOLDEN_DEAL_ROUNDS ใน constants.ts)
 //
-// รอบ 1: research → research_reveal → news_feed → invest → attack → attack_result → event → event_result → results → leaderboard
-// รอบ 2-5: research → research_reveal → news_feed → rebalance → attack → attack_result → event → event_result → [golden_deal] → results → leaderboard
-// รอบ 6: ... → attack_result → event → event_result → golden_deal → results → leaderboard → final
+// ทุกรอบ: research → research_reveal → news_feed → invest/rebalance → attack → attack_result → event → event_result → results → leaderboard
+// รอบ 6: ... → results → leaderboard → final
 export function getPhaseOrder(round: number): string[] {
   // รอบ 1 ใช้ invest (เริ่มจาก 0%), รอบ 2+ ใช้ rebalance (prefill จากรอบก่อน)
   const investPhase = round === 1 ? 'invest' : 'rebalance';
