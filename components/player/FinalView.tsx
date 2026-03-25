@@ -1,10 +1,10 @@
-// FILE: components/player/FinalView.tsx — Player Final Summary
-// VERSION: B8R-v1 — Extracted from play/[roomId]/page.tsx
-// LAST MODIFIED: 25 Mar 2026
-// HISTORY: B7 created (inline) | B8R extracted to component
-'use client';
+// FILE: components/player/FinalView.tsx — Player Final Phase
+// VERSION: B11-v1 — Player stats + award badge added
+// LAST MODIFIED: 26 Mar 2026
+// HISTORY: B7 created (rank + profit + bars + top5) | B8R extracted to component | B11 stats + badge
 
 import { STARTING_MONEY, TOTAL_ROUNDS } from '@/lib/constants';
+import { calculateAwards, getPlayerAwards, calcPlayerStats } from '@/lib/awards';
 
 interface FinalViewProps {
   player: any;
@@ -12,96 +12,175 @@ interface FinalViewProps {
 }
 
 export default function FinalView({ player, players }: FinalViewProps) {
-  const myMoney = parseFloat(player.money) || 0;
-  const sorted = [...players].sort((a, b) => (parseFloat(b.money) || 0) - (parseFloat(a.money) || 0));
-  const myRank = sorted.findIndex(p => p.id === player.id) + 1;
-  const totalProfit = myMoney - STARTING_MONEY;
-  const totalReturnPct = (totalProfit / STARTING_MONEY) * 100;
-  const top5 = sorted.slice(0, 5);
-  const isInTop5 = top5.some(p => p.id === player.id);
-  const medals = ['🥇', '🥈', '🥉'];
+  if (!player) return null;
 
-  const roundReturns: { round: number; pct: number }[] = [];
+  const sorted = [...players].sort(
+    (a, b) => (parseFloat(b.money) || 0) - (parseFloat(a.money) || 0)
+  );
+  const rank = sorted.findIndex((p) => p.id === player.id) + 1;
+  const money = parseFloat(player.money) || STARTING_MONEY;
+  const profit = money - STARTING_MONEY;
+  const pctReturn = ((profit) / STARTING_MONEY) * 100;
+  const isProfit = profit >= 0;
+
+  // Awards
+  const awards = calculateAwards(players);
+  const myAwards = getPlayerAwards(player.id, awards);
+
+  // Player stats
+  const stats = calcPlayerStats(player);
+
+  // Round-by-round bars
+  const roundBars: { round: number; pct: number }[] = [];
   for (let r = 1; r <= TOTAL_ROUNDS; r++) {
     const rr = player.round_returns?.[String(r)];
-    if (rr) {
-      const before = parseFloat(rr.money_before) || STARTING_MONEY;
-      const after = parseFloat(rr.money_after) || before;
-      roundReturns.push({ round: r, pct: before > 0 ? ((after - before) / before) * 100 : 0 });
+    if (!rr) {
+      roundBars.push({ round: r, pct: 0 });
+      continue;
     }
+    const before = parseFloat(rr.money_before) || STARTING_MONEY;
+    const after = parseFloat(rr.money_after) || before;
+    const pct = before > 0 ? ((after - before) / before) * 100 : 0;
+    roundBars.push({ round: r, pct });
   }
-  const maxAbsPct = Math.max(...roundReturns.map(r => Math.abs(r.pct)), 1);
+  const maxAbsPct = Math.max(...roundBars.map((b) => Math.abs(b.pct)), 1);
+
+  // Top 5
+  const top5 = sorted.slice(0, 5);
+  const isInTop5 = top5.some((p) => p.id === player.id);
 
   return (
-    <>
-      {/* Your Rank */}
-      <div className="bg-[#161b22] rounded-lg p-5 text-center mb-3">
-        <div className="text-4xl mb-2">🏆</div>
-        <p className="text-xs text-gray-500 mb-1">Your final rank</p>
-        <p className="text-5xl font-bold text-[#00FFB2] leading-none">#{myRank}</p>
-        <p className="text-xs text-gray-500 mt-1">of {sorted.length} players</p>
+    <div className="p-4 max-w-md mx-auto">
+      {/* YOUR RANK */}
+      <div className="text-center mb-4">
+        <div className="text-5xl font-black text-white">#{rank}</div>
+        <div className="text-gray-400 text-sm">of {players.length} players</div>
       </div>
 
       {/* Total Profit */}
-      <div className="bg-[#161b22] rounded-lg p-4 text-center mb-3">
-        <p className="text-xs text-gray-500 mb-1">Total profit</p>
-        <p className={`text-3xl font-bold ${totalProfit >= 0 ? 'text-[#00FFB2]' : 'text-[#FF4444]'}`}>
-          {totalProfit >= 0 ? '+' : '-'}฿{Math.abs(totalProfit).toLocaleString()}
-        </p>
-        <p className={`text-sm mt-1 ${totalProfit >= 0 ? 'text-[#00FFB2]' : 'text-[#FF4444]'}`}>
-          {totalReturnPct >= 0 ? '+' : ''}{totalReturnPct.toFixed(1)}% from ฿{STARTING_MONEY.toLocaleString()}
-        </p>
+      <div className="text-center mb-4">
+        <div
+          className="text-2xl font-bold"
+          style={{ color: isProfit ? '#22c55e' : '#ef4444' }}
+        >
+          {isProfit ? '+' : '-'}฿{Math.abs(profit).toLocaleString()}
+        </div>
+        <div className="text-gray-500 text-xs">
+          {isProfit ? '+' : ''}{pctReturn.toFixed(1)}% from ฿{STARTING_MONEY.toLocaleString()}
+        </div>
       </div>
 
-      {/* Round-by-round returns */}
-      {roundReturns.length > 0 && (
-        <div className="bg-[#161b22] rounded-lg p-4 mb-3">
-          <p className="text-xs text-gray-500 text-center mb-3">Round-by-round returns</p>
-          <div className="flex gap-1.5 items-end justify-center" style={{ height: '80px' }}>
-            {roundReturns.map((r) => {
-              const barH = Math.max(4, (Math.abs(r.pct) / maxAbsPct) * 64);
-              const isPos = r.pct >= 0;
-              return (
-                <div key={r.round} className="flex-1 text-center">
-                  <div className="mx-auto rounded-t" style={{ height: `${barH}px`, backgroundColor: isPos ? '#00FFB2' : '#FF4444' }} />
-                  <p className="text-[10px] mt-0.5" style={{ color: isPos ? '#00FFB2' : '#FF4444' }}>{isPos ? '+' : ''}{r.pct.toFixed(0)}%</p>
-                  <p className="text-[10px] text-gray-600">R{r.round}</p>
-                </div>
-              );
-            })}
-          </div>
+      {/* === B11: Award Badges === */}
+      {myAwards.length > 0 && (
+        <div className="mb-4">
+          {myAwards.map((award) => (
+            <div
+              key={award.id}
+              className="bg-gradient-to-r from-yellow-900/30 to-yellow-700/10 border border-yellow-600/40 rounded-lg px-4 py-3 text-center mb-2"
+            >
+              <span className="text-2xl">{award.emoji}</span>
+              <span className="text-sm font-bold ml-2" style={{ color: '#FCD34D' }}>
+                {award.name}
+              </span>
+              <div className="text-xs text-gray-400 mt-1">{award.stat}</div>
+            </div>
+          ))}
         </div>
       )}
 
+      {/* === B11: Your Stats === */}
+      <div className="bg-[#161b22] rounded-lg p-3 mb-4">
+        <div className="text-xs tracking-widest text-gray-500 mb-2">YOUR STATS</div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="text-center">
+            <div className="text-lg font-bold" style={{ color: '#00D4FF' }}>
+              {stats.quizCorrect}/{stats.quizTotal}
+            </div>
+            <div className="text-xs text-gray-500">Quiz ถูก</div>
+          </div>
+          <div className="text-center">
+            <div className="text-lg font-bold">
+              <span style={{ color: '#22c55e' }}>{stats.duelWins}W</span>
+              <span className="text-gray-600 mx-1">/</span>
+              <span style={{ color: '#ef4444' }}>{stats.duelLosses}L</span>
+              {stats.duelDraws > 0 && (
+                <>
+                  <span className="text-gray-600 mx-1">/</span>
+                  <span className="text-gray-400">{stats.duelDraws}D</span>
+                </>
+              )}
+            </div>
+            <div className="text-xs text-gray-500">เป่ายิงฉุบ</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Round-by-round bars */}
+      <div className="bg-[#161b22] rounded-lg p-3 mb-4">
+        <div className="text-xs tracking-widest text-gray-500 mb-2">ROUND BY ROUND</div>
+        <div className="flex items-end justify-around gap-1" style={{ height: '80px' }}>
+          {roundBars.map((bar) => {
+            const heightPct = Math.abs(bar.pct) / maxAbsPct;
+            const h = Math.max(heightPct * 60, 4);
+            const color = bar.pct >= 0 ? '#22c55e' : '#ef4444';
+            return (
+              <div key={bar.round} className="flex flex-col items-center" style={{ width: '40px' }}>
+                <span className="text-xs font-bold mb-1" style={{ color }}>
+                  {bar.pct >= 0 ? '+' : ''}{bar.pct.toFixed(0)}%
+                </span>
+                <div
+                  className="w-6 rounded-t"
+                  style={{ height: `${h}px`, backgroundColor: color, opacity: 0.8 }}
+                />
+                <span className="text-xs text-gray-600 mt-1">R{bar.round}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Top 5 */}
-      <div className="bg-[#161b22] rounded-lg p-3 mb-3">
-        <p className="text-xs text-gray-500 text-center mb-2">Top 5</p>
-        {top5.map((p, i) => {
-          const isMe = p.id === player.id;
-          return (
-            <div key={p.id} className={`flex items-center py-1.5 px-1 text-sm ${i < top5.length - 1 ? 'border-b border-gray-800' : ''} ${isMe ? 'bg-[#00FFB2]/10 rounded' : ''}`}>
-              <span className={`w-6 text-center text-xs ${isMe ? 'text-[#00FFB2] font-bold' : i < 3 ? (i === 0 ? 'text-[#FFD700]' : i === 1 ? 'text-gray-300' : 'text-[#CD9B6A]') : 'text-gray-500'}`}>{i < 3 ? medals[i] : `#${i+1}`}</span>
-              <span className={`flex-1 ml-1 ${isMe ? 'text-[#00FFB2] font-bold' : i === 0 ? 'text-[#FFD700]' : i === 1 ? 'text-gray-300' : i === 2 ? 'text-[#CD9B6A]' : 'text-gray-400'}`}>{isMe ? `You (${p.name})` : p.name}</span>
-              <span className={`${isMe ? 'text-[#00FFB2] font-bold' : i === 0 ? 'text-[#FFD700]' : i === 1 ? 'text-gray-300' : i === 2 ? 'text-[#CD9B6A]' : 'text-gray-400'}`}>฿{(parseFloat(p.money) || 0).toLocaleString()}</span>
-            </div>
-          );
-        })}
-        {!isInTop5 && (
-          <>
-            <div className="border-t border-dashed border-gray-700 my-2" />
-            <div className="flex items-center py-1.5 px-2 rounded text-sm bg-[#00FFB2]/10">
-              <span className="w-6 text-center text-xs text-[#00FFB2] font-bold">#{myRank}</span>
-              <span className="flex-1 ml-1 text-[#00FFB2] font-bold">You ({player.name})</span>
-              <span className="text-[#00FFB2] font-bold">฿{myMoney.toLocaleString()}</span>
-            </div>
-          </>
-        )}
+      <div className="bg-[#161b22] rounded-lg p-3 mb-4">
+        <div className="text-xs tracking-widest text-gray-500 mb-2">TOP 5</div>
+        <div className="space-y-1">
+          {top5.map((p, i) => {
+            const medals = ['🥇', '🥈', '🥉'];
+            const isMe = p.id === player.id;
+            const m = parseFloat(p.money) || 0;
+            return (
+              <div
+                key={p.id}
+                className={`flex justify-between items-center px-2 py-1 rounded ${isMe ? 'bg-green-900/20 border border-green-800/30' : ''}`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-sm w-6 text-center">
+                    {i < 3 ? medals[i] : `#${i + 1}`}
+                  </span>
+                  <span className={`text-sm ${isMe ? 'text-green-400 font-bold' : 'text-gray-300'}`}>
+                    {isMe ? `You (${p.name})` : p.name}
+                  </span>
+                </div>
+                <span className="text-sm text-gray-400">฿{m.toLocaleString()}</span>
+              </div>
+            );
+          })}
+          {!isInTop5 && (
+            <>
+              <div className="border-t border-dashed border-gray-700 my-1" />
+              <div className="flex justify-between items-center px-2 py-1 rounded bg-green-900/20 border border-green-800/30">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm w-6 text-center">#{rank}</span>
+                  <span className="text-sm text-green-400 font-bold">You ({player.name})</span>
+                </div>
+                <span className="text-sm text-gray-400">฿{money.toLocaleString()}</span>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Thank you */}
-      <div className="text-center py-2">
-        <p className="text-sm text-[#00FFB2]">Thank you for playing!</p>
-      </div>
-    </>
+      <p className="text-center text-gray-500 text-sm mt-4">Thank you for playing!</p>
+    </div>
   );
 }
