@@ -1,3 +1,8 @@
+// FILE: lib/constants.ts — Game Configuration (Single Source of Truth)
+// VERSION: B8-v2 — Research Quiz: QUIZ_POOL + ROUND_NEWS + research_reveal/news_feed PHASE_DISPLAY
+// LAST MODIFIED: 25 Mar 2026
+// HISTORY: B1 created | B3 phase timers + display | B4 companies + events | B5 return table + golden deals | B8 quiz + news (v2: 3-phase)
+
 // ==============================================
 // Market Wars — Game Configuration
 // Single Source of Truth — ทุก game data อยู่ที่นี่
@@ -66,9 +71,25 @@ export const PHASE_DISPLAY: Record<string, {
     name: 'Research Quiz',
     icon: '🔍',
     displayMessage: 'Players answering quiz...',
-    playerMessage: 'Answer 2 quiz questions to unlock real news!',
-    mcTip: 'Wait for players to finish the quiz, then press Next',
+    playerMessage: 'ตอบ Quiz 2 ข้อ เพื่อปลดล็อกข่าวจริง!',
+    mcTip: 'รอเด็กตอบ quiz เสร็จ แล้วกด Next เพื่อเฉลย',
     hasTimer: true,
+  },
+  research_reveal: {
+    name: 'Quiz Reveal',
+    icon: '📝',
+    displayMessage: 'เฉลย Quiz!',
+    playerMessage: 'ดูเฉลย Quiz ของคุณ!',
+    mcTip: 'อธิบายเฉลยแต่ละข้อ แล้วกด Next เพื่อแสดงข่าวรอบนี้',
+    hasTimer: false,
+  },
+  news_feed: {
+    name: 'News Feed',
+    icon: '📰',
+    displayMessage: 'ข่าวรอบนี้!',
+    playerMessage: 'อ่านข่าวก่อนตัดสินใจลงทุน!',
+    mcTip: 'อ่านข่าวให้เด็กฟัง ถามว่า "คิดว่าข่าวไหนจริง?" แล้วกด Next ไปลงทุน',
+    hasTimer: false,
   },
   invest: {
     name: 'Investment',
@@ -296,3 +317,183 @@ export const MC_TIPS: Record<number, string> = {
   5: 'รอบก่อนสุดท้าย! เตือนเด็กว่าเหลืออีก 1 รอบ คิดดีๆ',
   6: 'รอบสุดท้าย + Golden Deal กับดัก! อย่าเฉลยก่อน ปล่อยให้เด็กตัดสินใจเอง',
 };
+
+// ==============================================
+// ✅ B8: Research Quiz — คำถาม + ข่าว
+// ==============================================
+
+// --- Quiz Pool (12 ข้อ จาก Session 1-2 Kahoot) ---
+// สุ่มไม่ซ้ำ (seed จาก room_id) แต่ละรอบได้ 2 ข้อ
+export const QUIZ_POOL: {
+  id: number;
+  question: string;
+  choices: string[];
+  correct: number; // 0-based index
+}[] = [
+  // จาก Session 1 — Money Master
+  {
+    id: 1,
+    question: 'เงินคือสิ่งที่แลกมาจากอะไร?',
+    choices: ['ความโชคดี', 'เวลาและแรงงาน', 'ATM', 'พ่อแม่ให้มาเฉยๆ'],
+    correct: 1,
+  },
+  {
+    id: 2,
+    question: 'ข้อไหนเป็น "Needs" (สิ่งจำเป็น)?',
+    choices: ['สกินเกม Roblox', 'ชานมไข่มุก', 'อาหารกลางวัน', 'การ์ดโปเกมอน'],
+    correct: 2,
+  },
+  {
+    id: 3,
+    question: '"Pay Yourself First" หมายถึงอะไร?',
+    choices: ['ซื้อของให้ตัวเองก่อน', 'แบ่งเงินออมก่อนแล้วค่อยใช้', 'กู้เงินมาใช้', 'ขอเงินพ่อแม่เพิ่ม'],
+    correct: 1,
+  },
+  {
+    id: 4,
+    question: 'ถ้าออมวันละ 20 บาท 1 ปี จะมีเงินประมาณเท่าไหร่?',
+    choices: ['2,400 บาท', '5,200 บาท', '7,300 บาท', '10,000 บาท'],
+    correct: 2,
+  },
+  // จาก Session 2 — Young Investor
+  {
+    id: 5,
+    question: 'เงินเฟ้อคืออะไร?',
+    choices: ['เงินบวม', 'ของแพงขึ้น เงินเท่าเดิมซื้อได้น้อยลง', 'ดอกเบี้ยสูง', 'เงินเยอะขึ้น'],
+    correct: 1,
+  },
+  {
+    id: 6,
+    question: 'ซื้อหุ้น Apple 1 หุ้น แปลว่าอะไร?',
+    choices: ['ได้ iPhone ฟรี', 'เป็นเจ้าของส่วนหนึ่งของบริษัท Apple', 'ได้ทำงานที่ Apple', 'ได้ส่วนลดซื้อ Mac'],
+    correct: 1,
+  },
+  {
+    id: 7,
+    question: 'ข้อไหนเสี่ยงน้อยที่สุด?',
+    choices: ['หุ้น Tesla', 'Bitcoin', 'ฝากออมทรัพย์', 'หุ้น Roblox'],
+    correct: 2,
+  },
+  {
+    id: 8,
+    question: '"อย่าใส่ไข่ทุกฟองในตะกร้าใบเดียว" หมายถึงอะไร?',
+    choices: ['ระวังไข่แตก', 'กระจายการลงทุน อย่าลงตัวเดียว', 'ซื้อไข่หลายร้าน', 'อย่ากินไข่เยอะ'],
+    correct: 1,
+  },
+  {
+    id: 9,
+    question: 'ดอกเบี้ยทบต้น พิเศษยังไง?',
+    choices: ['ได้ดอกเบี้ยจากดอกเบี้ยด้วย', 'ดอกเบี้ยเท่าเดิมทุกปี', 'ได้เงินคืนทันที', 'ไม่ต้องเสียภาษี'],
+    correct: 0,
+  },
+  {
+    id: 10,
+    question: 'น้องไดม์เริ่มลงทุนอายุ 10 พี่เจเริ่มอายุ 20 ใครมีเงินมากกว่าตอนอายุ 30?',
+    choices: ['พี่เจ เพราะโตกว่า', 'เท่ากัน', 'น้องไดม์ เพราะเริ่มเร็วกว่า', 'ไม่รู้'],
+    correct: 2,
+  },
+  {
+    id: 11,
+    question: 'กองทุนรวมเปรียบเทียบเหมือนอะไร?',
+    choices: ['ซื้อขนมชิ้นเดียว', 'ชุดรวมมิตร มีคนเก่งๆ ช่วยเลือกให้', 'ล็อตเตอรี่', 'ฝากเงินธนาคาร'],
+    correct: 1,
+  },
+  {
+    id: 12,
+    question: 'ฝากเงิน = ม้าหมุน, กองทุน = ชิงช้าสวรรค์, แล้วหุ้น = ?',
+    choices: ['ม้าหมุนอีกรอบ', 'รถไฟเหาะ', 'ร้านขายของ', 'ที่นั่งพัก'],
+    correct: 1,
+  },
+];
+
+// --- ฟังก์ชั่นสุ่ม quiz จาก room_id (seed-based, ไม่ซ้ำ) ---
+// ทุกคนในห้องเดียวกันจะได้ข้อเดียวกันทุกรอบ
+// ห้องใหม่ = ลำดับต่างกัน
+export function getQuizForRound(roomId: string, round: number): typeof QUIZ_POOL[number][] {
+  // Simple hash from roomId string → number
+  let hash = 0;
+  for (let i = 0; i < roomId.length; i++) {
+    hash = ((hash << 5) - hash) + roomId.charCodeAt(i);
+    hash |= 0; // Convert to 32-bit integer
+  }
+
+  // Seeded shuffle ของ quiz pool
+  const shuffled = [...QUIZ_POOL];
+  const seed = Math.abs(hash);
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = (seed * (i + 1) + i * 7) % (i + 1);
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
+  // รอบ 1 = ข้อ 0-1, รอบ 2 = ข้อ 2-3, ...
+  const startIndex = (round - 1) * 2;
+  return shuffled.slice(startIndex, startIndex + 2);
+}
+
+// --- Round News (ข่าว 3 ข่าวต่อรอบ: จริง 1 + มั่ว 2) ---
+// ✅ B8: ข่าวสอดคล้องกับ EVENTS + RETURN_TABLE
+// ข่าวจริง = hint ชี้ทางถูก / ข่าวมั่ว = ชี้ผิดทาง
+// ปรับข่าว + return table ทั้งชุดใน B12 (polish)
+export const ROUND_NEWS: {
+  round: number;
+  news: {
+    text: string;
+    isReal: boolean;
+    emoji: string;
+  }[];
+}[] = [
+  {
+    // รอบ 1: iPhone ใหม่ขายดี! → เทค +15%
+    round: 1,
+    news: [
+      { text: 'Apple เตรียมเปิดตัว iPhone รุ่นใหม่ คาดหุ้นเทคพุ่ง', isReal: true, emoji: '📱' },
+      { text: 'บริษัทพลังงานกำลังจะล้มละลาย!', isReal: false, emoji: '⚡' },
+      { text: 'ธนาคารจะลดดอกเบี้ยเหลือ 0%', isReal: false, emoji: '🏦' },
+    ],
+  },
+  {
+    // รอบ 2: โรคระบาด! → เกม +20%, อาหาร +8%, เทค -15%
+    round: 2,
+    news: [
+      { text: 'โรคระบาดใหม่แพร่กระจาย คนอยู่บ้านเล่นเกม+สั่งอาหาร', isReal: true, emoji: '🦠' },
+      { text: 'บริษัทเทคเตรียมเปิดตัวสินค้าใหม่สุดล้ำ!', isReal: false, emoji: '🚀' },
+      { text: 'ทองคำจะราคาตก 50%!', isReal: false, emoji: '🪙' },
+    ],
+  },
+  {
+    // รอบ 3: เศรษฐกิจฟื้นตัว! → ทุกตัวบวก เทค +25%
+    round: 3,
+    news: [
+      { text: 'วัคซีนสำเร็จ! เศรษฐกิจฟื้นตัวทุกอุตสาหกรรม', isReal: true, emoji: '💉' },
+      { text: 'รัฐบาลจะขึ้นภาษีบริษัทเทค 50%!', isReal: false, emoji: '📋' },
+      { text: 'ฝากเงินปีนี้ได้ดอกเบี้ย 20%!', isReal: false, emoji: '🤑' },
+    ],
+  },
+  {
+    // รอบ 4: สงคราม น้ำมันแพง! → พลังงาน +20%, เทค -10%
+    round: 4,
+    news: [
+      { text: 'เกิดสงคราม น้ำมันราคาพุ่ง บริษัทพลังงานได้กำไร', isReal: true, emoji: '⛽' },
+      { text: 'บริษัทเกมเตรียมออกเกมใหม่สุดฮิต!', isReal: false, emoji: '🎮' },
+      { text: 'ร้านอาหารหุ่นยนต์จะขยาย 100 สาขา!', isReal: false, emoji: '🤖' },
+    ],
+  },
+  {
+    // รอบ 5: AI บูม! → เทค +30%, เกม +15%
+    round: 5,
+    news: [
+      { text: 'ChatGPT รุ่นใหม่สุดล้ำ บริษัท AI และเกมกำไรมหาศาล', isReal: true, emoji: '🤖' },
+      { text: 'พลังงานสะอาดได้ทุนจาก AI ช่วยลดต้นทุน', isReal: false, emoji: '☀️' },
+      { text: 'ทุกกองทุนรวมการันตีกำไร 30%!', isReal: false, emoji: '📈' },
+    ],
+  },
+  {
+    // รอบ 6: ขึ้นดอกเบี้ย! → ฝาก +3%, เทค -8%
+    round: 6,
+    news: [
+      { text: 'แบงก์ชาติขึ้นดอกเบี้ย ฝากเงินคุ้มขึ้น หุ้นกู้เงินแพง', isReal: true, emoji: '🏦' },
+      { text: 'บริษัทเทคเตรียม IPO ใหม่ คาดหุ้นพุ่ง 50%!', isReal: false, emoji: '🚀' },
+      { text: 'ทองคำจะขึ้นราคา 3 เท่า!', isReal: false, emoji: '🪙' },
+    ],
+  },
+];
