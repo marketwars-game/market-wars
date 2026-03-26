@@ -1,7 +1,7 @@
 // FILE: components/player/FinalView.tsx — Player Final Phase
-// VERSION: B11-v1 — Player stats + award badge added
-// LAST MODIFIED: 26 Mar 2026
-// HISTORY: B7 created (rank + profit + bars + top5) | B8R extracted to component | B11 stats + badge
+// VERSION: B13-v1 — Chance card stats + ปี labels
+// LAST MODIFIED: 27 Mar 2026
+// HISTORY: B7 created (rank + profit + bars + top5) | B8R extracted to component | B11 stats + badge | B13 chance card stats + ปี labels
 
 import { STARTING_MONEY, TOTAL_ROUNDS } from '@/lib/constants';
 import { calculateAwards, getPlayerAwards, calcPlayerStats } from '@/lib/awards';
@@ -88,7 +88,7 @@ export default function FinalView({ player, players }: FinalViewProps) {
         </div>
       )}
 
-      {/* === B11: Your Stats === */}
+      {/* === Your Stats — ✅ B13: เปลี่ยน duel → chance card === */}
       <div className="bg-[#161b22] rounded-lg p-3 mb-4">
         <div className="text-xs tracking-widest text-gray-500 mb-2">YOUR STATS</div>
         <div className="grid grid-cols-2 gap-3">
@@ -99,25 +99,17 @@ export default function FinalView({ player, players }: FinalViewProps) {
             <div className="text-xs text-gray-500">Quiz ถูก</div>
           </div>
           <div className="text-center">
-            <div className="text-lg font-bold">
-              <span style={{ color: '#22c55e' }}>{stats.duelWins}W</span>
-              <span className="text-gray-600 mx-1">/</span>
-              <span style={{ color: '#ef4444' }}>{stats.duelLosses}L</span>
-              {stats.duelDraws > 0 && (
-                <>
-                  <span className="text-gray-600 mx-1">/</span>
-                  <span className="text-gray-400">{stats.duelDraws}D</span>
-                </>
-              )}
+            <div className="text-lg font-bold" style={{ color: stats.chanceTotal >= 0 ? '#22c55e' : '#ef4444' }}>
+              {stats.chanceTotal >= 0 ? '+' : '-'}฿{Math.abs(stats.chanceTotal).toLocaleString()}
             </div>
-            <div className="text-xs text-gray-500">เป่ายิงฉุบ</div>
+            <div className="text-xs text-gray-500">🃏 Chance Card</div>
           </div>
         </div>
       </div>
 
-      {/* Round-by-round bars */}
+      {/* Round-by-round bars — ✅ B13: R → ปี */}
       <div className="bg-[#161b22] rounded-lg p-3 mb-4">
-        <div className="text-xs tracking-widest text-gray-500 mb-2">ROUND BY ROUND</div>
+        <div className="text-xs tracking-widest text-gray-500 mb-2">ผลตอบแทนรายปี</div>
         <div className="flex items-end justify-around gap-1" style={{ height: '80px' }}>
           {roundBars.map((bar) => {
             const heightPct = Math.abs(bar.pct) / maxAbsPct;
@@ -132,7 +124,7 @@ export default function FinalView({ player, players }: FinalViewProps) {
                   className="w-6 rounded-t"
                   style={{ height: `${h}px`, backgroundColor: color, opacity: 0.8 }}
                 />
-                <span className="text-xs text-gray-600 mt-1">R{bar.round}</span>
+                <span className="text-xs text-gray-600 mt-1">ปี{bar.round}</span>
               </div>
             );
           })}
