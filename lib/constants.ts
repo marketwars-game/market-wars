@@ -1,7 +1,7 @@
 // FILE: lib/constants.ts — Game Configuration (Single Source of Truth)
-// VERSION: B10-v1 — Golden Deal disabled (GOLDEN_DEAL_ROUNDS = [])
+// VERSION: B12-UX-v1 — year_intro + market_open phases + step groups
 // LAST MODIFIED: 26 Mar 2026
-// HISTORY: B1 created | B3 phase timers + display | B4 companies + events | B5 return table + golden deals | B8 quiz + news (v2: 3-phase) | B9 duel config + attack phase update | B10 disable golden deal
+// HISTORY: B1 created | B3 phase timers + display | B4 companies + events | B5 return table + golden deals | B8 quiz + news (v2: 3-phase) | B9 duel config + attack phase update | B10 disable golden deal | B12-UX year_intro + market_open + step groups
 
 // ==============================================
 // Market Wars — Game Configuration
@@ -34,15 +34,17 @@ export const ROOM_CODE_CONFIG = {
 };
 
 // --- Phase Flow ---
-// ลำดับ phase ในแต่ละรอบ (Golden Deal อยู่หลัง event_result ก่อน results)
+// ✅ B12-UX: เพิ่ม year_intro (หัวรอบ) + market_open (กลางรอบ)
 export const GAME_PHASES = [
   'lobby',        // ก่อนเริ่มเกม
+  'year_intro',   // ✅ B12-UX: "ปีที่ X เริ่มแล้ว!" splash
   'research',     // ตอบ quiz ปลดล็อกข่าว
   'invest',       // เลือกลงทุน 6 บริษัท
   'attack',       // ⚔️ Market Fight — เป่ายิงฉุบ
-  'attack_result', // ✅ B9: สรุปผล duel
+  'attack_result', // สรุปผล duel
+  'market_open',  // ✅ B12-UX: "ตลาดเปิดแล้ว!" transition
   'event',        // MC เปิดข่าวเหตุการณ์
-  'event_result', // ✅ B5: เฉลย % return แต่ละบริษัท
+  'event_result', // เฉลย % return แต่ละบริษัท
   'golden_deal',  // ดีลพิเศษ (เฉพาะรอบ 2, 4, 6)
   'results',      // ผลตอบแทนรอบนี้
   'leaderboard',  // อันดับ 1-20
@@ -59,13 +61,12 @@ export const GOLDEN_DEAL_ROUNDS: number[] = [];
 export const PHASE_TIMERS: Record<string, number> = {
   research: 90,      // ตอบ quiz 2 ข้อ
   invest: 120,       // เลือกลงทุน 6 บริษัท
-  attack: 30,        // ✅ B9: เป่ายิงฉุบ — เลือก 1 move
+  attack: 30,        // เป่ายิงฉุบ — เลือก 1 move
   golden_deal: 60,   // แข่ง quiz ชิงดีล
   rebalance: 90,     // ปรับพอร์ต
 };
 
 // --- Phase Display Info ---
-// ข้อมูลแสดงผลแต่ละ phase (ชื่อ, icon, คำอธิบาย)
 export const PHASE_DISPLAY: Record<string, {
   name: string;
   icon: string;
@@ -80,6 +81,15 @@ export const PHASE_DISPLAY: Record<string, {
     displayMessage: 'Waiting for players...',
     playerMessage: 'Waiting for MC to start the game...',
     mcTip: 'Wait until all players have joined, then press Start Game',
+    hasTimer: false,
+  },
+  // ✅ B12-UX: Year Intro — splash "ปีที่ X เริ่มแล้ว!"
+  year_intro: {
+    name: 'Year Intro',
+    icon: '📅',
+    displayMessage: 'ปีใหม่เริ่มแล้ว!',
+    playerMessage: 'เตรียมตัวให้พร้อม!',
+    mcTip: 'แนะนำว่าปีนี้จะทำอะไรบ้าง แล้วกด Next เพื่อเริ่ม Research Quiz',
     hasTimer: false,
   },
   research: {
@@ -127,7 +137,16 @@ export const PHASE_DISPLAY: Record<string, {
     icon: '⚔️',
     displayMessage: 'ผลการต่อสู้!',
     playerMessage: 'ดูผลเป่ายิงฉุบของคุณ!',
-    mcTip: 'ให้เด็กดูผลบนมือถือ ถามว่า "ใครชนะบ้าง?" แล้วกด Next ไป Event',
+    mcTip: 'ให้เด็กดูผลบนมือถือ ถามว่า "ใครชนะบ้าง?" แล้วกด Next',
+    hasTimer: false,
+  },
+  // ✅ B12-UX: Market Open — transition "ตลาดเปิดแล้ว!"
+  market_open: {
+    name: 'Market Open',
+    icon: '📈',
+    displayMessage: 'ตลาดเปิดแล้ว!',
+    playerMessage: '📺 ดูจอใหญ่! ตลาดกำลังเปิด...',
+    mcTip: 'สร้างความตื่นเต้น! "มาดูกันว่าปีนี้เกิดอะไรขึ้น..." แล้วกด Next เพื่อเปิดข่าว',
     hasTimer: false,
   },
   event: {
@@ -186,6 +205,33 @@ export const PHASE_DISPLAY: Record<string, {
     mcTip: 'Game finished! Announce Top 3, awards, and 5 lessons.',
     hasTimer: false,
   },
+};
+
+// ==============================================
+// ✅ B12-UX: Step Groups — สำหรับ step indicator ทั้ง 3 จอ
+// ==============================================
+
+// 6 กลุ่มใหญ่ที่แสดงบน step indicator
+export const STEP_GROUPS = [
+  { id: 'research', icon: '🔍', label: 'วิจัย', phases: ['research', 'research_reveal', 'news_feed'] },
+  { id: 'invest', icon: '💰', label: 'ลงทุน', phases: ['invest', 'rebalance'] },
+  { id: 'fight', icon: '⚔️', label: 'ต่อสู้', phases: ['attack', 'attack_result'] },
+  { id: 'event', icon: '📰', label: 'เหตุการณ์', phases: ['market_open', 'event', 'event_result', 'golden_deal'] },
+  { id: 'results', icon: '📊', label: 'ผลลัพธ์', phases: ['results'] },
+  { id: 'leaderboard', icon: '🏆', label: 'อันดับ', phases: ['leaderboard'] },
+];
+
+// ==============================================
+// ✅ B12-UX: Year Intro Text — ข้อความประจำปี 1-6
+// ==============================================
+
+export const YEAR_INTRO_TEXT: Record<number, { title: string; subtitle: string }> = {
+  1: { title: 'การเดินทางเริ่มต้นแล้ว!', subtitle: 'ปีแรกของการลงทุน เตรียมตัวให้พร้อม' },
+  2: { title: 'ปีที่ 2 มาถึงแล้ว!', subtitle: 'ตลาดเริ่มเปลี่ยนแปลง ปรับกลยุทธ์กัน' },
+  3: { title: 'ครึ่งทางแล้ว!', subtitle: 'ผ่านมา 2 ปี ใครจะนำ ใครจะตาม?' },
+  4: { title: 'ปีที่ 4 เริ่มแล้ว!', subtitle: 'เหลืออีก 3 ปี ตัดสินใจให้ดี' },
+  5: { title: 'ใกล้จะจบแล้ว!', subtitle: 'เหลือแค่ 2 ปีสุดท้าย โค้งสุดท้าย!' },
+  6: { title: 'ปีสุดท้าย!', subtitle: 'โอกาสสุดท้ายที่จะพลิกเกม!' },
 };
 
 // --- 6 Companies ---
@@ -247,9 +293,6 @@ export const COMPANIES = [
 ];
 
 // --- Events (เหตุการณ์แต่ละรอบ) ---
-// ✅ B5: เพิ่ม image field — null ตอนนี้ ใส่ path รูปจริงตอน polish
-// เมื่อใส่รูป: image: '/events/round1-news.jpg'
-// รูปเก็บใน public/events/
 export const EVENTS = [
   {
     round: 1,
@@ -346,7 +389,6 @@ export const MC_TIPS: Record<number, string> = {
 // ==============================================
 
 // --- Quiz Pool (12 ข้อ จาก Session 1-2 Kahoot) ---
-// สุ่มไม่ซ้ำ (seed จาก room_id) แต่ละรอบได้ 2 ข้อ
 export const QUIZ_POOL: {
   id: number;
   question: string;
@@ -430,17 +472,13 @@ export const QUIZ_POOL: {
 ];
 
 // --- ฟังก์ชั่นสุ่ม quiz จาก room_id (seed-based, ไม่ซ้ำ) ---
-// ทุกคนในห้องเดียวกันจะได้ข้อเดียวกันทุกรอบ
-// ห้องใหม่ = ลำดับต่างกัน
 export function getQuizForRound(roomId: string, round: number): typeof QUIZ_POOL[number][] {
-  // Simple hash from roomId string → number
   let hash = 0;
   for (let i = 0; i < roomId.length; i++) {
     hash = ((hash << 5) - hash) + roomId.charCodeAt(i);
-    hash |= 0; // Convert to 32-bit integer
+    hash |= 0;
   }
 
-  // Seeded shuffle ของ quiz pool
   const shuffled = [...QUIZ_POOL];
   const seed = Math.abs(hash);
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -448,15 +486,11 @@ export function getQuizForRound(roomId: string, round: number): typeof QUIZ_POOL
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
 
-  // รอบ 1 = ข้อ 0-1, รอบ 2 = ข้อ 2-3, ...
   const startIndex = (round - 1) * 2;
   return shuffled.slice(startIndex, startIndex + 2);
 }
 
 // --- Round News (ข่าว 3 ข่าวต่อรอบ: จริง 1 + มั่ว 2) ---
-// ✅ B8: ข่าวสอดคล้องกับ EVENTS + RETURN_TABLE
-// ข่าวจริง = hint ชี้ทางถูก / ข่าวมั่ว = ชี้ผิดทาง
-// ปรับข่าว + return table ทั้งชุดใน B12 (polish)
 export const ROUND_NEWS: {
   round: number;
   news: {
@@ -466,7 +500,6 @@ export const ROUND_NEWS: {
   }[];
 }[] = [
   {
-    // รอบ 1: iPhone ใหม่ขายดี! → เทค +15%
     round: 1,
     news: [
       { text: 'Apple เตรียมเปิดตัว iPhone รุ่นใหม่ คาดหุ้นเทคพุ่ง', isReal: true, emoji: '📱' },
@@ -475,7 +508,6 @@ export const ROUND_NEWS: {
     ],
   },
   {
-    // รอบ 2: โรคระบาด! → เกม +20%, อาหาร +8%, เทค -15%
     round: 2,
     news: [
       { text: 'โรคระบาดใหม่แพร่กระจาย คนอยู่บ้านเล่นเกม+สั่งอาหาร', isReal: true, emoji: '🦠' },
@@ -484,7 +516,6 @@ export const ROUND_NEWS: {
     ],
   },
   {
-    // รอบ 3: เศรษฐกิจฟื้นตัว! → ทุกตัวบวก เทค +25%
     round: 3,
     news: [
       { text: 'วัคซีนสำเร็จ! เศรษฐกิจฟื้นตัวทุกอุตสาหกรรม', isReal: true, emoji: '💉' },
@@ -493,7 +524,6 @@ export const ROUND_NEWS: {
     ],
   },
   {
-    // รอบ 4: สงคราม น้ำมันแพง! → พลังงาน +20%, เทค -10%
     round: 4,
     news: [
       { text: 'เกิดสงคราม น้ำมันราคาพุ่ง บริษัทพลังงานได้กำไร', isReal: true, emoji: '⛽' },
@@ -502,7 +532,6 @@ export const ROUND_NEWS: {
     ],
   },
   {
-    // รอบ 5: AI บูม! → เทค +30%, เกม +15%
     round: 5,
     news: [
       { text: 'ChatGPT รุ่นใหม่สุดล้ำ บริษัท AI และเกมกำไรมหาศาล', isReal: true, emoji: '🤖' },
@@ -511,7 +540,6 @@ export const ROUND_NEWS: {
     ],
   },
   {
-    // รอบ 6: ขึ้นดอกเบี้ย! → ฝาก +3%, เทค -8%
     round: 6,
     news: [
       { text: 'แบงก์ชาติขึ้นดอกเบี้ย ฝากเงินคุ้มขึ้น หุ้นกู้เงินแพง', isReal: true, emoji: '🏦' },

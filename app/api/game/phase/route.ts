@@ -1,7 +1,7 @@
 // FILE: app/api/game/phase/route.ts
-// VERSION: B9-v1 — เพิ่ม duel pair ตอนเข้า attack + resolve ตอนออก attack
-// LAST MODIFIED: 25 Mar 2026
-// HISTORY: B3 created | B4 bug fix phase flow | B5 auto-calculate + event_result phase | B9 duel pair/resolve
+// VERSION: B12-UX-v1 — Start game goes to year_intro instead of research
+// LAST MODIFIED: 26 Mar 2026
+// HISTORY: B3 created | B4 bug fix phase flow | B5 auto-calculate + event_result phase | B9 duel pair/resolve | B12-UX start → year_intro
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
@@ -78,12 +78,12 @@ export async function POST(request: Request) {
         );
       }
 
-      // เปลี่ยน status → playing, phase → research, round → 1
+      // ✅ B12-UX: เปลี่ยน status → playing, phase → year_intro (แทน research), round → 1
       const { error: updateError } = await supabase
         .from('rooms')
         .update({
           status: 'playing',
-          current_phase: 'research',
+          current_phase: 'year_intro',
           current_round: 1,
         })
         .eq('id', room_id);
@@ -100,7 +100,7 @@ export async function POST(request: Request) {
         action: 'start',
         status: 'playing',
         current_round: 1,
-        current_phase: 'research',
+        current_phase: 'year_intro',
       });
     }
 

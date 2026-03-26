@@ -1,7 +1,7 @@
 // FILE: app/play/[roomId]/page.tsx — Player game screen
-// VERSION: B9-v1 — MarketFight component replaces attack placeholder
-// LAST MODIFIED: 25 Mar 2026
-// HISTORY: B2 created | B3 phase sync + timer | B4 InvestmentPanel | B5 event_result + ResultsPanel | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components | B9 MarketFight
+// VERSION: B12-UX-v1 — Mini step indicator + year_intro + market_open
+// LAST MODIFIED: 26 Mar 2026
+// HISTORY: B2 created | B3 phase sync + timer | B4 InvestmentPanel | B5 event_result + ResultsPanel | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components | B9 MarketFight | B12-UX mini step + year_intro + market_open
 'use client';
 
 import { useEffect, useState, useRef, Suspense } from 'react';
@@ -15,8 +15,11 @@ import {
   STARTING_MONEY,
   GOLDEN_DEALS,
   ROUND_NEWS,
+  STEP_GROUPS,
+  YEAR_INTRO_TEXT,
   getQuizForRound,
 } from '@/lib/constants';
+import { getStepGroupProgress } from '@/lib/game-engine';
 import InvestmentPanel from '@/components/player/InvestmentPanel';
 import ResultsPanel from '@/components/player/ResultsPanel';
 import ResearchQuiz from '@/components/player/ResearchQuiz';
@@ -110,7 +113,7 @@ function PlayerContent() {
     setJoining(false);
   };
 
-  // === Quiz handlers (passed to ResearchQuiz component) ===
+  // === Quiz handlers ===
   const handleQuizSelect = (qi: number, ci: number) => {
     if (quizSubmitted) return;
     const newA = [...quizAnswers]; newA[qi] = ci; setQuizAnswers(newA);
@@ -136,6 +139,10 @@ function PlayerContent() {
   const timerDuration = PHASE_TIMERS[phase] || 0;
   const timerPercent = timerDuration > 0 ? (timeLeft / timerDuration) * 100 : 0;
   const timerColor = timeLeft <= 10 ? '#FF4444' : timeLeft <= 30 ? '#F59E0B' : '#00FFB2';
+
+  // ✅ B12-UX: Step group progress for mini indicator
+  const stepProgress = getStepGroupProgress(phase);
+  const currentStep = stepProgress.find((s) => s.status === 'current');
 
   // === Join Screen (no player yet) ===
   if (!player) {
@@ -164,25 +171,52 @@ function PlayerContent() {
   // === Main Game Screen ===
   return (
     <div className="min-h-screen bg-[#0D1117] text-white p-4">
-      {/* Player header */}
-      <div className="flex items-center justify-between mb-3">
-        <div><span className="text-[#00FFB2] font-bold">{player.name}</span><span className="text-gray-500 text-sm ml-2">฿{(parseFloat(player.money) || 0).toLocaleString()}</span></div>
-        {phase !== 'lobby' && phase !== 'final' && <span className="bg-[#00FFB2] text-[#0D1117] text-xs font-bold px-2 py-1 rounded-full">R{round}</span>}
+
+      {/* ✅ B12-UX: Player header — name + year badge + money */}
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-[#00FFB2] font-bold text-sm">{player.name}</span>
+        {phase !== 'lobby' && phase !== 'final' && (
+          <span className="text-[10px] text-[#00D4FF] font-medium px-2 py-0.5 rounded-full" style={{ background: 'rgba(0,212,255,0.1)' }}>
+            ปีที่ {round}
+          </span>
+        )}
+        <span className="text-gray-500 text-xs">฿{(parseFloat(player.money) || 0).toLocaleString()}</span>
       </div>
 
-      {/* Phase info — hide for phases with custom UI */}
-      {!['invest', 'rebalance', 'research', 'research_reveal', 'news_feed', 'attack', 'attack_result'].includes(phase) && (
-        <div className="text-center py-4">
-          <div className="text-3xl mb-1">{phaseInfo.icon}</div>
-          <h2 className="text-xl font-bold text-[#00FFB2]">{phaseInfo.name}</h2>
-          {phase !== 'lobby' && phase !== 'final' && <p className="text-gray-500 text-xs">Round {round}</p>}
-          <p className="text-gray-400 text-sm mt-2">{phaseInfo.playerMessage}</p>
+      {/* ✅ B12-UX: Mini step indicator — 6 dots + current label */}
+      {phase !== 'lobby' && phase !== 'final' && phase !== 'year_intro' && (
+        <div className="flex items-center gap-0 mb-3 px-1">
+          <div className="flex items-center gap-0 flex-1">
+            {stepProgress.map((step, i) => (
+              <div key={step.id} className="flex items-center flex-1">
+                <div
+                  className="rounded-full flex-shrink-0"
+                  style={{
+                    width: step.status === 'current' ? 8 : 6,
+                    height: step.status === 'current' ? 8 : 6,
+                    background: step.status === 'current' ? '#00FFB2'
+                      : step.status === 'done' ? 'rgba(0,255,178,0.35)'
+                      : 'rgba(255,255,255,0.1)',
+                    boxShadow: step.status === 'current' ? '0 0 6px rgba(0,255,178,0.4)' : 'none',
+                  }}
+                />
+                {i < stepProgress.length - 1 && (
+                  <div className="flex-1 h-px mx-1" style={{ background: step.status === 'done' ? 'rgba(0,255,178,0.2)' : 'rgba(255,255,255,0.06)' }} />
+                )}
+              </div>
+            ))}
+          </div>
+          {currentStep && (
+            <span className="text-[10px] text-[#00FFB2] font-medium ml-2 whitespace-nowrap">
+              {currentStep.icon} {currentStep.label}
+            </span>
+          )}
         </div>
       )}
 
       {/* Timer */}
       {timerDuration > 0 && room?.status === 'playing' && (
-        <div className="flex items-center gap-2 mb-4 px-2">
+        <div className="flex items-center gap-2 mb-3 px-1">
           <div className="flex-1 h-1.5 bg-[#2a2d35] rounded-full overflow-hidden"><div className="h-full rounded-full transition-all duration-1000" style={{ width: `${timerPercent}%`, backgroundColor: timerColor }} /></div>
           <span className={`font-mono text-sm font-bold ${timeLeft <= 10 && timeLeft > 0 ? 'animate-pulse' : ''}`} style={{ color: timerColor }}>{Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}</span>
         </div>
@@ -195,6 +229,58 @@ function PlayerContent() {
           <p className="text-gray-400 text-sm mb-3">Starting money: ฿{STARTING_MONEY.toLocaleString()}</p>
           <p className="text-gray-500 text-xs mb-2">Players in lobby:</p>
           <div className="flex flex-wrap gap-1">{players.map((p) => (<span key={p.id} className={`text-xs px-2 py-1 rounded-full ${p.id === player.id ? 'bg-[#00FFB2]/20 text-[#00FFB2]' : 'bg-gray-800 text-gray-400'}`}>{p.name}</span>))}</div>
+        </div>
+      )}
+
+      {/* ✅ B12-UX: Year Intro — ปีที่ X + ขั้นตอน */}
+      {phase === 'year_intro' && (() => {
+        const introText = YEAR_INTRO_TEXT[round] || { title: `ปีที่ ${round} เริ่มแล้ว!`, subtitle: 'เตรียมตัวให้พร้อม' };
+        return (
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <p className="text-xs tracking-[4px] text-[#00D4FF] font-medium mb-1">Y E A R</p>
+            <p className="text-6xl font-black text-[#00FFB2] leading-none mb-3">{round}</p>
+            <p className="text-base text-white font-medium mb-1">{introText.title}</p>
+            <p className="text-sm text-gray-400 mb-5">{introText.subtitle}</p>
+
+            <p className="text-[10px] text-gray-500 tracking-[2px] mb-3">สิ่งที่ต้องทำปีนี้</p>
+            <div className="flex flex-col gap-2 w-full max-w-[220px]">
+              {[
+                { num: 1, text: 'ตอบ Quiz ปลดล็อกข่าว' },
+                { num: 2, text: 'เลือกลงทุน 6 บริษัท' },
+                { num: 3, text: 'เป่ายิงฉุบชิงเงิน' },
+                { num: 4, text: 'ดูผลตลาดประจำปี' },
+              ].map((s) => (
+                <div key={s.num} className="flex items-center gap-2 text-sm text-gray-400">
+                  <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0" style={{ background: 'rgba(0,255,178,0.15)', color: '#00FFB2' }}>{s.num}</span>
+                  {s.text}
+                </div>
+              ))}
+            </div>
+
+            <p className="text-xs text-gray-600 mt-6">รอ MC เริ่ม...</p>
+          </div>
+        );
+      })()}
+
+      {/* ✅ B12-UX: Market Open — ตลาดเปิด + ดูจอใหญ่ */}
+      {phase === 'market_open' && (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <p className="text-5xl mb-3">📈</p>
+          <p className="text-xl font-bold text-[#FFD700] mb-2">ตลาดเปิดแล้ว!</p>
+          <p className="text-sm text-gray-400 mb-1">เหตุการณ์สำคัญประจำปีที่ {round}</p>
+          <p className="text-sm text-gray-400">กำลังจะถูกเปิดเผย...</p>
+          <div className="flex items-center gap-1.5 mt-5 text-xs text-gray-500">
+            <span>📺</span> ดูจอใหญ่!
+          </div>
+        </div>
+      )}
+
+      {/* Phase info — only for phases without custom UI and not year_intro/market_open */}
+      {!['invest', 'rebalance', 'research', 'research_reveal', 'news_feed', 'attack', 'attack_result', 'year_intro', 'market_open', 'lobby', 'final'].includes(phase) && (
+        <div className="text-center py-4">
+          <div className="text-3xl mb-1">{phaseInfo.icon}</div>
+          <h2 className="text-xl font-bold text-[#00FFB2]">{phaseInfo.name}</h2>
+          <p className="text-gray-400 text-sm mt-2">{phaseInfo.playerMessage}</p>
         </div>
       )}
 
@@ -231,7 +317,7 @@ function PlayerContent() {
       {phase === 'event_result' && <div className="bg-[#161b22] rounded-lg p-6 text-center"><div className="text-4xl mb-2">📺</div><p className="text-gray-400">Watch the big screen!</p><p className="text-gray-600 text-xs mt-1">Market impact being revealed...</p></div>}
 
       {/* === Golden Deal placeholder === */}
-      {phase === 'golden_deal' && (() => { const deal = GOLDEN_DEALS.find((d) => d.round === round); return (<div className="bg-[#161b22] rounded-lg p-4 text-center"><div className="text-3xl mb-2">✨</div><p className="text-[#F59E0B] font-bold">{deal?.name || 'Golden Deal'}</p><p className="text-gray-500 text-xs mt-2">(Golden Deal UI in Task B10)</p></div>); })()}
+      {phase === 'golden_deal' && (() => { const deal = GOLDEN_DEALS.find((d) => d.round === round); return (<div className="bg-[#161b22] rounded-lg p-4 text-center"><div className="text-3xl mb-2">✨</div><p className="text-[#F59E0B] font-bold">{deal?.name || 'Golden Deal'}</p><p className="text-gray-500 text-xs mt-2">(Golden Deal UI coming soon)</p></div>); })()}
 
       {/* === Results — Component === */}
       {phase === 'results' && <ResultsPanel round={round} player={player} />}

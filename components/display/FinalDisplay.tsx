@@ -1,7 +1,7 @@
 // FILE: components/display/FinalDisplay.tsx — Display Final Phase
-// VERSION: B11-v1 — Awards section added (Quiz Master + Smart Diversifier)
+// VERSION: B12-UX-v2 — Fix awards (array not object) + horizontal layout fit 100vh
 // LAST MODIFIED: 26 Mar 2026
-// HISTORY: B7 created (podium + stats) | B8R extracted to component | B11 awards section
+// HISTORY: B7 created (podium + stats) | B8R extracted to component | B11 awards section | B12-UX horizontal layout | B12-UX-v2 fix awards array
 
 import { STARTING_MONEY } from '@/lib/constants';
 import { calculateAwards } from '@/lib/awards';
@@ -16,7 +16,6 @@ export default function FinalDisplay({ players }: FinalDisplayProps) {
   );
   const top3 = sorted.slice(0, 3);
 
-  // Game stats
   const totalPlayers = players.length;
   const avgReturn =
     totalPlayers > 0
@@ -25,187 +24,115 @@ export default function FinalDisplay({ players }: FinalDisplayProps) {
           return sum + ((m - STARTING_MONEY) / STARTING_MONEY) * 100;
         }, 0) / totalPlayers
       : 0;
-  const profitCount = players.filter(
-    (p) => (parseFloat(p.money) || 0) > STARTING_MONEY
-  ).length;
-  const lossCount = players.filter(
-    (p) => (parseFloat(p.money) || 0) < STARTING_MONEY
-  ).length;
+  const profitCount = players.filter((p) => (parseFloat(p.money) || 0) > STARTING_MONEY).length;
+  const lossCount = players.filter((p) => (parseFloat(p.money) || 0) < STARTING_MONEY).length;
 
-  // Awards
+  // ✅ Fix: calculateAwards returns Award[] — use .find() by id
   const awards = calculateAwards(players);
+  const quizMaster = awards.find((a) => a.id === 'quiz_master');
+  const smartDiversifier = awards.find((a) => a.id === 'smart_diversifier');
 
-  // Podium config
-  const podiumConfig = [
-    {
-      height: 120,
-      medal: '🥇',
-      gradient: 'from-yellow-900/40 to-yellow-700/20',
-      border: '#F59E0B',
-      textColor: '#FCD34D',
-    },
-    {
-      height: 90,
-      medal: '🥈',
-      gradient: 'from-gray-700/40 to-gray-500/20',
-      border: '#9CA3AF',
-      textColor: '#D1D5DB',
-    },
-    {
-      height: 70,
-      medal: '🥉',
-      gradient: 'from-orange-900/40 to-orange-700/20',
-      border: '#D97706',
-      textColor: '#FBBF24',
-    },
-  ];
+  const medals = ['🥇', '🥈', '🥉'];
+  const podiumColors = ['#FFD700', '#C0C0C0', '#CD7F32'];
+  const podiumBg = ['rgba(255,215,0,0.1)', 'rgba(192,192,192,0.08)', 'rgba(205,127,50,0.08)'];
+  const podiumHeights = ['110px', '85px', '68px'];
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[80vh] px-8">
-      {/* Trophy + Title */}
-      <div
-        className="text-center mb-6"
-        style={{ animation: 'fadeSlideUp 0.6s ease-out both', animationDelay: '0.2s' }}
-      >
-        <div className="text-6xl mb-2">🏆</div>
-        <h1 className="text-4xl font-black" style={{ color: '#FCD34D' }}>
-          Game Over!
-        </h1>
-        <p className="text-gray-500 text-lg mt-1">6 rounds completed</p>
+    <div className="h-screen flex flex-col items-center justify-center px-6 overflow-hidden">
+      <style>{`@keyframes fadeSlideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+
+      {/* === Row 1: Title === */}
+      <div className="text-center mb-4" style={{ animation: 'fadeSlideUp 0.6s ease-out both', animationDelay: '0.2s' }}>
+        <div className="text-4xl mb-1">🏆</div>
+        <h1 className="text-3xl font-black" style={{ color: '#FCD34D' }}>Game Over!</h1>
+        <p className="text-gray-500 text-sm">6 rounds completed</p>
       </div>
 
-      {/* Top 3 Podium */}
-      <div
-        className="flex items-end justify-center gap-6 mb-8"
-        style={{ animation: 'fadeSlideUp 0.6s ease-out both', animationDelay: '0.8s' }}
-      >
-        {top3.map((p, i) => {
-          const cfg = podiumConfig[i];
-          const money = parseFloat(p.money) || STARTING_MONEY;
-          const pct = ((money - STARTING_MONEY) / STARTING_MONEY) * 100;
-          return (
-            <div key={p.id} className="flex flex-col items-center">
-              <span className="text-3xl mb-1">{cfg.medal}</span>
-              <span className="text-lg font-bold text-gray-200 mb-1">{p.name}</span>
-              <div
-                className={`w-32 rounded-t-lg bg-gradient-to-t ${cfg.gradient} flex flex-col items-center justify-end pb-3`}
-                style={{
-                  height: `${cfg.height}px`,
-                  borderLeft: `3px solid ${cfg.border}`,
-                  borderRight: `3px solid ${cfg.border}`,
-                  borderTop: `3px solid ${cfg.border}`,
-                }}
-              >
-                <span className="text-lg font-bold text-white">
-                  ฿{money.toLocaleString()}
-                </span>
-                <span
-                  className="text-sm font-semibold"
-                  style={{ color: pct >= 0 ? '#22c55e' : '#ef4444' }}
-                >
-                  {pct >= 0 ? '+' : ''}
-                  {pct.toFixed(1)}%
-                </span>
+      {/* === Row 2: Podium === */}
+      <div className="flex items-end gap-3 mb-4" style={{ animation: 'fadeSlideUp 0.6s ease-out both', animationDelay: '0.5s' }}>
+        {top3[1] && (
+          <div className="text-center rounded-t-lg px-4 pt-3 pb-2 flex flex-col justify-end" style={{ background: podiumBg[1], height: podiumHeights[1], width: '120px', borderTop: `2px solid ${podiumColors[1]}` }}>
+            <p className="text-xl mb-0.5">{medals[1]}</p>
+            <p className="text-sm font-bold truncate" style={{ color: '#D1D5DB' }}>{top3[1].name}</p>
+            <p className="text-xs text-gray-400">฿{(parseFloat(top3[1].money) || 0).toLocaleString()}</p>
+            <p className="text-[10px]" style={{ color: (parseFloat(top3[1].money) || 0) >= STARTING_MONEY ? '#22c55e' : '#ef4444' }}>
+              {(((parseFloat(top3[1].money) || STARTING_MONEY) - STARTING_MONEY) / STARTING_MONEY * 100).toFixed(1)}%
+            </p>
+          </div>
+        )}
+        {top3[0] && (
+          <div className="text-center rounded-t-lg px-4 pt-3 pb-2 flex flex-col justify-end" style={{ background: podiumBg[0], height: podiumHeights[0], width: '130px', borderTop: `2px solid ${podiumColors[0]}` }}>
+            <p className="text-2xl mb-0.5">{medals[0]}</p>
+            <p className="text-base font-bold truncate" style={{ color: '#FCD34D' }}>{top3[0].name}</p>
+            <p className="text-sm text-gray-300">฿{(parseFloat(top3[0].money) || 0).toLocaleString()}</p>
+            <p className="text-xs" style={{ color: (parseFloat(top3[0].money) || 0) >= STARTING_MONEY ? '#22c55e' : '#ef4444' }}>
+              {(((parseFloat(top3[0].money) || STARTING_MONEY) - STARTING_MONEY) / STARTING_MONEY * 100).toFixed(1)}%
+            </p>
+          </div>
+        )}
+        {top3[2] && (
+          <div className="text-center rounded-t-lg px-4 pt-3 pb-2 flex flex-col justify-end" style={{ background: podiumBg[2], height: podiumHeights[2], width: '120px', borderTop: `2px solid ${podiumColors[2]}` }}>
+            <p className="text-xl mb-0.5">{medals[2]}</p>
+            <p className="text-sm font-bold truncate" style={{ color: '#FBBF24' }}>{top3[2].name}</p>
+            <p className="text-xs text-gray-400">฿{(parseFloat(top3[2].money) || 0).toLocaleString()}</p>
+            <p className="text-[10px]" style={{ color: (parseFloat(top3[2].money) || 0) >= STARTING_MONEY ? '#22c55e' : '#ef4444' }}>
+              {(((parseFloat(top3[2].money) || STARTING_MONEY) - STARTING_MONEY) / STARTING_MONEY * 100).toFixed(1)}%
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* === Row 3: Stats + Awards === */}
+      <div className="flex gap-3 items-stretch flex-wrap justify-center mb-3" style={{ animation: 'fadeSlideUp 0.6s ease-out both', animationDelay: '0.8s' }}>
+        <div className="flex gap-2">
+          <div className="rounded-lg px-4 py-2 text-center" style={{ background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.2)' }}>
+            <p className="text-xl font-bold text-[#00D4FF]">{totalPlayers}</p>
+            <p className="text-[9px] text-gray-400">Players</p>
+          </div>
+          <div className="rounded-lg px-4 py-2 text-center" style={{ background: avgReturn >= 0 ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${avgReturn >= 0 ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'}` }}>
+            <p className="text-xl font-bold" style={{ color: avgReturn >= 0 ? '#22c55e' : '#ef4444' }}>{avgReturn >= 0 ? '+' : ''}{avgReturn.toFixed(1)}%</p>
+            <p className="text-[9px] text-gray-400">Avg Return</p>
+          </div>
+          <div className="rounded-lg px-4 py-2 text-center" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <p className="text-xl font-bold">
+              <span style={{ color: '#22c55e' }}>{profitCount}</span>
+              <span className="text-gray-600 text-sm mx-1">/</span>
+              <span style={{ color: '#ef4444' }}>{lossCount}</span>
+            </p>
+            <p className="text-[9px] text-gray-400">Profit / Loss</p>
+          </div>
+        </div>
+
+        <div className="w-px self-stretch" style={{ background: 'rgba(255,255,255,0.08)' }} />
+
+        {/* ✅ Awards — fixed: .find() from array */}
+        <div className="flex gap-2">
+          {quizMaster && quizMaster.winnerId && (
+            <div className="rounded-lg px-3 py-2 flex items-center gap-2" style={{ background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.2)' }}>
+              <span className="text-xl">{quizMaster.emoji}</span>
+              <div>
+                <p className="text-xs font-bold text-[#A855F7]">{quizMaster.name}</p>
+                <p className="text-[10px] text-gray-400">{quizMaster.winnerName} ({quizMaster.stat})</p>
               </div>
             </div>
-          );
-        })}
-      </div>
-
-      {/* Game Stats */}
-      <div
-        className="flex gap-6 mb-8"
-        style={{ animation: 'fadeSlideUp 0.6s ease-out both', animationDelay: '1.4s' }}
-      >
-        <div className="text-center">
-          <div className="text-2xl font-bold" style={{ color: '#00D4FF' }}>
-            {totalPlayers}
-          </div>
-          <div className="text-xs text-gray-500">Players</div>
-        </div>
-        <div className="text-center">
-          <div
-            className="text-2xl font-bold"
-            style={{ color: avgReturn >= 0 ? '#22c55e' : '#ef4444' }}
-          >
-            {avgReturn >= 0 ? '+' : ''}
-            {avgReturn.toFixed(1)}%
-          </div>
-          <div className="text-xs text-gray-500">Avg return</div>
-        </div>
-        <div className="text-center">
-          <span className="text-2xl font-bold" style={{ color: '#22c55e' }}>
-            {profitCount}
-          </span>
-          <span className="text-xl text-gray-600 mx-1">/</span>
-          <span className="text-2xl font-bold" style={{ color: '#ef4444' }}>
-            {lossCount}
-          </span>
-          <div className="text-xs text-gray-500">Profit / Loss</div>
-        </div>
-      </div>
-
-      {/* === B11: Awards Section === */}
-      <div
-        className="w-full max-w-xl mb-8"
-        style={{ animation: 'fadeSlideUp 0.6s ease-out both', animationDelay: '2.0s' }}
-      >
-        <div className="text-center mb-4">
-          <span className="text-xs tracking-widest text-gray-500">SPECIAL AWARDS</span>
-        </div>
-        <div className="space-y-3">
-          {awards.map((award, i) => (
-            <div
-              key={award.id}
-              className="bg-[#161b22] rounded-lg px-5 py-4 flex items-center justify-between border border-gray-800"
-              style={{
-                animation: 'fadeSlideUp 0.5s ease-out both',
-                animationDelay: `${2.4 + i * 0.5}s`,
-              }}
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-3xl">{award.emoji}</span>
-                <div>
-                  <div className="text-sm font-bold text-gray-300">{award.name}</div>
-                  <div className="text-lg font-bold" style={{ color: '#FCD34D' }}>
-                    {award.winnerName}
-                  </div>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="text-sm font-semibold" style={{ color: '#00D4FF' }}>
-                  {award.stat}
-                </div>
+          )}
+          {smartDiversifier && smartDiversifier.winnerId && (
+            <div className="rounded-lg px-3 py-2 flex items-center gap-2" style={{ background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.2)' }}>
+              <span className="text-xl">{smartDiversifier.emoji}</span>
+              <div>
+                <p className="text-xs font-bold text-[#00D4FF]">{smartDiversifier.name}</p>
+                <p className="text-[10px] text-gray-400">{smartDiversifier.winnerName}</p>
               </div>
             </div>
-          ))}
+          )}
         </div>
       </div>
 
-      {/* Thank you */}
-      <div
-        className="text-center"
-        style={{ animation: 'fadeSlideUp 0.6s ease-out both', animationDelay: '3.4s' }}
-      >
-        <p className="text-lg font-semibold" style={{ color: '#00FFB2' }}>
-          Thank you for playing Market Wars!
-        </p>
-        <p className="text-sm text-gray-600 mt-1">Powered by Dime! Kids Camp</p>
+      {/* === Row 4: Thank you === */}
+      <div className="text-center" style={{ animation: 'fadeSlideUp 0.6s ease-out both', animationDelay: '1.1s' }}>
+        <p className="text-sm text-[#00FFB2]">Thank you for playing Market Wars!</p>
+        <p className="text-[10px] text-gray-600 mt-0.5">Powered by Dime!</p>
       </div>
-
-      {/* CSS animation */}
-      <style jsx>{`
-        @keyframes fadeSlideUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
     </div>
   );
 }

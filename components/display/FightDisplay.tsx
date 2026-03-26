@@ -1,7 +1,7 @@
 // FILE: components/display/FightDisplay.tsx — Market Fight Display (16:9 projector)
-// VERSION: B9-v1
-// LAST MODIFIED: 25 Mar 2026
-// HISTORY: B9 created
+// VERSION: B12-UX-v1 — Horizontal layout (no scroll)
+// LAST MODIFIED: 26 Mar 2026
+// HISTORY: B9 created | B12-UX horizontal layout
 
 'use client';
 
@@ -11,13 +11,11 @@ interface FightDisplayProps {
 }
 
 export default function FightDisplay({ players, round }: FightDisplayProps) {
-  // นับสถิติ
   const playersWithOpponent = players.filter(p => p.duel_opponent_id);
   const totalPairs = Math.floor(playersWithOpponent.length / 2);
   const submittedCount = players.filter(p => p.duel_submitted_round >= round && p.duel_opponent_id).length;
   const waitingCount = playersWithOpponent.length - submittedCount;
 
-  // ตรวจว่า resolve แล้วหรือยัง (ดูจาก duel_result)
   const hasResults = players.some(p => p.duel_result && p.duel_result !== 'null' && p.duel_result !== 'bye' && p.duel_result !== null);
 
   const winCount = players.filter(p => p.duel_result === 'win').length;
@@ -25,87 +23,81 @@ export default function FightDisplay({ players, round }: FightDisplayProps) {
   const drawCount = players.filter(p => p.duel_result === 'draw').length;
   const byeCount = players.filter(p => p.duel_result === 'bye').length;
 
-  // Move breakdown
   const rockCount = players.filter(p => p.duel_move === 'rock').length;
   const scissorsCount = players.filter(p => p.duel_move === 'scissors').length;
   const paperCount = players.filter(p => p.duel_move === 'paper').length;
 
-  // === หลัง Resolve: แสดงสถิติ ===
+  // === หลัง Resolve: สถิติ ===
   if (hasResults) {
     return (
-      <div className="mt-6 w-full">
-        {/* Stats row */}
-        <div className="flex justify-center gap-6 mb-6">
-          <div className="text-center px-6 py-4 rounded-xl" style={{ background: '#00FFB215', border: '1px solid #00FFB230', minWidth: '120px' }}>
-            <div className="text-4xl font-extrabold text-[#00FFB2]">{winCount}</div>
-            <div className="text-sm text-[#00FFB2] mt-1">🏆 ชนะ</div>
-            <div className="text-xs text-[#00FFB2]/60 mt-0.5">+฿500</div>
-          </div>
-          <div className="text-center px-6 py-4 rounded-xl" style={{ background: '#EF444415', border: '1px solid #EF444430', minWidth: '120px' }}>
-            <div className="text-4xl font-extrabold text-[#EF4444]">{loseCount}</div>
-            <div className="text-sm text-[#EF4444] mt-1">💥 แพ้</div>
-            <div className="text-xs text-[#EF4444]/60 mt-0.5">-฿300</div>
-          </div>
-          <div className="text-center px-6 py-4 rounded-xl" style={{ background: '#F59E0B15', border: '1px solid #F59E0B30', minWidth: '120px' }}>
-            <div className="text-4xl font-extrabold text-[#F59E0B]">{drawCount}</div>
-            <div className="text-sm text-[#F59E0B] mt-1">🤝 เสมอ</div>
-            <div className="text-xs text-[#F59E0B]/60 mt-0.5">฿0</div>
-          </div>
-          {byeCount > 0 && (
-            <div className="text-center px-6 py-4 rounded-xl" style={{ background: '#ffffff08', border: '1px solid #ffffff15', minWidth: '120px' }}>
-              <div className="text-4xl font-extrabold text-gray-500">{byeCount}</div>
-              <div className="text-sm text-gray-500 mt-1">🍀 Bye</div>
-              <div className="text-xs text-gray-600 mt-0.5">ไม่มีคู่</div>
+      <div className="w-full h-full flex items-center justify-center px-8">
+        <div className="flex gap-6 items-center">
+          {/* Left: Win/Lose/Draw/Bye stats */}
+          <div className="flex gap-4">
+            <div className="text-center px-4 py-3 rounded-xl" style={{ background: 'rgba(0,255,178,0.08)', border: '1px solid rgba(0,255,178,0.2)' }}>
+              <p className="text-3xl font-bold" style={{ color: '#00FFB2' }}>{winCount}</p>
+              <p className="text-[10px] text-gray-400">ชนะ</p>
             </div>
-          )}
-        </div>
+            <div className="text-center px-4 py-3 rounded-xl" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
+              <p className="text-3xl font-bold" style={{ color: '#EF4444' }}>{loseCount}</p>
+              <p className="text-[10px] text-gray-400">แพ้</p>
+            </div>
+            <div className="text-center px-4 py-3 rounded-xl" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
+              <p className="text-3xl font-bold" style={{ color: '#F59E0B' }}>{drawCount}</p>
+              <p className="text-[10px] text-gray-400">เสมอ</p>
+            </div>
+            {byeCount > 0 && (
+              <div className="text-center px-4 py-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <p className="text-3xl font-bold text-gray-400">{byeCount}</p>
+                <p className="text-[10px] text-gray-400">bye</p>
+              </div>
+            )}
+          </div>
 
-        {/* Move breakdown */}
-        <div className="flex justify-center gap-8">
-          <div className="text-center">
-            <span className="text-3xl">✊</span>
-            <div className="text-lg font-bold text-white mt-1">{rockCount}</div>
-          </div>
-          <div className="text-center">
-            <span className="text-3xl">✌️</span>
-            <div className="text-lg font-bold text-white mt-1">{scissorsCount}</div>
-          </div>
-          <div className="text-center">
-            <span className="text-3xl">✋</span>
-            <div className="text-lg font-bold text-white mt-1">{paperCount}</div>
+          {/* Divider */}
+          <div className="w-px h-16" style={{ background: 'rgba(255,255,255,0.1)' }} />
+
+          {/* Right: Move breakdown */}
+          <div className="flex gap-4">
+            <div className="text-center">
+              <p className="text-3xl">✊</p>
+              <p className="text-lg font-bold text-white">{rockCount}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-3xl">✌️</p>
+              <p className="text-lg font-bold text-white">{scissorsCount}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-3xl">✋</p>
+              <p className="text-lg font-bold text-white">{paperCount}</p>
+            </div>
           </div>
         </div>
       </div>
     );
   }
 
-  // === ระหว่างเล่น: แสดง submitted count ===
+  // === ก่อน Resolve: submitted count ===
   return (
-    <div className="mt-6 w-full">
-      {/* Big emoji row */}
-      <div className="flex justify-center gap-6 mb-6">
-        <span className="text-6xl">✊</span>
-        <span className="text-6xl">✌️</span>
-        <span className="text-6xl">✋</span>
-      </div>
-
-      {/* Submitted stats */}
-      <div className="flex justify-center gap-10">
-        <div className="text-center">
-          <div className="text-3xl font-extrabold text-[#00FFB2]">{submittedCount}</div>
-          <div className="text-sm text-gray-400">กดแล้ว</div>
-        </div>
-        <div className="text-center">
-          <div className="text-3xl font-extrabold text-gray-500">{waitingCount}</div>
-          <div className="text-sm text-gray-400">รอกด</div>
-        </div>
-        <div className="text-center">
-          <div className="text-3xl font-extrabold text-[#F59E0B]">{totalPairs}</div>
-          <div className="text-sm text-gray-400">คู่ทั้งหมด</div>
+    <div className="w-full h-full flex items-center justify-center">
+      <div className="text-center">
+        <p className="text-6xl mb-2">⚔️</p>
+        <p className="text-xl font-bold text-[#00FFB2] mb-4">MARKET FIGHT!</p>
+        <div className="flex gap-6 justify-center">
+          <div className="text-center">
+            <p className="text-4xl font-bold font-mono" style={{ color: '#00FFB2' }}>{submittedCount}</p>
+            <p className="text-xs text-gray-400">submitted</p>
+          </div>
+          <div className="text-center">
+            <p className="text-4xl font-bold font-mono text-gray-500">{waitingCount}</p>
+            <p className="text-xs text-gray-400">waiting</p>
+          </div>
+          <div className="text-center">
+            <p className="text-4xl font-bold font-mono text-gray-600">{totalPairs}</p>
+            <p className="text-xs text-gray-400">pairs</p>
+          </div>
         </div>
       </div>
-
-      <p className="text-gray-600 text-sm text-center mt-6">ดูคู่ของคุณบนมือถือ แล้วเลือก ค้อน กรรไกร กระดาษ!</p>
     </div>
   );
 }

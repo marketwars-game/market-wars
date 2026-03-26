@@ -1,7 +1,7 @@
 // FILE: app/mc/[roomId]/page.tsx — MC Control screen
-// VERSION: B9-v1 — Market Fight stats UI added for attack phase
-// LAST MODIFIED: 25 Mar 2026
-// HISTORY: B1 created | B3 phase control + timer | B4 submitted count + bug fix | B5 event_result + results | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components | B9 attack stats
+// VERSION: B12-UX-v1 — Full step bar + year_intro + market_open
+// LAST MODIFIED: 26 Mar 2026
+// HISTORY: B1 created | B3 phase control + timer | B4 submitted count + bug fix | B5 event_result + results | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components | B9 attack stats | B12-UX full step bar + year_intro + market_open
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -18,8 +18,9 @@ import {
   GOLDEN_DEALS,
   RETURN_TABLE,
   STARTING_MONEY,
+  YEAR_INTRO_TEXT,
 } from '@/lib/constants';
-import { getAllGameSteps, getNextPhase } from '@/lib/game-engine';
+import { getAllGameSteps, getNextPhase, getStepGroupProgress } from '@/lib/game-engine';
 import ResearchMC from '@/components/mc/ResearchMC';
 import ResultsMC from '@/components/mc/ResultsMC';
 import LeaderboardMC from '@/components/mc/LeaderboardMC';
@@ -96,38 +97,88 @@ export default function MCControlRoom() {
   const phase = room.current_phase || 'lobby';
   const round = room.current_round || 1;
   const phaseInfo = PHASE_DISPLAY[phase] || PHASE_DISPLAY.lobby;
-  const allSteps = getAllGameSteps();
-  const currentStepIndex = allSteps.findIndex((s) => s.round === round && s.phase === phase);
   const timerDuration = PHASE_TIMERS[phase] || 0;
   const timerPercent = timerDuration > 0 ? (timeLeft / timerDuration) * 100 : 0;
 
+  // ✅ B12-UX: Step group progress
+  const stepProgress = getStepGroupProgress(phase);
+
   return (
     <div className="min-h-screen bg-[#0D1117] text-white p-4">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div><h1 className="text-xl font-bold text-[#00FFB2]">MC Control</h1><p className="text-sm text-gray-400">Room: <span className="text-[#00D4FF] font-mono tracking-wider">{roomId}</span></p></div>
-        <button onClick={() => window.open(`/display/${roomId}`, '_blank')} className="text-sm text-[#00D4FF] border border-[#00D4FF] px-3 py-1 rounded hover:bg-[#00D4FF]/10">Open Display ↗</button>
+
+      {/* ✅ B12-UX: Header — MC CONTROL + year badge */}
+      <div className="flex items-center justify-between mb-2">
+        <div>
+          <h1 className="text-lg font-bold text-[#FF6B6B]">MC CONTROL</h1>
+          <p className="text-xs text-gray-500">Room: <span className="text-[#00D4FF] font-mono">{roomId}</span></p>
+        </div>
+        <div className="flex items-center gap-2">
+          {phase !== 'lobby' && phase !== 'final' && (
+            <span className="text-[10px] text-[#00D4FF] font-medium px-2.5 py-0.5 rounded-full" style={{ background: 'rgba(0,212,255,0.1)' }}>
+              ปีที่ {round} / {TOTAL_ROUNDS}
+            </span>
+          )}
+          <button onClick={() => window.open(`/display/${roomId}`, '_blank')} className="text-[10px] text-[#00D4FF] border border-[#00D4FF]/30 px-2 py-0.5 rounded hover:bg-[#00D4FF]/10">Display ↗</button>
+        </div>
       </div>
 
-      {/* Progress Bar */}
-      {phase !== 'lobby' && (
-        <div className="flex gap-[2px] mb-4">{allSteps.map((step, i) => (<div key={`${step.round}-${step.phase}`} className="flex-1 h-1 rounded-full" style={{ backgroundColor: i < currentStepIndex ? '#0a6847' : i === currentStepIndex ? '#00FFB2' : '#2a2d35' }} />))}</div>
+      {/* ✅ B12-UX: Full step bar (เหมือน Display) */}
+      {phase !== 'lobby' && phase !== 'final' && (
+        <div className="flex items-center gap-0.5 px-1 py-1.5 mb-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          {stepProgress.map((step, i) => (
+            <div key={step.id} className="flex items-center">
+              <span
+                className="text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap"
+                style={{
+                  color: step.status === 'current' ? '#00FFB2' : step.status === 'done' ? 'rgba(0,255,178,0.35)' : 'rgba(255,255,255,0.2)',
+                  background: step.status === 'current' ? 'rgba(0,255,178,0.1)' : 'transparent',
+                  fontWeight: step.status === 'current' ? 600 : 400,
+                }}
+              >
+                {step.icon} {step.label}
+              </span>
+              {i < stepProgress.length - 1 && (
+                <span className="text-[7px] mx-0.5" style={{ color: 'rgba(255,255,255,0.1)' }}>›</span>
+              )}
+            </div>
+          ))}
+        </div>
       )}
 
       {/* Phase Info Card */}
-      <div className="bg-[#161b22] rounded-lg p-4 mb-3">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-gray-400 text-sm uppercase tracking-wider">{phaseInfo.icon} {phaseInfo.name}</span>
-          {phase !== 'lobby' && phase !== 'final' && <span className="bg-[#00FFB2] text-[#0D1117] text-xs font-bold px-3 py-1 rounded-full">Round {round}/{TOTAL_ROUNDS}</span>}
+      <div className="bg-[#161b22] rounded-lg p-3 mb-3">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-gray-400 text-xs uppercase tracking-wider">{phaseInfo.icon} {phaseInfo.name}</span>
+          {phase !== 'lobby' && phase !== 'final' && <span className="text-gray-500 text-xs">Players: {players.length}</span>}
         </div>
-        {phase !== 'lobby' && phase !== 'final' && <div className="text-gray-400 text-sm mt-1">Players: {players.length} connected</div>}
         {phase === 'lobby' && (
-          <div className="mt-3 space-y-1">
+          <div className="mt-2 space-y-1">
             {players.length === 0 ? <p className="text-gray-500 text-sm">No players yet...</p> : players.map((p) => (<div key={p.id} className="flex justify-between text-sm border-b border-gray-800 pb-1"><span className="text-[#00FFB2]">{p.name}</span><span className="text-gray-500">฿{(parseFloat(p.money) || 0).toLocaleString()}</span></div>))}
             <p className="text-gray-500 text-xs mt-2">{players.length} player{players.length !== 1 ? 's' : ''} in lobby</p>
           </div>
         )}
       </div>
+
+      {/* ✅ B12-UX: Year Intro — MC tip */}
+      {phase === 'year_intro' && (() => {
+        const introText = YEAR_INTRO_TEXT[round] || { title: `ปีที่ ${round}`, subtitle: '' };
+        return (
+          <div className="rounded-lg p-3 mb-3" style={{ background: 'rgba(0,255,178,0.05)', border: '1px solid rgba(0,255,178,0.15)' }}>
+            <p className="text-sm font-bold text-[#00FFB2] mb-1">📅 ปีที่ {round} — {introText.title}</p>
+            <p className="text-xs text-gray-400">{introText.subtitle}</p>
+            <p className="text-xs text-gray-500 mt-2">เด็กๆ เห็น "ปีที่ {round}" บนจอใหญ่ — พูดแนะนำว่าปีนี้จะทำอะไรบ้าง แล้วกด Next</p>
+          </div>
+        );
+      })()}
+
+      {/* ✅ B12-UX: Market Open — MC tip */}
+      {phase === 'market_open' && (
+        <div className="rounded-lg p-3 mb-3" style={{ background: 'rgba(255,215,0,0.05)', border: '1px solid rgba(255,215,0,0.15)' }}>
+          <p className="text-sm font-bold text-[#FFD700] mb-1">📈 ตลาดเปิดแล้ว!</p>
+          <p className="text-xs text-gray-400">เด็กๆ เห็น transition "ตลาดเปิดแล้ว!" บนจอใหญ่</p>
+          <p className="text-xs text-gray-500 mt-1">สร้างความตื่นเต้น &quot;มาดูกันว่าปีนี้เกิดอะไรขึ้น...&quot; แล้วกด Next เพื่อเปิดข่าว</p>
+        </div>
+      )}
 
       {/* === Research Quiz (3 phases) — Component === */}
       {(phase === 'research' || phase === 'research_reveal' || phase === 'news_feed') && (
@@ -163,20 +214,10 @@ export default function MCControlRoom() {
                 </span>
               )}
             </div>
-            {/* Move breakdown */}
             <div className="flex justify-around mt-2 mb-2">
-              <div className="text-center">
-                <div className="text-xl">✊</div>
-                <div className="text-sm font-bold text-white">{players.filter(p => p.duel_move === 'rock').length}</div>
-              </div>
-              <div className="text-center">
-                <div className="text-xl">✌️</div>
-                <div className="text-sm font-bold text-white">{players.filter(p => p.duel_move === 'scissors').length}</div>
-              </div>
-              <div className="text-center">
-                <div className="text-xl">✋</div>
-                <div className="text-sm font-bold text-white">{players.filter(p => p.duel_move === 'paper').length}</div>
-              </div>
+              <div className="text-center"><div className="text-xl">✊</div><div className="text-sm font-bold text-white">{players.filter(p => p.duel_move === 'rock').length}</div></div>
+              <div className="text-center"><div className="text-xl">✌️</div><div className="text-sm font-bold text-white">{players.filter(p => p.duel_move === 'scissors').length}</div></div>
+              <div className="text-center"><div className="text-xl">✋</div><div className="text-sm font-bold text-white">{players.filter(p => p.duel_move === 'paper').length}</div></div>
             </div>
             {byeCount > 0 && <p className="text-xs" style={{ color: '#ffffff40' }}>🍀 {byeCount} คน Bye (ไม่มีคู่)</p>}
             {hasResults && (
@@ -199,10 +240,12 @@ export default function MCControlRoom() {
       )}
 
       {/* MC Tip */}
-      <div className="border-l-4 border-[#00D4FF] bg-[#1a1f2e] rounded-r-lg p-3 mb-3">
-        <p className="text-gray-400 text-sm">💡 {phaseInfo.mcTip}</p>
-        {MC_TIPS[round] && phase !== 'lobby' && phase !== 'final' && <p className="text-gray-500 text-xs mt-1">📌 Round tip: {MC_TIPS[round]}</p>}
-      </div>
+      {phase !== 'year_intro' && phase !== 'market_open' && (
+        <div className="border-l-4 border-[#00D4FF] bg-[#1a1f2e] rounded-r-lg p-3 mb-3">
+          <p className="text-gray-400 text-sm">💡 {phaseInfo.mcTip}</p>
+          {MC_TIPS[round] && phase !== 'lobby' && phase !== 'final' && <p className="text-gray-500 text-xs mt-1">📌 Round tip: {MC_TIPS[round]}</p>}
+        </div>
+      )}
 
       {/* === Event info for MC === */}
       {phase === 'event' && EVENTS[round - 1] && (
@@ -246,9 +289,15 @@ export default function MCControlRoom() {
         {room.status === 'playing' && phase !== 'final' && (() => {
           const isLeaderboard = phase === 'leaderboard';
           const isLastRound = round >= TOTAL_ROUNDS;
-          const nextLabel = isLeaderboard
-            ? (isLastRound ? 'Next → Final Summary 🏆' : `Next Round → Round ${round + 1}`)
-            : `Next → ${(() => { const next = getNextPhase(phase, round); return next ? PHASE_DISPLAY[next.phase]?.name || next.phase : 'End'; })()}`;
+          // ✅ B12-UX: Next button label — ปรับสำหรับ year_intro, market_open, leaderboard
+          let nextLabel = '';
+          if (isLeaderboard) {
+            nextLabel = isLastRound ? 'Next → Final Summary 🏆' : `Next Year → ปีที่ ${round + 1}`;
+          } else {
+            const next = getNextPhase(phase, round);
+            const nextName = next ? (PHASE_DISPLAY[next.phase]?.name || next.phase) : 'End';
+            nextLabel = `Next → ${nextName}`;
+          }
           return <button onClick={() => handleAction('next')} disabled={actionLoading} className="w-full py-3 rounded-lg font-bold text-[#0D1117] bg-[#00D4FF] hover:bg-[#00D4FF]/90 disabled:opacity-50">{actionLoading ? 'Loading...' : nextLabel}</button>;
         })()}
 
