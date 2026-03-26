@@ -9,7 +9,7 @@
 // ==============================================
 
 // --- Game Settings ---
-export const MAX_PLAYERS = 20;
+export const MAX_PLAYERS = 60;
 export const TOTAL_ROUNDS = 6;
 export const STARTING_MONEY = 10000;
 export const ALLOCATION_STEP = 10; // ทีละ 10%

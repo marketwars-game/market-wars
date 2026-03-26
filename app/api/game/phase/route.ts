@@ -148,7 +148,7 @@ export async function POST(request: Request) {
 
       // ✅ B9: ถ้าออกจาก attack phase → resolve duel ก่อนเข้า attack_result
       if (room.current_phase === 'attack') {
-        await callDuelAPI('resolve', room_id);
+        callDuelAPI('resolve', room_id);
       }
 
       // คำนวณ phase ถัดไปจาก game-engine
@@ -182,7 +182,7 @@ export async function POST(request: Request) {
 
       // ✅ B9: ถ้าเข้า attack phase → จับคู่สุ่มอัตโนมัติ
       if (next.phase === 'attack') {
-        await callDuelAPI('pair', room_id);
+        callDuelAPI('pair', room_id);
       }
 
       // ✅ B5: Auto-calculate returns when entering results phase
