@@ -1,7 +1,7 @@
 // FILE: lib/awards.ts — Awards calculation logic for Final Summary
-// VERSION: B11-v1 — Quiz Master + Smart Diversifier awards
+// VERSION: B13-BATCH2-v1 — Chance card stats replace duel stats
 // LAST MODIFIED: 26 Mar 2026
-// HISTORY: B11 created
+// HISTORY: B11 created | B13-BATCH2 chance card replaces duel
 
 import { STARTING_MONEY, TOTAL_ROUNDS, COMPANIES } from './constants';
 
@@ -48,7 +48,7 @@ function calcQuizMaster(players: any[]): Award {
       id: 'quiz_master',
       name: 'นักวิจัยยอดเยี่ยม',
       emoji: '🧠',
-      lesson: 'ความรู้ = ได้เปรียบ — ยิ่งตอบ quiz ถูกมาก ยิ่งรู้ข่าวจริงมากกว่าคนอื่น',
+      lesson: 'ความรู้ = เงิน — ยิ่งตอบ quiz ถูกมาก ยิ่งได้ bonus เงินมากกว่าคนอื่น',
       winnerId: null,
       winnerName: 'ไม่มีผู้ชนะ',
       stat: '',
@@ -62,7 +62,7 @@ function calcQuizMaster(players: any[]): Award {
     id: 'quiz_master',
     name: 'นักวิจัยยอดเยี่ยม',
     emoji: '🧠',
-    lesson: 'ความรู้ = ได้เปรียบ — ยิ่งตอบ quiz ถูกมาก ยิ่งรู้ข่าวจริงมากกว่าคนอื่น',
+    lesson: 'ความรู้ = เงิน — ยิ่งตอบ quiz ถูกมาก ยิ่งได้ bonus เงินมากกว่าคนอื่น',
     winnerId: winner.id,
     winnerName: winner.name,
     stat: `${winner.quizScore}/${totalQuestions} ข้อ`,
@@ -223,35 +223,31 @@ export function getPlayerAwards(playerId: string, awards: Award[]): Award[] {
 }
 
 // ==============================================
-// Helper: Player stats สำหรับ FinalView
+// ✅ B13: Player stats สำหรับ FinalView — เปลี่ยน duel → chance card
 // ==============================================
 
 export interface PlayerStats {
   quizCorrect: number;
   quizTotal: number;
-  duelWins: number;
-  duelLosses: number;
-  duelDraws: number;
+  chanceTotal: number;   // รวม chance card money ทุกรอบ
+  chanceBest: number;    // max single card amount
+  chanceWorst: number;   // min single card amount
 }
 
 export function calcPlayerStats(player: any): PlayerStats {
   const quizCorrect = parseFloat(player.quiz_score) || 0;
   const quizTotal = TOTAL_ROUNDS * 2; // 2 ข้อต่อรอบ
 
-  // Duel stats จาก round_returns
-  let duelWins = 0;
-  let duelLosses = 0;
-  let duelDraws = 0;
+  // ✅ B13: Chance card stats — ใช้ duel_money_change ปัจจุบัน (เป็นค่าของรอบล่าสุด)
+  // ในอนาคตถ้าอยากเก็บทุกรอบ ต้องเก็บใน round_returns
+  // ตอนนี้ใช้ current duel_money_change เป็น chanceTotal (ประมาณ)
+  const currentChance = parseFloat(player.duel_money_change) || 0;
 
-  const rr = player.round_returns || {};
-  for (let r = 1; r <= TOTAL_ROUNDS; r++) {
-    const roundData = rr[String(r)];
-    if (!roundData) continue;
-    const duelChange = parseFloat(roundData.duel_money_change) || 0;
-    if (duelChange > 0) duelWins++;
-    else if (duelChange < 0) duelLosses++;
-    else if (roundData.duel_money_change !== undefined) duelDraws++;
-  }
-
-  return { quizCorrect, quizTotal, duelWins, duelLosses, duelDraws };
+  return {
+    quizCorrect,
+    quizTotal,
+    chanceTotal: currentChance, // simplified: แสดงรอบล่าสุด
+    chanceBest: currentChance > 0 ? currentChance : 0,
+    chanceWorst: currentChance < 0 ? currentChance : 0,
+  };
 }

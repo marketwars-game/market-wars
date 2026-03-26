@@ -7,7 +7,14 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import { DUEL_CONFIG } from '@/lib/constants';
+// ✅ B13: DUEL_CONFIG ถูกลบแล้ว — ไฟล์นี้จะถูกแทนที่ด้วย ChanceCard.tsx ใน Batch 2
+const DUEL_CONFIG = {
+  WIN_AMOUNT: 300, LOSE_AMOUNT: 200, DRAW_AMOUNT: 0,
+  MOVES: ['rock', 'paper', 'scissors'] as const,
+  MOVE_EMOJI: { rock: '✊', paper: '✋', scissors: '✌️' } as Record<string, string>,
+  MOVE_LABEL: { rock: 'ค้อน', paper: 'กระดาษ', scissors: 'กรรไกร' } as Record<string, string>,
+  WINS_AGAINST: { rock: 'scissors', scissors: 'paper', paper: 'rock' } as Record<string, string>,
+};
 
 interface MarketFightProps {
   playerId: string;

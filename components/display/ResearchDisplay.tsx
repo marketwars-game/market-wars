@@ -1,22 +1,22 @@
-// FILE: components/display/ResearchDisplay.tsx — Display Research Quiz (3 phases)
-// VERSION: B12-UX-v1 — Horizontal layout for 16:9 projector (no scroll)
+// FILE: components/display/ResearchDisplay.tsx — Display Research Quiz (2 phases)
+// VERSION: B13-BATCH1-v1 — Cut news_feed, add bonus stats
 // LAST MODIFIED: 26 Mar 2026
-// HISTORY: B8 created (inline) | B8R extracted to component | B12-UX horizontal layout
+// HISTORY: B8 created (inline) | B8R extracted to component | B12-UX horizontal layout | B13-BATCH1 cut news_feed + bonus stats
 'use client';
 
-import { getQuizForRound, ROUND_NEWS } from '@/lib/constants';
+import { getQuizForRound, QUIZ_BONUS } from '@/lib/constants';
 
 interface ResearchDisplayProps {
   roomId: string;
   round: number;
-  phase: 'research' | 'research_reveal' | 'news_feed';
+  phase: 'research' | 'research_reveal'; // ✅ B13: ตัด news_feed
   players: any[];
   quizSubmittedCount: number;
 }
 
 export default function ResearchDisplay({ roomId, round, phase, players, quizSubmittedCount }: ResearchDisplayProps) {
 
-  // === PHASE 1: Research Quiz — ซ้าย: คำถาม | ขวา: counter + timer ===
+  // === PHASE 1: Research Quiz — ซ้าย: คำถาม | ขวา: counter ===
   if (phase === 'research') {
     const questions = getQuizForRound(roomId, round);
     return (
@@ -46,13 +46,17 @@ export default function ResearchDisplay({ roomId, round, phase, players, quizSub
     );
   }
 
-  // === PHASE 2: Quiz Reveal — เฉลย + สถิติ ===
+  // === PHASE 2: Quiz Reveal + Bonus Stats ===
   if (phase === 'research_reveal') {
     const questions = getQuizForRound(roomId, round);
     const answeredPlayers = players.filter(p => (p.quiz_answered_round || 0) >= round);
     const correct2 = answeredPlayers.filter(p => (p.quiz_correct_this_round || 0) >= 2).length;
     const correct1 = answeredPlayers.filter(p => (p.quiz_correct_this_round || 0) === 1).length;
     const correct0 = answeredPlayers.filter(p => (p.quiz_correct_this_round || 0) === 0).length;
+    const notAnswered = players.length - answeredPlayers.length;
+
+    // ✅ B13: คำนวณ bonus รวม
+    const totalBonus = (correct2 * QUIZ_BONUS.CORRECT_2) + (correct1 * QUIZ_BONUS.CORRECT_1);
 
     return (
       <div className="w-full h-full flex">
@@ -79,45 +83,25 @@ export default function ResearchDisplay({ roomId, round, phase, players, quizSub
             </div>
           ))}
         </div>
-        {/* Right: Stats */}
-        <div className="w-48 flex flex-col items-center justify-center px-4 gap-3">
+        {/* Right: Bonus Stats */}
+        <div className="w-52 flex flex-col items-center justify-center px-4 gap-3">
+          {/* ✅ B13: Bonus breakdown */}
           <div className="text-center">
             <p className="text-3xl font-bold" style={{ color: '#00FFB2' }}>{correct2}</p>
-            <p className="text-[10px]" style={{ color: '#ffffff40' }}>ถูกทั้ง 2 ข้อ</p>
+            <p className="text-[10px]" style={{ color: '#ffffff40' }}>ถูก 2 ข้อ (+฿{QUIZ_BONUS.CORRECT_2})</p>
           </div>
           <div className="text-center">
             <p className="text-2xl font-bold" style={{ color: '#F59E0B' }}>{correct1}</p>
-            <p className="text-[10px]" style={{ color: '#ffffff40' }}>ถูก 1 ข้อ</p>
+            <p className="text-[10px]" style={{ color: '#ffffff40' }}>ถูก 1 ข้อ (+฿{QUIZ_BONUS.CORRECT_1})</p>
           </div>
           <div className="text-center">
-            <p className="text-2xl font-bold" style={{ color: '#EF4444' }}>{correct0}</p>
-            <p className="text-[10px]" style={{ color: '#ffffff40' }}>ไม่ถูกเลย</p>
+            <p className="text-2xl font-bold" style={{ color: '#EF4444' }}>{correct0 + notAnswered}</p>
+            <p className="text-[10px]" style={{ color: '#ffffff40' }}>ไม่ได้ bonus</p>
           </div>
+          {/* Total bonus */}
           <div className="mt-2 text-center rounded-lg px-3 py-2" style={{ background: 'rgba(0,255,178,0.08)' }}>
-            <p className="text-xs" style={{ color: '#00FFB2' }}>{correct2} คนปลดล็อก</p>
+            <p className="text-xs" style={{ color: '#00FFB2' }}>💰 Bonus รวม: ฿{totalBonus.toLocaleString()}</p>
           </div>
-        </div>
-      </div>
-    );
-  }
-
-  // === PHASE 3: News Feed — ข่าว 3 ข่าว (Display ไม่เห็น real/fake) ===
-  if (phase === 'news_feed') {
-    const roundNews = ROUND_NEWS.find((n) => n.round === round);
-    if (!roundNews) return null;
-    return (
-      <div className="w-full h-full flex flex-col items-center justify-center px-8">
-        <p className="text-xs tracking-[3px] mb-4" style={{ color: '#00D4FF' }}>NEWS FEED — ROUND {round}</p>
-        <div className="w-full max-w-2xl space-y-3">
-          {roundNews.news.map((news, i) => (
-            <div key={i} className="flex items-start gap-3 rounded-lg p-3" style={{ background: '#161b22', borderLeft: '3px solid rgba(0,212,255,0.3)' }}>
-              <span className="text-2xl flex-shrink-0">{news.emoji}</span>
-              <div className="flex-1">
-                <p className="text-sm text-white">{news.text}</p>
-                <span className="inline-block mt-1 text-[9px] px-2 py-0.5 rounded-full" style={{ background: 'rgba(0,212,255,0.1)', color: '#00D4FF' }}>NEWS</span>
-              </div>
-            </div>
-          ))}
         </div>
       </div>
     );

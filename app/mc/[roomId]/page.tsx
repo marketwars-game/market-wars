@@ -1,7 +1,7 @@
 // FILE: app/mc/[roomId]/page.tsx — MC Control screen
-// VERSION: B12-UX-v1 — Full step bar + year_intro + market_open
+// VERSION: B13-BATCH3-v1 — Throttle + cut news/attack/rebalance + chance card summary
 // LAST MODIFIED: 26 Mar 2026
-// HISTORY: B1 created | B3 phase control + timer | B4 submitted count + bug fix | B5 event_result + results | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components | B9 attack stats | B12-UX full step bar + year_intro + market_open
+// HISTORY: B1 created | B3 phase control + timer | B4 submitted count + bug fix | B5 event_result + results | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components | B9 attack stats | B12-UX full step bar + year_intro + market_open | B13-BATCH3 throttle + cut news/attack/rebalance + chance card
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -11,16 +11,14 @@ import {
   PHASE_DISPLAY,
   PHASE_TIMERS,
   TOTAL_ROUNDS,
-  GOLDEN_DEAL_ROUNDS,
   COMPANIES,
   MC_TIPS,
   EVENTS,
-  GOLDEN_DEALS,
   RETURN_TABLE,
   STARTING_MONEY,
   YEAR_INTRO_TEXT,
 } from '@/lib/constants';
-import { getAllGameSteps, getNextPhase, getStepGroupProgress } from '@/lib/game-engine';
+import { getNextPhase, getStepGroupProgress } from '@/lib/game-engine';
 import ResearchMC from '@/components/mc/ResearchMC';
 import ResultsMC from '@/components/mc/ResultsMC';
 import LeaderboardMC from '@/components/mc/LeaderboardMC';
@@ -38,8 +36,35 @@ export default function MCControlRoom() {
   const [timeLeft, setTimeLeft] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // ✅ B13: Throttle refs
+  const pendingReload = useRef(false);
+  const throttleTimer = useRef<NodeJS.Timeout | null>(null);
+
   // === PIN check ===
   useEffect(() => { const pinOk = localStorage.getItem('mc_pin_verified'); if (!pinOk) { router.push('/mc'); return; } }, [router]);
+
+  // === Load players (reusable) ===
+  const loadPlayers = useCallback(async () => {
+    const { data: playerData } = await supabase
+      .from('players').select('*').eq('room_id', roomId).order('joined_at', { ascending: true });
+    if (playerData) setPlayers(playerData);
+  }, [roomId]);
+
+  // ✅ B13: Throttled reload — max 1 reload ต่อ 2 วินาที
+  const throttledReload = useCallback(() => {
+    if (throttleTimer.current) {
+      pendingReload.current = true;
+      return;
+    }
+    loadPlayers();
+    throttleTimer.current = setTimeout(() => {
+      throttleTimer.current = null;
+      if (pendingReload.current) {
+        pendingReload.current = false;
+        loadPlayers();
+      }
+    }, 2000);
+  }, [loadPlayers]);
 
   // === Fetch initial data ===
   useEffect(() => {
@@ -47,20 +72,31 @@ export default function MCControlRoom() {
       const { data: roomData } = await supabase.from('rooms').select('*').eq('id', roomId).single();
       if (!roomData) { setError('Room not found'); setLoading(false); return; }
       setRoom(roomData);
-      const { data: playerData } = await supabase.from('players').select('*').eq('room_id', roomId).order('joined_at', { ascending: true });
-      setPlayers(playerData || []); setLoading(false);
+      await loadPlayers();
+      setLoading(false);
     }
     fetchData();
-  }, [roomId]);
+  }, [roomId, loadPlayers]);
 
   // === Realtime subscriptions ===
   useEffect(() => {
-    const roomChannel = supabase.channel(`mc-room-${roomId}`).on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` }, (payload) => { setRoom(payload.new); }).subscribe();
-    const playerChannel = supabase.channel(`mc-players-${roomId}`).on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `room_id=eq.${roomId}` }, () => {
-      supabase.from('players').select('*').eq('room_id', roomId).order('joined_at', { ascending: true }).then(({ data }) => { if (data) setPlayers(data); });
-    }).subscribe();
-    return () => { supabase.removeChannel(roomChannel); supabase.removeChannel(playerChannel); };
-  }, [roomId]);
+    const roomChannel = supabase.channel(`mc-room-${roomId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` }, (payload) => { setRoom(payload.new); })
+      .subscribe();
+
+    // ✅ B13: Throttled player reload
+    const playerChannel = supabase.channel(`mc-players-${roomId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `room_id=eq.${roomId}` }, () => {
+        throttledReload();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(roomChannel);
+      supabase.removeChannel(playerChannel);
+      if (throttleTimer.current) clearTimeout(throttleTimer.current);
+    };
+  }, [roomId, throttledReload]);
 
   // === Timer ===
   const startTimer = useCallback((phase: string) => {
@@ -100,13 +136,13 @@ export default function MCControlRoom() {
   const timerDuration = PHASE_TIMERS[phase] || 0;
   const timerPercent = timerDuration > 0 ? (timeLeft / timerDuration) * 100 : 0;
 
-  // ✅ B12-UX: Step group progress
+  // Step group progress
   const stepProgress = getStepGroupProgress(phase);
 
   return (
     <div className="min-h-screen bg-[#0D1117] text-white p-4">
 
-      {/* ✅ B12-UX: Header — MC CONTROL + year badge */}
+      {/* Header — MC CONTROL + year badge */}
       <div className="flex items-center justify-between mb-2">
         <div>
           <h1 className="text-lg font-bold text-[#FF6B6B]">MC CONTROL</h1>
@@ -122,7 +158,7 @@ export default function MCControlRoom() {
         </div>
       </div>
 
-      {/* ✅ B12-UX: Full step bar (เหมือน Display) */}
+      {/* Step bar */}
       {phase !== 'lobby' && phase !== 'final' && (
         <div className="flex items-center gap-0.5 px-1 py-1.5 mb-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
           {stepProgress.map((step, i) => (
@@ -159,74 +195,138 @@ export default function MCControlRoom() {
         )}
       </div>
 
-      {/* ✅ B12-UX: Year Intro — MC tip */}
+      {/* Year Intro — MC tip */}
       {phase === 'year_intro' && (() => {
         const introText = YEAR_INTRO_TEXT[round] || { title: `ปีที่ ${round}`, subtitle: '' };
         return (
           <div className="rounded-lg p-3 mb-3" style={{ background: 'rgba(0,255,178,0.05)', border: '1px solid rgba(0,255,178,0.15)' }}>
             <p className="text-sm font-bold text-[#00FFB2] mb-1">📅 ปีที่ {round} — {introText.title}</p>
             <p className="text-xs text-gray-400">{introText.subtitle}</p>
-            <p className="text-xs text-gray-500 mt-2">เด็กๆ เห็น "ปีที่ {round}" บนจอใหญ่ — พูดแนะนำว่าปีนี้จะทำอะไรบ้าง แล้วกด Next</p>
+            <p className="text-xs text-gray-500 mt-2">เด็กๆ เห็น &quot;ปีที่ {round}&quot; บนจอใหญ่ — พูดแนะนำว่าปีนี้จะทำอะไรบ้าง แล้วกด Next</p>
           </div>
         );
       })()}
 
-      {/* ✅ B12-UX: Market Open — MC tip */}
+      {/* Market Open — MC tip */}
       {phase === 'market_open' && (
         <div className="rounded-lg p-3 mb-3" style={{ background: 'rgba(255,215,0,0.05)', border: '1px solid rgba(255,215,0,0.15)' }}>
           <p className="text-sm font-bold text-[#FFD700] mb-1">📈 ตลาดเปิดแล้ว!</p>
-          <p className="text-xs text-gray-400">เด็กๆ เห็น transition "ตลาดเปิดแล้ว!" บนจอใหญ่</p>
+          <p className="text-xs text-gray-400">เด็กๆ เห็น transition &quot;ตลาดเปิดแล้ว!&quot; บนจอใหญ่</p>
           <p className="text-xs text-gray-500 mt-1">สร้างความตื่นเต้น &quot;มาดูกันว่าปีนี้เกิดอะไรขึ้น...&quot; แล้วกด Next เพื่อเปิดข่าว</p>
         </div>
       )}
 
-      {/* === Research Quiz (3 phases) — Component === */}
-      {(phase === 'research' || phase === 'research_reveal' || phase === 'news_feed') && (
-        <ResearchMC roomId={roomId} round={round} phase={phase as 'research' | 'research_reveal' | 'news_feed'} players={players} quizSubmittedCount={quizSubmittedCount} />
+      {/* === Research Quiz (2 phases) — ✅ B13: ตัด news_feed === */}
+      {(phase === 'research' || phase === 'research_reveal') && (
+        <ResearchMC roomId={roomId} round={round} phase={phase as 'research' | 'research_reveal'} players={players} quizSubmittedCount={quizSubmittedCount} />
       )}
 
-      {/* === Portfolio Submitted Count === */}
-      {(phase === 'invest' || phase === 'rebalance') && (
-        <div className="rounded-lg p-3 mb-3" style={{ background: '#00D4FF15', border: '1px solid #00D4FF30' }}>
-          <div className="flex items-center justify-between"><span className="text-sm font-mono" style={{ color: '#00D4FF' }}>📊 Portfolio Submitted</span><span className="text-lg font-bold font-mono" style={{ color: '#00FFB2' }}>{submittedCount}/{players.length}</span></div>
-          {submittedCount < players.length && <p className="text-xs mt-1" style={{ color: '#ffffff40' }}>กด Next Phase ได้เลย — คนที่ไม่ส่ง = เงินไม่ลงทุนรอบนี้</p>}
-          {submittedCount === players.length && players.length > 0 && <p className="text-xs mt-1" style={{ color: '#00FFB2' }}>✓ ทุกคนส่งแล้ว! กด Next Phase ได้เลย</p>}
-        </div>
-      )}
+      {/* === Portfolio Submitted + Player List — ✅ B13: invest only + mini portfolio bar === */}
+      {phase === 'invest' && (() => {
+        const playerInvestList = players.map(p => {
+          const submitted = p.portfolio_submitted_round === round;
+          const portfolio = p.portfolio || {};
+          const invested = COMPANIES.filter(c => (parseFloat(portfolio[c.id]) || 0) > 0)
+            .map(c => ({ id: c.id, color: c.color, pct: parseFloat(portfolio[c.id]) || 0 }));
+          return { id: p.id, name: p.name, submitted, invested };
+        }).sort((a, b) => { if (a.submitted && !b.submitted) return -1; if (!a.submitted && b.submitted) return 1; return 0; });
 
-      {/* === Market Fight stats (B9) === */}
-      {(phase === 'attack' || phase === 'attack_result') && (() => {
-        const playersWithOpponent = players.filter(p => p.duel_opponent_id);
-        const duelSubmitted = players.filter(p => p.duel_submitted_round >= round && p.duel_opponent_id).length;
-        const byeCount = players.filter(p => p.duel_result === 'bye').length;
-        const hasResults = players.some(p => p.duel_result === 'win' || p.duel_result === 'lose' || p.duel_result === 'draw');
-        const winCount = players.filter(p => p.duel_result === 'win').length;
-        const loseCount = players.filter(p => p.duel_result === 'lose').length;
-        const drawCount = players.filter(p => p.duel_result === 'draw').length;
         return (
-          <div className="rounded-lg p-3 mb-3" style={{ background: '#EF444415', border: '1px solid #EF444430' }}>
+          <div className="rounded-lg p-3 mb-3" style={{ background: '#00D4FF15', border: '1px solid #00D4FF30' }}>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-mono" style={{ color: '#EF4444' }}>⚔️ {phase === 'attack' ? 'Market Fight' : 'Fight Results'}</span>
-              {phase === 'attack' && (
-                <span className="text-lg font-bold font-mono" style={{ color: '#00FFB2' }}>
-                  {duelSubmitted}/{playersWithOpponent.length}
-                  <span className="text-xs text-gray-500 ml-1">กดแล้ว</span>
-                </span>
-              )}
+              <span className="text-sm font-mono" style={{ color: '#00D4FF' }}>📊 Portfolio Submitted</span>
+              <span className="text-lg font-bold font-mono" style={{ color: '#00FFB2' }}>{submittedCount}/{players.length}</span>
+            </div>
+            {submittedCount < players.length && <p className="text-xs mb-2" style={{ color: '#ffffff40' }}>กด Next Phase ได้เลย — คนที่ไม่ส่ง = เงินไม่ลงทุนรอบนี้</p>}
+            {submittedCount === players.length && players.length > 0 && <p className="text-xs mb-2" style={{ color: '#00FFB2' }}>✓ ทุกคนส่งแล้ว!</p>}
+            {/* Player list */}
+            <div className="rounded-md overflow-hidden" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+              <div className="max-h-48 overflow-y-auto">
+                {playerInvestList.map((p) => (
+                  <div key={p.id} className="flex items-center px-2 py-1.5 gap-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <span className="text-xs flex-shrink-0" style={{ color: p.submitted ? '#00FFB2' : 'rgba(255,255,255,0.25)' }}>{p.submitted ? '✅' : '⏳'}</span>
+                    <span className="text-xs w-20 truncate" style={{ color: p.submitted ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.4)' }}>{p.name}</span>
+                    {/* Mini portfolio bar */}
+                    {p.submitted && p.invested.length > 0 ? (
+                      <div className="flex-1 h-3 rounded-full overflow-hidden flex" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                        {p.invested.map((inv) => (
+                          <div key={inv.id} style={{ width: `${inv.pct}%`, backgroundColor: inv.color }} title={`${inv.id} ${inv.pct}%`} />
+                        ))}
+                      </div>
+                    ) : p.submitted ? (
+                      <span className="text-[9px] text-gray-600 flex-1">Cash 100%</span>
+                    ) : (
+                      <span className="text-[9px] text-gray-600 flex-1">รอ...</span>
+                    )}
+                    {p.submitted && <span className="text-[9px] text-gray-500 flex-shrink-0">{p.invested.length} หุ้น</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* === ✅ B13: Chance Card stats + Player List === */}
+      {phase === 'chance_card' && (() => {
+        const playerCardList = players.map(p => {
+          const opened = (p.duel_submitted_round || 0) >= round;
+          const amount = opened ? (parseFloat(p.duel_money_change) || 0) : 0;
+          return { id: p.id, name: p.name, opened, amount };
+        }).sort((a, b) => { if (a.opened && !b.opened) return -1; if (!a.opened && b.opened) return 1; return b.amount - a.amount; });
+
+        const openedCount = playerCardList.filter(p => p.opened).length;
+        const positiveCount = playerCardList.filter(p => p.opened && p.amount > 0).length;
+        const negativeCount = playerCardList.filter(p => p.opened && p.amount < 0).length;
+        const totalChange = playerCardList.filter(p => p.opened).reduce((sum, p) => sum + p.amount, 0);
+
+        return (
+          <div className="rounded-lg p-3 mb-3" style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)' }}>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-mono" style={{ color: '#F59E0B' }}>🃏 Chance Card</span>
+              <span className="text-lg font-bold font-mono" style={{ color: '#00FFB2' }}>
+                {openedCount}/{players.length}
+                <span className="text-xs text-gray-500 ml-1">เปิดแล้ว</span>
+              </span>
             </div>
             <div className="flex justify-around mt-2 mb-2">
-              <div className="text-center"><div className="text-xl">✊</div><div className="text-sm font-bold text-white">{players.filter(p => p.duel_move === 'rock').length}</div></div>
-              <div className="text-center"><div className="text-xl">✌️</div><div className="text-sm font-bold text-white">{players.filter(p => p.duel_move === 'scissors').length}</div></div>
-              <div className="text-center"><div className="text-xl">✋</div><div className="text-sm font-bold text-white">{players.filter(p => p.duel_move === 'paper').length}</div></div>
-            </div>
-            {byeCount > 0 && <p className="text-xs" style={{ color: '#ffffff40' }}>🍀 {byeCount} คน Bye (ไม่มีคู่)</p>}
-            {hasResults && (
-              <div className="grid grid-cols-3 gap-2 mt-2 pt-2 border-t border-gray-800">
-                <div className="text-center"><span className="text-sm font-bold text-[#00FFB2]">{winCount}</span><span className="text-xs text-gray-500 ml-1">ชนะ</span></div>
-                <div className="text-center"><span className="text-sm font-bold text-[#EF4444]">{loseCount}</span><span className="text-xs text-gray-500 ml-1">แพ้</span></div>
-                <div className="text-center"><span className="text-sm font-bold text-[#F59E0B]">{drawCount}</span><span className="text-xs text-gray-500 ml-1">เสมอ</span></div>
+              <div className="text-center">
+                <div className="text-sm font-bold" style={{ color: '#00FFB2' }}>{positiveCount}</div>
+                <div className="text-[10px] text-gray-500">ได้เงิน</div>
               </div>
-            )}
+              <div className="text-center">
+                <div className="text-sm font-bold" style={{ color: '#EF4444' }}>{negativeCount}</div>
+                <div className="text-[10px] text-gray-500">เสียเงิน</div>
+              </div>
+              <div className="text-center">
+                <div className="text-sm font-bold" style={{ color: totalChange >= 0 ? '#00FFB2' : '#EF4444' }}>
+                  {totalChange >= 0 ? '+' : '-'}฿{Math.abs(totalChange).toLocaleString()}
+                </div>
+                <div className="text-[10px] text-gray-500">รวม</div>
+              </div>
+            </div>
+            {openedCount < players.length && <p className="text-xs mb-2" style={{ color: '#ffffff40' }}>กด Next ได้เลย — คนที่ไม่เปิด = ไม่ได้/เสียเงิน</p>}
+            {openedCount === players.length && players.length > 0 && <p className="text-xs mb-2" style={{ color: '#00FFB2' }}>✓ ทุกคนเปิดแล้ว!</p>}
+            {/* Player list */}
+            <div className="rounded-md overflow-hidden" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+              <div className="max-h-48 overflow-y-auto">
+                {playerCardList.map((p) => (
+                  <div key={p.id} className="flex items-center justify-between px-2 py-1.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs" style={{ color: p.opened ? '#00FFB2' : 'rgba(255,255,255,0.25)' }}>{p.opened ? '✅' : '⏳'}</span>
+                      <span className="text-xs" style={{ color: p.opened ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.4)' }}>{p.name}</span>
+                    </div>
+                    {p.opened ? (
+                      <span className="text-xs font-bold" style={{ color: p.amount > 0 ? '#00FFB2' : p.amount < 0 ? '#EF4444' : '#F59E0B' }}>
+                        {p.amount > 0 ? '+' : p.amount < 0 ? '-' : ''}฿{Math.abs(p.amount).toLocaleString()}
+                      </span>
+                    ) : (
+                      <span className="text-[9px] text-gray-600">รอ...</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         );
       })()}
@@ -263,13 +363,6 @@ export default function MCControlRoom() {
         </div>
       )}
 
-      {/* === Golden Deal info === */}
-      {phase === 'golden_deal' && (
-        <div className="bg-[#161b22] rounded-lg p-3 mb-3 border border-[#F59E0B]/30">
-          {(() => { const deal = GOLDEN_DEALS.find((d) => d.round === round); if (!deal) return null; return (<><p className="text-[#F59E0B] text-sm font-bold">✨ {deal.name}</p><p className="text-gray-400 text-xs mt-1">{deal.description}</p><p className={`text-xs mt-1 ${deal.is_trap ? 'text-red-400' : 'text-green-400'}`}>Actual return: {deal.actual_return > 0 ? '+' : ''}{deal.actual_return}%{deal.is_trap ? ' ⚠️ TRAP!' : ''}</p></>); })()}
-        </div>
-      )}
-
       {/* === Results — Component === */}
       {phase === 'results' && <ResultsMC round={round} players={players} />}
 
@@ -289,7 +382,6 @@ export default function MCControlRoom() {
         {room.status === 'playing' && phase !== 'final' && (() => {
           const isLeaderboard = phase === 'leaderboard';
           const isLastRound = round >= TOTAL_ROUNDS;
-          // ✅ B12-UX: Next button label — ปรับสำหรับ year_intro, market_open, leaderboard
           let nextLabel = '';
           if (isLeaderboard) {
             nextLabel = isLastRound ? 'Next → Final Summary 🏆' : `Next Year → ปีที่ ${round + 1}`;

@@ -1,11 +1,11 @@
 // FILE: app/play/[roomId]/page.tsx — Player game screen
-// VERSION: B12-UX-v1 — Mini step indicator + year_intro + market_open
+// VERSION: B13-BATCH3-v1 — ChanceCard + Realtime optimize + cut news/rebalance/attack + invest from 0%
 // LAST MODIFIED: 26 Mar 2026
-// HISTORY: B2 created | B3 phase sync + timer | B4 InvestmentPanel | B5 event_result + ResultsPanel | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components | B9 MarketFight | B12-UX mini step + year_intro + market_open
+// HISTORY: B2 created | B3 phase sync + timer | B4 InvestmentPanel | B5 event_result + ResultsPanel | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components | B9 MarketFight | B12-UX mini step + year_intro + market_open | B13-BATCH3 ChanceCard + Realtime optimize + cut news/rebalance/attack
 'use client';
 
 import { useEffect, useState, useRef, Suspense } from 'react';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import {
   PHASE_DISPLAY,
@@ -13,9 +13,6 @@ import {
   TOTAL_ROUNDS,
   COMPANIES,
   STARTING_MONEY,
-  GOLDEN_DEALS,
-  ROUND_NEWS,
-  STEP_GROUPS,
   YEAR_INTRO_TEXT,
   getQuizForRound,
 } from '@/lib/constants';
@@ -25,7 +22,7 @@ import ResultsPanel from '@/components/player/ResultsPanel';
 import ResearchQuiz from '@/components/player/ResearchQuiz';
 import LeaderboardView from '@/components/player/LeaderboardView';
 import FinalView from '@/components/player/FinalView';
-import MarketFight from '@/components/player/MarketFight';
+import ChanceCard from '@/components/player/ChanceCard';
 
 function PlayerContent() {
   const params = useParams();
@@ -68,18 +65,39 @@ function PlayerContent() {
     fetchData();
   }, [roomId]);
 
-  // === Realtime subscriptions ===
+  // === ✅ B13: Realtime subscriptions — Player subscribe เฉพาะ row ตัวเอง ===
   useEffect(() => {
-    const roomChannel = supabase.channel(`player-room-${roomId}`).on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` }, (payload) => setRoom(payload.new)).subscribe();
-    const playerChannel = supabase.channel(`player-players-${roomId}`).on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `room_id=eq.${roomId}` }, () => {
-      supabase.from('players').select('*').eq('room_id', roomId).order('joined_at', { ascending: true }).then(({ data }) => {
-        if (data) setPlayers(data);
-        const pid = playerIdRef.current;
-        if (pid) { const me = data?.find((p) => p.id === pid); if (me) { setPlayer(me); localStorage.setItem(`mw_player_${roomId}`, JSON.stringify(me)); } }
-      });
-    }).subscribe();
-    return () => { supabase.removeChannel(roomChannel); supabase.removeChannel(playerChannel); };
-  }, [roomId]);
+    const roomChannel = supabase.channel(`player-room-${roomId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` }, (payload) => setRoom(payload.new))
+      .subscribe();
+
+    // ✅ B13: subscribe เฉพาะ player id ของตัวเอง (ลด Realtime events 98%)
+    const pid = playerIdRef.current;
+    let playerChannel: any = null;
+    if (pid) {
+      playerChannel = supabase.channel(`player-me-${pid}`)
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'players', filter: `id=eq.${pid}` }, (payload) => {
+          const updated = payload.new;
+          setPlayer(updated);
+          localStorage.setItem(`mw_player_${roomId}`, JSON.stringify(updated));
+        })
+        .subscribe();
+    }
+
+    return () => {
+      supabase.removeChannel(roomChannel);
+      if (playerChannel) supabase.removeChannel(playerChannel);
+    };
+  }, [roomId, playerIdRef.current]);
+
+  // ✅ B13: Fetch players list เมื่อ phase เปลี่ยนเป็น leaderboard/final (ต้องการ players array)
+  useEffect(() => {
+    const phase = room?.current_phase;
+    if (phase === 'leaderboard' || phase === 'final' || phase === 'lobby') {
+      supabase.from('players').select('*').eq('room_id', roomId).order('joined_at', { ascending: true })
+        .then(({ data }) => { if (data) setPlayers(data); });
+    }
+  }, [room?.current_phase, roomId]);
 
   // === Timer ===
   useEffect(() => {
@@ -140,7 +158,7 @@ function PlayerContent() {
   const timerPercent = timerDuration > 0 ? (timeLeft / timerDuration) * 100 : 0;
   const timerColor = timeLeft <= 10 ? '#FF4444' : timeLeft <= 30 ? '#F59E0B' : '#00FFB2';
 
-  // ✅ B12-UX: Step group progress for mini indicator
+  // Step group progress for mini indicator
   const stepProgress = getStepGroupProgress(phase);
   const currentStep = stepProgress.find((s) => s.status === 'current');
 
@@ -172,7 +190,7 @@ function PlayerContent() {
   return (
     <div className="min-h-screen bg-[#0D1117] text-white p-4">
 
-      {/* ✅ B12-UX: Player header — name + year badge + money */}
+      {/* Player header — name + year badge + money */}
       <div className="flex items-center justify-between mb-1">
         <span className="text-[#00FFB2] font-bold text-sm">{player.name}</span>
         {phase !== 'lobby' && phase !== 'final' && (
@@ -183,7 +201,7 @@ function PlayerContent() {
         <span className="text-gray-500 text-xs">฿{(parseFloat(player.money) || 0).toLocaleString()}</span>
       </div>
 
-      {/* ✅ B12-UX: Mini step indicator — 6 dots + current label */}
+      {/* Mini step indicator — 6 dots + current label */}
       {phase !== 'lobby' && phase !== 'final' && phase !== 'year_intro' && (
         <div className="flex items-center gap-0 mb-3 px-1">
           <div className="flex items-center gap-0 flex-1">
@@ -222,17 +240,17 @@ function PlayerContent() {
         </div>
       )}
 
-      {/* === Lobby === */}
+      {/* === Lobby — ✅ B13: ตัด player list (ดูบน Display แทน) === */}
       {phase === 'lobby' && (
-        <div className="bg-[#161b22] rounded-lg p-4">
-          <p className="text-[#00FFB2] font-bold mb-2">You&apos;re in! 🎉</p>
+        <div className="bg-[#161b22] rounded-lg p-4 text-center">
+          <p className="text-[#00FFB2] font-bold text-lg mb-2">You&apos;re in! 🎉</p>
           <p className="text-gray-400 text-sm mb-3">Starting money: ฿{STARTING_MONEY.toLocaleString()}</p>
-          <p className="text-gray-500 text-xs mb-2">Players in lobby:</p>
-          <div className="flex flex-wrap gap-1">{players.map((p) => (<span key={p.id} className={`text-xs px-2 py-1 rounded-full ${p.id === player.id ? 'bg-[#00FFB2]/20 text-[#00FFB2]' : 'bg-gray-800 text-gray-400'}`}>{p.name}</span>))}</div>
+          <p className="text-gray-500 text-xs">📺 ดูจอใหญ่เพื่อดูรายชื่อผู้เล่น</p>
+          <p className="text-gray-600 text-xs mt-1">รอ MC เริ่มเกม...</p>
         </div>
       )}
 
-      {/* ✅ B12-UX: Year Intro — ปีที่ X + ขั้นตอน */}
+      {/* ✅ B13: Year Intro — ปรับขั้นตอน: เป่ายิงฉุบ → เปิดการ์ดโชคชะตา */}
       {phase === 'year_intro' && (() => {
         const introText = YEAR_INTRO_TEXT[round] || { title: `ปีที่ ${round} เริ่มแล้ว!`, subtitle: 'เตรียมตัวให้พร้อม' };
         return (
@@ -245,9 +263,9 @@ function PlayerContent() {
             <p className="text-[10px] text-gray-500 tracking-[2px] mb-3">สิ่งที่ต้องทำปีนี้</p>
             <div className="flex flex-col gap-2 w-full max-w-[220px]">
               {[
-                { num: 1, text: 'ตอบ Quiz ปลดล็อกข่าว' },
-                { num: 2, text: 'เลือกลงทุน 6 บริษัท' },
-                { num: 3, text: 'เป่ายิงฉุบชิงเงิน' },
+                { num: 1, text: 'ตอบ Quiz รับ Bonus เงิน' },
+                { num: 2, text: 'จัดสรรงบประมาณลงทุน' },
+                { num: 3, text: 'เปิดการ์ดโชคชะตา' },
                 { num: 4, text: 'ดูผลตลาดประจำปี' },
               ].map((s) => (
                 <div key={s.num} className="flex items-center gap-2 text-sm text-gray-400">
@@ -262,7 +280,7 @@ function PlayerContent() {
         );
       })()}
 
-      {/* ✅ B12-UX: Market Open — ตลาดเปิด + ดูจอใหญ่ */}
+      {/* Market Open — ตลาดเปิด */}
       {phase === 'market_open' && (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <p className="text-5xl mb-3">📈</p>
@@ -275,8 +293,8 @@ function PlayerContent() {
         </div>
       )}
 
-      {/* Phase info — only for phases without custom UI and not year_intro/market_open */}
-      {!['invest', 'rebalance', 'research', 'research_reveal', 'news_feed', 'attack', 'attack_result', 'year_intro', 'market_open', 'lobby', 'final'].includes(phase) && (
+      {/* Phase info — only for phases without custom UI */}
+      {!['invest', 'research', 'research_reveal', 'chance_card', 'year_intro', 'market_open', 'lobby', 'final'].includes(phase) && (
         <div className="text-center py-4">
           <div className="text-3xl mb-1">{phaseInfo.icon}</div>
           <h2 className="text-xl font-bold text-[#00FFB2]">{phaseInfo.name}</h2>
@@ -284,16 +302,15 @@ function PlayerContent() {
         </div>
       )}
 
-      {/* === Investment === */}
-      {phase === 'invest' && <InvestmentPanel playerId={player.id} roomId={roomId} money={parseFloat(player.money) || 0} currentPortfolio={player.portfolio || {}} isRebalance={false} />}
-      {phase === 'rebalance' && <InvestmentPanel playerId={player.id} roomId={roomId} money={parseFloat(player.money) || 0} currentPortfolio={player.portfolio || {}} isRebalance={true} />}
+      {/* === Investment — ✅ B13: ทุกรอบเริ่มจาก 0% (currentPortfolio={{}}) === */}
+      {phase === 'invest' && <InvestmentPanel playerId={player.id} roomId={roomId} money={parseFloat(player.money) || 0} currentPortfolio={{}} isRebalance={false} />}
 
-      {/* === Research Quiz (3 phases) — Component === */}
-      {(phase === 'research' || phase === 'research_reveal' || phase === 'news_feed') && (
+      {/* === Research Quiz (2 phases) — ✅ B13: ตัด news_feed === */}
+      {(phase === 'research' || phase === 'research_reveal') && (
         <ResearchQuiz
           roomId={roomId}
           round={round}
-          phase={phase as 'research' | 'research_reveal' | 'news_feed'}
+          phase={phase as 'research' | 'research_reveal'}
           quizAnswers={quizAnswers}
           quizSubmitted={quizSubmitted}
           onSelect={handleQuizSelect}
@@ -301,23 +318,19 @@ function PlayerContent() {
         />
       )}
 
-      {/* === Market Fight (B9) — Component === */}
-      {(phase === 'attack' || phase === 'attack_result') && (
-        <MarketFight
+      {/* === ✅ B13: Chance Card (แทน MarketFight) === */}
+      {phase === 'chance_card' && (
+        <ChanceCard
           playerId={player.id}
           roomId={roomId}
           round={round}
           player={player}
-          players={players}
         />
       )}
 
       {/* === Event / Event Result — watch big screen === */}
       {phase === 'event' && <div className="bg-[#161b22] rounded-lg p-6 text-center"><div className="text-4xl mb-2">📺</div><p className="text-gray-400">Watch the big screen!</p></div>}
       {phase === 'event_result' && <div className="bg-[#161b22] rounded-lg p-6 text-center"><div className="text-4xl mb-2">📺</div><p className="text-gray-400">Watch the big screen!</p><p className="text-gray-600 text-xs mt-1">Market impact being revealed...</p></div>}
-
-      {/* === Golden Deal placeholder === */}
-      {phase === 'golden_deal' && (() => { const deal = GOLDEN_DEALS.find((d) => d.round === round); return (<div className="bg-[#161b22] rounded-lg p-4 text-center"><div className="text-3xl mb-2">✨</div><p className="text-[#F59E0B] font-bold">{deal?.name || 'Golden Deal'}</p><p className="text-gray-500 text-xs mt-2">(Golden Deal UI coming soon)</p></div>); })()}
 
       {/* === Results — Component === */}
       {phase === 'results' && <ResultsPanel round={round} player={player} />}

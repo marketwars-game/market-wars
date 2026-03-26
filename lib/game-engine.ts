@@ -1,7 +1,7 @@
 // FILE: lib/game-engine.ts — State Machine + Room Code Generator
-// VERSION: B12-UX-v1 — year_intro + market_open + step group helpers
+// VERSION: B13-BATCH0-v1 — New phase flow: cut news/rebalance/attack, add chance_card
 // LAST MODIFIED: 26 Mar 2026
-// HISTORY: B1 created | B3 state machine | B4 fix phase flow | B5 event_result | B8 research_reveal + news_feed | B9 attack_result | B10 disable golden deal | B12-UX year_intro + market_open + step groups
+// HISTORY: B1 created | B3 state machine | B4 fix phase flow | B5 event_result | B8 research_reveal + news_feed | B9 attack_result | B10 disable golden deal | B12-UX year_intro + market_open + step groups | B13-BATCH0 new phase flow
 
 import { ROOM_CODE_CONFIG, GOLDEN_DEAL_ROUNDS, TOTAL_ROUNDS, STEP_GROUPS } from './constants';
 
@@ -21,19 +21,24 @@ export function generateRoomCode(): string {
 // Phase State Machine
 // ==============================================
 
-// Phase order สำหรับรอบที่กำหนด
-// ✅ B12-UX: เพิ่ม year_intro (หัวรอบ) + market_open (กลางรอบ หลัง attack_result ก่อน event)
+// Phase order — ✅ B13: ทุกรอบเหมือนกัน (ไม่มี rebalance/news_feed/attack อีก)
 //
-// ทุกรอบ: year_intro → research → research_reveal → news_feed → invest/rebalance → attack → attack_result → market_open → event → event_result → results → leaderboard
+// ทุกรอบ: year_intro → research → research_reveal → invest → chance_card → market_open → event → event_result → results → leaderboard
 // รอบ 6: ... → results → leaderboard → final
 export function getPhaseOrder(round: number): string[] {
-  // รอบ 1 ใช้ invest (เริ่มจาก 0%), รอบ 2+ ใช้ rebalance (prefill จากรอบก่อน)
-  const investPhase = round === 1 ? 'invest' : 'rebalance';
+  // ✅ B13: ทุกรอบใช้ invest (เริ่มจาก 0% เสมอ — ไม่มี rebalance อีก)
+  const phases = [
+    'year_intro',
+    'research',
+    'research_reveal',
+    'invest',
+    'chance_card',       // ✅ B13: แทน attack + attack_result
+    'market_open',
+    'event',
+    'event_result',
+  ];
 
-  // ✅ B12-UX: year_intro เป็น phase แรก, market_open หลัง attack_result ก่อน event
-  const phases = ['year_intro', 'research', 'research_reveal', 'news_feed', investPhase, 'attack', 'attack_result', 'market_open', 'event', 'event_result'];
-
-  // เพิ่ม Golden Deal ถ้าเป็นรอบ 2, 4, 6
+  // เพิ่ม Golden Deal ถ้าเป็นรอบที่กำหนด (ปัจจุบันปิดอยู่ = [])
   if (GOLDEN_DEAL_ROUNDS.includes(round)) {
     phases.push('golden_deal');
   }
@@ -55,7 +60,7 @@ export function getNextPhase(
   currentRound: number,
 ): { phase: string; round: number; status: string } | null {
 
-  // ✅ B12-UX: จาก lobby → year_intro (แทน research)
+  // จาก lobby → year_intro (เริ่มเกม)
   if (currentPhase === 'lobby') {
     return { phase: 'year_intro', round: 1, status: 'playing' };
   }
@@ -83,7 +88,7 @@ export function getNextPhase(
     };
   }
 
-  // ✅ B12-UX: ถ้าอยู่ที่ leaderboard (phase สุดท้ายของรอบ) → ขึ้นรอบใหม่ที่ year_intro
+  // ถ้าอยู่ที่ leaderboard (phase สุดท้ายของรอบ) → ขึ้นรอบใหม่ที่ year_intro
   if (currentPhase === 'leaderboard') {
     return {
       phase: 'year_intro',

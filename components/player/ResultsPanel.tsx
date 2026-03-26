@@ -1,7 +1,7 @@
 // FILE: components/player/ResultsPanel.tsx
-// VERSION: B9-v3 — fix negative money sign
-// LAST MODIFIED: 25 Mar 2026
-// HISTORY: B5 created | B9 duel badge | B9-v2 combined summary
+// VERSION: B13-BATCH2-v1 — Chance card replaces duel
+// LAST MODIFIED: 26 Mar 2026
+// HISTORY: B5 created | B9 duel badge | B9-v2 combined summary | B13-BATCH2 chance card replaces duel
 'use client';
 
 import { COMPANIES, RETURN_TABLE } from '@/lib/constants';
@@ -29,14 +29,12 @@ export default function ResultsPanel({ round, player }: ResultsPanelProps) {
   const { money_before, money_after, total_return, returns, portfolio_used } = roundReturns;
   const roundIndex = round - 1;
 
-  // ✅ B9: Duel data
-  const duelResult = player.duel_result;
-  const duelMoneyChange = parseFloat(player.duel_money_change) || 0;
-  const duelOpponentName = player.duel_opponent_name || '';
-  const hasDuel = duelResult && duelResult !== 'null' && duelResult !== null;
+  // ✅ B13: Chance Card data (reuse duel_money_change column)
+  const chanceAmount = parseFloat(player.duel_money_change) || 0;
+  const hasChance = (player.duel_submitted_round || 0) >= round;
 
-  // คำนวณยอดรวมสุทธิ (หุ้น + duel)
-  const totalCombined = total_return + (hasDuel ? duelMoneyChange : 0);
+  // คำนวณยอดรวมสุทธิ (หุ้น + chance card)
+  const totalCombined = total_return + (hasChance ? chanceAmount : 0);
   const isCombinedProfit = totalCombined >= 0;
   const isStockProfit = total_return >= 0;
 
@@ -64,7 +62,7 @@ export default function ResultsPanel({ round, player }: ResultsPanelProps) {
         </span>
       </div>
 
-      {/* ✅ B9: Combined Total Card — หุ้น + duel รวมกัน */}
+      {/* ✅ B13: Combined Total Card — หุ้น + chance card */}
       <div className="bg-[#161b22] rounded-lg p-4 text-center mb-3">
         <div className="text-xs text-gray-500 mb-2">รวมรอบนี้</div>
         <div
@@ -74,7 +72,7 @@ export default function ResultsPanel({ round, player }: ResultsPanelProps) {
           {isCombinedProfit ? '+' : '-'}฿{Math.abs(totalCombined).toLocaleString()}
         </div>
 
-        {/* แยกรายละเอียด: หุ้น + duel */}
+        {/* แยกรายละเอียด: หุ้น + chance card */}
         <div className="mt-3 space-y-1">
           {/* ผลจากหุ้น */}
           <div className="flex items-center justify-between text-sm px-2">
@@ -84,21 +82,16 @@ export default function ResultsPanel({ round, player }: ResultsPanelProps) {
             </span>
           </div>
 
-          {/* ผลจาก duel */}
-          {hasDuel && (
+          {/* ✅ B13: ผลจาก Chance Card (แทน duel) */}
+          {hasChance && (
             <div className="flex items-center justify-between text-sm px-2">
               <span className="text-gray-400">
-                ⚔️ {
-                  duelResult === 'win' ? `ชนะ ${duelOpponentName}` :
-                  duelResult === 'lose' ? `แพ้ ${duelOpponentName}` :
-                  duelResult === 'draw' ? `เสมอ ${duelOpponentName}` :
-                  'Bye'
-                }
+                🃏 Chance Card
               </span>
               <span style={{
-                color: duelMoneyChange > 0 ? '#22c55e' : duelMoneyChange < 0 ? '#ef4444' : '#F59E0B'
+                color: chanceAmount > 0 ? '#22c55e' : chanceAmount < 0 ? '#ef4444' : '#F59E0B'
               }}>
-                {duelMoneyChange > 0 ? '+' : duelMoneyChange < 0 ? '-' : ''}฿{Math.abs(duelMoneyChange).toLocaleString()}
+                {chanceAmount > 0 ? '+' : chanceAmount < 0 ? '-' : ''}฿{Math.abs(chanceAmount).toLocaleString()}
               </span>
             </div>
           )}
@@ -106,7 +99,7 @@ export default function ResultsPanel({ round, player }: ResultsPanelProps) {
           {/* เส้นคั่น + ยอดเงิน */}
           <div className="border-t border-gray-800 mt-2 pt-2">
             <div className="text-sm text-gray-500">
-              ฿{Math.round(money_before - (hasDuel ? duelMoneyChange : 0)).toLocaleString()} → ฿{Math.round(money_after).toLocaleString()}
+              ฿{Math.round(money_before - (hasChance ? chanceAmount : 0)).toLocaleString()} → ฿{Math.round(money_after).toLocaleString()}
             </div>
           </div>
         </div>

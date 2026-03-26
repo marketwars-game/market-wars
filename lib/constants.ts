@@ -1,7 +1,7 @@
 // FILE: lib/constants.ts — Game Configuration (Single Source of Truth)
-// VERSION: B12-BAL-v1 — Rebalanced RETURN_TABLE + EVENTS + NEWS + DUEL_CONFIG
+// VERSION: B13-BATCH0-v1 — Cut news/rebalance/attack, add QUIZ_BONUS + CHANCE_CARDS + chance_card phase
 // LAST MODIFIED: 26 Mar 2026
-// HISTORY: B1 created | B3 phase timers + display | B4 companies + events | B5 return table + golden deals | B8 quiz + news (v2: 3-phase) | B9 duel config + attack phase update | B10 disable golden deal | B12-UX year_intro + market_open + step groups | B12-BAL rebalance returns + events + news + duel
+// HISTORY: B1 created | B3 phase timers + display | B4 companies + events | B5 return table + golden deals | B8 quiz + news (v2: 3-phase) | B9 duel config + attack phase update | B10 disable golden deal | B12-UX year_intro + market_open + step groups | B12-BAL rebalance returns + events + news + duel | B13-BATCH0 cut news/rebalance/attack, add quiz bonus + chance cards
 
 // ==============================================
 // Market Wars — Game Configuration
@@ -13,20 +13,65 @@ export const MAX_PLAYERS = 60;
 export const TOTAL_ROUNDS = 6;
 export const STARTING_MONEY = 10000;
 export const ALLOCATION_STEP = 10; // ทีละ 10%
-export const ATTACK_MULTIPLIER = 1.5;
 
-// --- Duel Config (B9: Market Fight) ---
-// ✅ B12-BAL: ลดจาก 500/300 → 300/200 เพื่อไม่ให้ duel overpower กลยุทธ์การลงทุน
-export const DUEL_CONFIG = {
-  WIN_AMOUNT: 300,     // ชนะได้ +฿300 (เดิม 500)
-  LOSE_AMOUNT: 200,    // แพ้เสีย -฿200 (เดิม 300)
-  DRAW_AMOUNT: 0,      // เสมอ ฿0
-  MOVES: ['rock', 'paper', 'scissors'] as const,
-  MOVE_EMOJI: { rock: '✊', paper: '✋', scissors: '✌️' } as Record<string, string>,
-  MOVE_LABEL: { rock: 'ค้อน', paper: 'กระดาษ', scissors: 'กรรไกร' } as Record<string, string>,
-  // rock > scissors > paper > rock
-  WINS_AGAINST: { rock: 'scissors', scissors: 'paper', paper: 'rock' } as Record<string, string>,
+// ==============================================
+// ✅ B13: Quiz Bonus — ตอบ quiz ถูกได้เงิน bonus
+// ==============================================
+export const QUIZ_BONUS = {
+  CORRECT_2: 300,  // ถูกครบ 2 ข้อ → +฿300
+  CORRECT_1: 150,  // ถูก 1 ข้อ → +฿150
+  CORRECT_0: 0,    // ผิดหมด → ฿0
 };
+
+// ==============================================
+// ✅ B13: Chance Cards — การ์ดโชคชะตา (แทนเป่ายิงฉุบ)
+// สุ่ม client-side จาก seed (room_id + round + player_id)
+// ทุกคนได้ 1 ใบ/รอบ → write DB 1 ครั้ง/คน
+// Pool: 20 ใบ (10 บวก / 10 ลบ) — expected value ≈ +฿15
+// ==============================================
+export const CHANCE_CARDS: {
+  id: number;
+  text: string;
+  emoji: string;
+  amount: number; // + = ได้เงิน, - = เสียเงิน
+}[] = [
+  // === การ์ดบวก (10 ใบ) — เหตุการณ์ดีๆ ในชีวิต ===
+  { id: 1,  text: 'ญาติให้เงินขวัญถุงวันเกิด!', emoji: '🎁', amount: 200 },
+  { id: 2,  text: 'ชนะแข่งขันตอบคำถามที่โรงเรียน!', emoji: '🏆', amount: 300 },
+  { id: 3,  text: 'ถูกรางวัลจับฉลากงานโรงเรียน!', emoji: '🎉', amount: 250 },
+  { id: 4,  text: 'ทำงานพิเศษช่วงปิดเทอม ได้เงินเก็บ!', emoji: '⭐', amount: 150 },
+  { id: 5,  text: 'เงินออมในกระปุกครบเป้า!', emoji: '🐷', amount: 100 },
+  { id: 6,  text: 'เก็บเงินได้ที่โรงอาหาร! โชคดี!', emoji: '💎', amount: 100 },
+  { id: 7,  text: 'ได้ทุนการศึกษาด้านการเงิน!', emoji: '📊', amount: 150 },
+  { id: 8,  text: 'พ่อแม่ให้โบนัสเพราะเกรดดีขึ้น!', emoji: '🌟', amount: 200 },
+  { id: 9,  text: 'ขายของมือสองออนไลน์ได้กำไร!', emoji: '💰', amount: 300 },
+  { id: 10, text: 'ได้รางวัลนักออมดีเด่นประจำปี!', emoji: '🎯', amount: 500 },
+
+  // === การ์ดลบ (10 ใบ) — ค่าใช้จ่ายที่เกิดขึ้นในชีวิต ===
+  { id: 11, text: 'มือถือตกพื้นจอแตก ต้องซ่อม!', emoji: '📱', amount: -200 },
+  { id: 12, text: 'ช้อปปิ้งเกินงบ ใช้เงินเกินแผน!', emoji: '🛒', amount: -100 },
+  { id: 13, text: 'ไม่สบาย ต้องจ่ายค่ายาเอง', emoji: '🏥', amount: -150 },
+  { id: 14, text: 'ค่าเน็ตกับค่าไฟเดือนนี้แพงมาก!', emoji: '⚡', amount: -100 },
+  { id: 15, text: 'รถเสีย ต้องนั่งแท็กซี่ไปเรียน 1 เดือน!', emoji: '🚌', amount: -200 },
+  { id: 16, text: 'สั่งอาหารออนไลน์ทุกวัน เงินหมดไม่รู้ตัว!', emoji: '🍔', amount: -150 },
+  { id: 17, text: 'ซื้อเกมแล้วไม่สนุก คืนเงินไม่ได้!', emoji: '🎮', amount: -100 },
+  { id: 18, text: 'โดนหลอกโอนเงินออนไลน์!', emoji: '🔓', amount: -500 },
+  { id: 19, text: 'รองเท้าพัง ต้องซื้อคู่ใหม่!', emoji: '👟', amount: -250 },
+  { id: 20, text: 'ทำของเพื่อนเสีย ต้องจ่ายค่าชดเชย', emoji: '📋', amount: -300 },
+];
+
+// --- ฟังก์ชั่นสุ่ม Chance Card จาก seed (room_id + round + player_id → ไม่ซ้ำกัน) ---
+export function getChanceCard(roomId: string, round: number, playerId: string): typeof CHANCE_CARDS[number] {
+  // สร้าง hash จาก roomId + round + playerId
+  let hash = 0;
+  const seed = `${roomId}-${round}-${playerId}`;
+  for (let i = 0; i < seed.length; i++) {
+    hash = ((hash << 5) - hash) + seed.charCodeAt(i);
+    hash |= 0;
+  }
+  const index = Math.abs(hash) % CHANCE_CARDS.length;
+  return CHANCE_CARDS[index];
+}
 
 // --- Room Code ---
 export const ROOM_CODE_CONFIG = {
@@ -35,39 +80,37 @@ export const ROOM_CODE_CONFIG = {
 };
 
 // --- Phase Flow ---
-// ✅ B12-UX: เพิ่ม year_intro (หัวรอบ) + market_open (กลางรอบ)
+// ✅ B13: ตัด news_feed, rebalance, attack, attack_result ออก / เพิ่ม chance_card
 export const GAME_PHASES = [
   'lobby',        // ก่อนเริ่มเกม
-  'year_intro',   // ✅ B12-UX: "ปีที่ X เริ่มแล้ว!" splash
-  'research',     // ตอบ quiz ปลดล็อกข่าว
-  'invest',       // เลือกลงทุน 6 บริษัท
-  'attack',       // ⚔️ Market Fight — เป่ายิงฉุบ
-  'attack_result', // สรุปผล duel
-  'market_open',  // ✅ B12-UX: "ตลาดเปิดแล้ว!" transition
+  'year_intro',   // "ปีที่ X เริ่มแล้ว!" splash
+  'research',     // ตอบ quiz
+  'research_reveal', // เฉลย quiz + แสดง bonus เงิน
+  'invest',       // เลือกลงทุน 6 บริษัท (ทุกรอบเริ่มจาก 0%)
+  'chance_card',  // ✅ B13: เปิดการ์ดโชคชะตา (แทนเป่ายิงฉุบ)
+  'market_open',  // "ตลาดเปิดแล้ว!" transition
   'event',        // MC เปิดข่าวเหตุการณ์
   'event_result', // เฉลย % return แต่ละบริษัท
-  'golden_deal',  // ดีลพิเศษ (เฉพาะรอบ 2, 4, 6)
   'results',      // ผลตอบแทนรอบนี้
   'leaderboard',  // อันดับ 1-20
-  'rebalance',    // ปรับพอร์ตก่อนรอบถัดไป
   'final',        // สรุปจบเกม
 ] as const;
 
 // ✅ B10: ปิด Golden Deal ชั่วคราว — เปิดกลับโดยเปลี่ยนเป็น [2, 4, 6]
 export const GOLDEN_DEAL_ROUNDS: number[] = [];
-// export const GOLDEN_DEAL_ROUNDS = [2, 4, 6]; // ← ค่าเดิม เปิดกลับเมื่อพร้อม
 
 // --- Phase Timers (วินาที) ---
 // เฉพาะ phase ที่เด็กต้องทำอะไร (Pressure timer — แค่แสดง MC ยังกดเอง)
+// ✅ B13: ตัด attack + rebalance, เพิ่ม chance_card
 export const PHASE_TIMERS: Record<string, number> = {
-  research: 90,      // ตอบ quiz 2 ข้อ
-  invest: 120,       // เลือกลงทุน 6 บริษัท
-  attack: 30,        // เป่ายิงฉุบ — เลือก 1 move
-  golden_deal: 60,   // แข่ง quiz ชิงดีล
-  rebalance: 90,     // ปรับพอร์ต
+  research: 90,       // ตอบ quiz 2 ข้อ
+  invest: 120,        // เลือกลงทุน 6 บริษัท
+  chance_card: 30,    // ✅ B13: กดเปิดการ์ดโชคชะตา
+  golden_deal: 60,    // แข่ง quiz ชิงดีล (ปิดอยู่)
 };
 
 // --- Phase Display Info ---
+// ✅ B13: ตัด news_feed, rebalance, attack, attack_result / เพิ่ม chance_card / ปรับ research_reveal
 export const PHASE_DISPLAY: Record<string, {
   name: string;
   icon: string;
@@ -84,7 +127,6 @@ export const PHASE_DISPLAY: Record<string, {
     mcTip: 'Wait until all players have joined, then press Start Game',
     hasTimer: false,
   },
-  // ✅ B12-UX: Year Intro — splash "ปีที่ X เริ่มแล้ว!"
   year_intro: {
     name: 'Year Intro',
     icon: '📅',
@@ -97,51 +139,36 @@ export const PHASE_DISPLAY: Record<string, {
     name: 'Research Quiz',
     icon: '🔍',
     displayMessage: 'Players answering quiz...',
-    playerMessage: 'ตอบ Quiz 2 ข้อ เพื่อปลดล็อกข่าวจริง!',
+    playerMessage: 'ตอบ Quiz 2 ข้อ ความรู้ = เงิน!',
     mcTip: 'รอเด็กตอบ quiz เสร็จ แล้วกด Next เพื่อเฉลย',
     hasTimer: true,
   },
+  // ✅ B13: ปรับ research_reveal — แสดง bonus เงินแทนปลดล็อกข่าว
   research_reveal: {
     name: 'Quiz Reveal',
     icon: '📝',
-    displayMessage: 'เฉลย Quiz!',
-    playerMessage: 'ดูเฉลย Quiz ของคุณ!',
-    mcTip: 'อธิบายเฉลยแต่ละข้อ แล้วกด Next เพื่อแสดงข่าวรอบนี้',
-    hasTimer: false,
-  },
-  news_feed: {
-    name: 'News Feed',
-    icon: '📰',
-    displayMessage: 'ข่าวรอบนี้!',
-    playerMessage: 'อ่านข่าวก่อนตัดสินใจลงทุน!',
-    mcTip: 'อ่านข่าวให้เด็กฟัง ถามว่า "คิดว่าข่าวไหนจริง?" แล้วกด Next ไปลงทุน',
+    displayMessage: 'เฉลย Quiz + Bonus!',
+    playerMessage: 'ดูเฉลย Quiz + bonus เงินของคุณ!',
+    mcTip: 'อธิบายเฉลยแต่ละข้อ บอกว่า "ตอบถูกได้ bonus เงินจริง!" แล้วกด Next ไปลงทุน',
     hasTimer: false,
   },
   invest: {
     name: 'Investment',
     icon: '💰',
     displayMessage: 'Players choosing investments...',
-    playerMessage: 'Allocate your money across 6 companies',
-    mcTip: 'Players are choosing their investments. Press Next when ready.',
+    playerMessage: 'จัดสรรงบประมาณประจำปีลงทุน 6 บริษัท',
+    mcTip: 'เด็กเลือกลงทุน ทุกรอบเริ่มจาก 0% ใหม่ — กด Next เมื่อพร้อม',
     hasTimer: true,
   },
-  attack: {
-    name: 'Market Fight',
-    icon: '⚔️',
-    displayMessage: 'เลือก ค้อน กรรไกร กระดาษ!',
-    playerMessage: 'เป่ายิงฉุบกับคู่ของคุณ!',
-    mcTip: 'รอเด็กเลือก ✊✌️✋ แล้วกด Next เพื่อเปิดผล — คนที่ไม่กดจะแพ้อัตโนมัติ',
+  // ✅ B13: Chance Card (แทน attack + attack_result)
+  chance_card: {
+    name: 'Chance Card',
+    icon: '🃏',
+    displayMessage: 'เปิดการ์ดโชคชะตา!',
+    playerMessage: 'แตะเพื่อเปิดการ์ดโชคชะตาของคุณ!',
+    mcTip: 'ให้เด็กกดเปิดการ์ด — ได้เงินหรือเสียเงิน สุ่มเหมือนเกมเศรษฐี! กด Next เมื่อทุกคนเปิดแล้ว',
     hasTimer: true,
   },
-  attack_result: {
-    name: 'Fight Results',
-    icon: '⚔️',
-    displayMessage: 'ผลการต่อสู้!',
-    playerMessage: 'ดูผลเป่ายิงฉุบของคุณ!',
-    mcTip: 'ให้เด็กดูผลบนมือถือ ถามว่า "ใครชนะบ้าง?" แล้วกด Next',
-    hasTimer: false,
-  },
-  // ✅ B12-UX: Market Open — transition "ตลาดเปิดแล้ว!"
   market_open: {
     name: 'Market Open',
     icon: '📈',
@@ -190,14 +217,6 @@ export const PHASE_DISPLAY: Record<string, {
     mcTip: 'Dramatic reveal! Comment on who moved up/down. Press Next to continue.',
     hasTimer: false,
   },
-  rebalance: {
-    name: 'Rebalance',
-    icon: '🔄',
-    displayMessage: 'Players adjusting portfolios...',
-    playerMessage: 'Adjust your portfolio for the next round',
-    mcTip: 'Players can change their allocations. Press Next Round when ready.',
-    hasTimer: true,
-  },
   final: {
     name: 'Final Summary',
     icon: '🎉',
@@ -209,14 +228,15 @@ export const PHASE_DISPLAY: Record<string, {
 };
 
 // ==============================================
-// ✅ B12-UX: Step Groups — สำหรับ step indicator ทั้ง 3 จอ
+// ✅ B13: Step Groups — ปรับสำหรับ phase flow ใหม่
+// ตัด news_feed ออกจาก research / ตัด rebalance ออกจาก invest
+// เปลี่ยน fight → chance (attack+attack_result → chance_card)
 // ==============================================
 
-// 6 กลุ่มใหญ่ที่แสดงบน step indicator
 export const STEP_GROUPS = [
-  { id: 'research', icon: '🔍', label: 'วิจัย', phases: ['research', 'research_reveal', 'news_feed'] },
-  { id: 'invest', icon: '💰', label: 'ลงทุน', phases: ['invest', 'rebalance'] },
-  { id: 'fight', icon: '⚔️', label: 'ต่อสู้', phases: ['attack', 'attack_result'] },
+  { id: 'research', icon: '🔍', label: 'วิจัย', phases: ['research', 'research_reveal'] },
+  { id: 'invest', icon: '💰', label: 'ลงทุน', phases: ['invest'] },
+  { id: 'chance', icon: '🃏', label: 'โชคชะตา', phases: ['chance_card'] },
   { id: 'event', icon: '📰', label: 'เหตุการณ์', phases: ['market_open', 'event', 'event_result', 'golden_deal'] },
   { id: 'results', icon: '📊', label: 'ผลลัพธ์', phases: ['results'] },
   { id: 'leaderboard', icon: '🏆', label: 'อันดับ', phases: ['leaderboard'] },
@@ -404,17 +424,19 @@ export const GOLDEN_DEALS = [
 ];
 
 // --- MC Tips (คำแนะนำ MC เพิ่มเติมตามรอบ) ---
+// ✅ B13: ปรับข้อความ — ตัด Golden Deal, เปลี่ยนเป็น Chance Card
 export const MC_TIPS: Record<number, string> = {
   1: 'รอบแรก! อธิบายให้เด็กเข้าใจว่าต้องทำอะไรบ้างในแต่ละขั้นตอน',
-  2: 'รอบนี้มี Golden Deal! สร้างความตื่นเต้นก่อนเปิดดีล',
-  3: 'เด็กเริ่มเข้าใจแล้ว ลองถามว่า "ใครเปลี่ยนพอร์ตบ้าง? ทำไม?"',
-  4: 'รอบนี้มี Golden Deal อีกครั้ง! เด็กจะเริ่มแย่งกันตอบ',
+  2: 'เด็กเริ่มเข้าใจแล้ว ลองถามว่า "ใครเปลี่ยนกลยุทธ์บ้าง? ทำไม?"',
+  3: 'ครึ่งทาง! ถามว่า "ใครกระจายลงทุน? ใคร all-in?" ดูว่าใครเรียนรู้',
+  4: 'เด็กเริ่มเห็น pattern แล้ว — เตือนว่า "ผลอดีตไม่การันตีอนาคต!"',
   5: 'รอบก่อนสุดท้าย! เตือนเด็กว่าเหลืออีก 1 รอบ คิดดีๆ',
-  6: 'รอบสุดท้าย + Golden Deal กับดัก! อย่าเฉลยก่อน ปล่อยให้เด็กตัดสินใจเอง',
+  6: 'รอบสุดท้าย! ทุกอย่างจะเปลี่ยน — ใครจะพลิกเกมได้?',
 };
 
 // ==============================================
-// ✅ B8: Research Quiz — คำถาม + ข่าว
+// ✅ B8: Research Quiz — คำถาม
+// (B13: ตัด news ออก — quiz ยังเหมือนเดิม)
 // ==============================================
 
 // --- Quiz Pool (12 ข้อ จาก Session 1-2 Kahoot) ---
@@ -520,11 +542,10 @@ export function getQuizForRound(roomId: string, round: number): typeof QUIZ_POOL
 }
 
 // ==============================================
-// ✅ B12-BAL: Round News — ปรับข่าวให้ match RETURN_TABLE ใหม่
+// ✅ B12-BAL: Round News — ยังเก็บไว้สำหรับ reference
+// (B13: ตัด news_feed phase แล้ว — data ยังอยู่ไม่ลบ เผื่อใช้ในอนาคต)
 // ==============================================
 
-// --- Round News (ข่าว 3 ข่าวต่อรอบ: จริง 1 + มั่ว 2) ---
-// ✅ B12-BAL: ข่าวจริงบอกใบ้ตรงกว่าเดิม + ข่าวมั่วล่อให้ลงผิดตัว
 export const ROUND_NEWS: {
   round: number;
   news: {
@@ -534,7 +555,6 @@ export const ROUND_NEWS: {
   }[];
 }[] = [
   {
-    // R1: เทคพุ่ง (ZoomZoom +15), พลังงานยังไม่ได้ประโยชน์ (GreenPower -8)
     round: 1,
     news: [
       { text: 'Apple เตรียมเปิดตัว iPhone รุ่นใหม่ คาดหุ้นเทคและแอปเรียกรถพุ่ง!', isReal: true, emoji: '📱' },
@@ -543,7 +563,6 @@ export const ROUND_NEWS: {
     ],
   },
   {
-    // R2: เกม+อาหารบูม (MegaFun +30, RoboSnack +15), เทคร่วง (ZoomZoom -25)
     round: 2,
     news: [
       { text: 'โรคระบาดใหม่แพร่กระจาย! คนอยู่บ้านเล่นเกม+สั่งอาหาร แต่ไม่มีใครเดินทาง', isReal: true, emoji: '🦠' },
@@ -552,7 +571,6 @@ export const ROUND_NEWS: {
     ],
   },
   {
-    // R3: ฟื้นตัว เทคกลับ (ZoomZoom +20), เกมลด (MegaFun -15), พลังงานเริ่มดี (GreenPower +12)
     round: 3,
     news: [
       { text: 'วัคซีนสำเร็จ! คนออกจากบ้าน เศรษฐกิจฟื้น เทคและพลังงานเริ่มดีขึ้น', isReal: true, emoji: '💉' },
@@ -561,7 +579,6 @@ export const ROUND_NEWS: {
     ],
   },
   {
-    // R4: พลังงานพุ่ง (GreenPower +25), อาหารร่วง (RoboSnack -20)
     round: 4,
     news: [
       { text: 'เกิดสงคราม น้ำมันราคาพุ่ง! บริษัทพลังงานทางเลือกได้กำไร แต่ต้นทุนขนส่งอาหารพุ่ง', isReal: true, emoji: '⛽' },
@@ -570,7 +587,6 @@ export const ROUND_NEWS: {
     ],
   },
   {
-    // R5: AI → เทคพุ่ง (ZoomZoom +30, MegaFun +18), กองทุนร่วง (SafeGold -15)
     round: 5,
     news: [
       { text: 'AI ปฏิวัติโลก! บริษัทเทคและเกมใช้ AI ทำกำไร แต่ AI แทนที่ผู้จัดการกองทุนได้!', isReal: true, emoji: '🤖' },
@@ -579,7 +595,6 @@ export const ROUND_NEWS: {
     ],
   },
   {
-    // R6: ดอกเบี้ยขึ้น → mixed! พลังงาน+อาหารฟื้น, เทค+เกมร่วงหนัก, ฝากเงินดี
     round: 6,
     news: [
       { text: 'แบงก์ชาติขึ้นดอกเบี้ย! ฝากเงินคุ้ม พลังงาน+อาหารฟื้น แต่หุ้นเทค+เกมกู้เงินแพงร่วงหนัก', isReal: true, emoji: '🏦' },

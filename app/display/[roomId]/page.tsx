@@ -1,10 +1,10 @@
 // FILE: app/display/[roomId]/page.tsx — Display screen
-// VERSION: B12-UX-v1 — New dashboard layout + year_intro + market_open + step indicator
+// VERSION: B13-BATCH3-v1 — ChanceCardDisplay + throttle + cut news/attack
 // LAST MODIFIED: 26 Mar 2026
-// HISTORY: B1 created | B3 phase sync + timer | B4 submitted count | B5 event_result + results UI | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components | B9 FightDisplay | B9-v2 fix earners | B12-UX dashboard layout + year_intro + market_open + step indicator
+// HISTORY: B1 created | B3 phase sync + timer | B4 submitted count | B5 event_result + results UI | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components | B9 FightDisplay | B12-UX dashboard layout + year_intro + market_open + step indicator | B13-BATCH3 ChanceCardDisplay + throttle + cut news/attack
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { QRCodeSVG } from 'qrcode.react';
@@ -17,14 +17,13 @@ import {
   STARTING_MONEY,
   STEP_GROUPS,
   YEAR_INTRO_TEXT,
-  EVENTS,
 } from '@/lib/constants';
 import { getStepGroupProgress } from '@/lib/game-engine';
 import ResearchDisplay from '@/components/display/ResearchDisplay';
 import EventDisplay from '@/components/display/EventDisplay';
 import LeaderboardDisplay from '@/components/display/LeaderboardDisplay';
 import FinalDisplay from '@/components/display/FinalDisplay';
-import FightDisplay from '@/components/display/FightDisplay';
+import ChanceCardDisplay from '@/components/display/ChanceCardDisplay';
 
 export default function DisplayScreen() {
   const params = useParams();
@@ -35,26 +34,63 @@ export default function DisplayScreen() {
   const [timeLeft, setTimeLeft] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // ✅ B13: Throttle refs
+  const pendingReload = useRef(false);
+  const throttleTimer = useRef<NodeJS.Timeout | null>(null);
+
+  // === Load room data (reusable) ===
+  const loadRoomData = useCallback(async () => {
+    const { data: playerData } = await supabase
+      .from('players').select('*').eq('room_id', roomId).order('money', { ascending: false });
+    if (playerData) setPlayers(playerData);
+  }, [roomId]);
+
+  // ✅ B13: Throttled reload — max 1 reload ต่อ 2 วินาที
+  const throttledReload = useCallback(() => {
+    if (throttleTimer.current) {
+      pendingReload.current = true;
+      return;
+    }
+    loadRoomData();
+    throttleTimer.current = setTimeout(() => {
+      throttleTimer.current = null;
+      if (pendingReload.current) {
+        pendingReload.current = false;
+        loadRoomData();
+      }
+    }, 2000);
+  }, [loadRoomData]);
+
   // === Fetch initial data ===
   useEffect(() => {
     async function fetchData() {
       const { data: roomData } = await supabase.from('rooms').select('*').eq('id', roomId).single();
       setRoom(roomData);
-      const { data: playerData } = await supabase.from('players').select('*').eq('room_id', roomId).order('joined_at', { ascending: true });
-      setPlayers(playerData || []);
+      await loadRoomData();
       setLoading(false);
     }
     fetchData();
-  }, [roomId]);
+  }, [roomId, loadRoomData]);
 
   // === Realtime subscriptions ===
   useEffect(() => {
-    const roomChannel = supabase.channel(`display-room-${roomId}`).on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` }, (payload) => setRoom(payload.new)).subscribe();
-    const playerChannel = supabase.channel(`display-players-${roomId}`).on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `room_id=eq.${roomId}` }, () => {
-      supabase.from('players').select('*').eq('room_id', roomId).order('money', { ascending: false }).then(({ data }) => { if (data) setPlayers(data); });
-    }).subscribe();
-    return () => { supabase.removeChannel(roomChannel); supabase.removeChannel(playerChannel); };
-  }, [roomId]);
+    const roomChannel = supabase.channel(`display-room-${roomId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` }, (payload) => setRoom(payload.new))
+      .subscribe();
+
+    // ✅ B13: Throttled player reload
+    const playerChannel = supabase.channel(`display-players-${roomId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `room_id=eq.${roomId}` }, () => {
+        throttledReload();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(roomChannel);
+      supabase.removeChannel(playerChannel);
+      if (throttleTimer.current) clearTimeout(throttleTimer.current);
+    };
+  }, [roomId, throttledReload]);
 
   // === Timer ===
   useEffect(() => {
@@ -81,12 +117,10 @@ export default function DisplayScreen() {
   const timerColor = timeLeft <= 10 ? '#FF4444' : timeLeft <= 30 ? '#F59E0B' : '#00FFB2';
   const joinUrl = typeof window !== 'undefined' ? `${window.location.origin}/?room=${roomId}` : '';
 
-  // ✅ B12-UX: Step group progress
+  // Step group progress
   const stepProgress = getStepGroupProgress(phase);
 
-  // ============================================================
-  // === LOBBY — ไม่เปลี่ยน layout ===
-  // ============================================================
+  // === LOBBY ===
   if (phase === 'lobby') {
     return (
       <div className="h-screen bg-[#0D1117] text-white flex flex-col items-center justify-center p-8">
@@ -105,9 +139,7 @@ export default function DisplayScreen() {
     );
   }
 
-  // ============================================================
-  // === FINAL — เต็มจอ ไม่มี header/step bar ===
-  // ============================================================
+  // === FINAL ===
   if (phase === 'final') {
     return (
       <div className="h-screen bg-[#0D1117] text-white">
@@ -116,23 +148,18 @@ export default function DisplayScreen() {
     );
   }
 
-  // ============================================================
-  // === YEAR INTRO — splash เต็มจอ ===
-  // ============================================================
+  // === YEAR INTRO ===
   if (phase === 'year_intro') {
     const introText = YEAR_INTRO_TEXT[round] || { title: `ปีที่ ${round} เริ่มแล้ว!`, subtitle: 'เตรียมตัวให้พร้อม' };
     return (
       <div className="h-screen bg-[#0D1117] text-white flex flex-col items-center justify-center relative overflow-hidden">
-        {/* Background year number */}
         <div className="absolute text-[200px] font-black leading-none select-none pointer-events-none" style={{ color: 'rgba(0,255,178,0.04)', top: '50%', left: '50%', transform: 'translate(-50%,-55%)' }}>{round}</div>
-
         <div className="text-center z-10">
           <p className="text-sm tracking-[6px] text-[#00D4FF] font-medium mb-1">Y E A R</p>
           <p className="text-8xl font-black text-[#00FFB2] leading-none mb-3">{round}</p>
           <p className="text-2xl text-white font-medium mb-2">{introText.title}</p>
           <p className="text-base text-gray-400 mb-8">{introText.subtitle}</p>
-
-          {/* Step pills */}
+          {/* ✅ B13: Step pills จาก STEP_GROUPS ใหม่ (อัตโนมัติ) */}
           <div className="flex gap-2 justify-center flex-wrap">
             {STEP_GROUPS.map((g) => (
               <span key={g.id} className="text-xs px-3 py-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)' }}>
@@ -145,18 +172,14 @@ export default function DisplayScreen() {
     );
   }
 
-  // ============================================================
-  // === MARKET OPEN — splash transition ===
-  // ============================================================
+  // === MARKET OPEN ===
   if (phase === 'market_open') {
     return (
       <div className="h-screen bg-[#0D1117] text-white flex flex-col items-center justify-center relative overflow-hidden">
-        {/* Chart line background */}
         <svg className="absolute bottom-0 left-0 right-0 opacity-10" style={{ height: '40%' }} viewBox="0 0 720 160" preserveAspectRatio="none">
           <polyline points="0,140 60,120 120,130 180,80 240,100 300,60 360,90 420,40 480,70 540,30 600,50 660,20 720,35" fill="none" stroke="#00FFB2" strokeWidth="2" />
           <polyline points="0,140 60,120 120,130 180,80 240,100 300,60 360,90 420,40 480,70 540,30 600,50 660,20 720,35 720,160 0,160" fill="#00FFB2" opacity="0.15" />
         </svg>
-
         <div className="text-center z-10">
           <p className="text-xs tracking-[3px] text-[#00D4FF] mb-4">YEAR {round}</p>
           <p className="text-5xl mb-2">📈</p>
@@ -167,13 +190,11 @@ export default function DisplayScreen() {
     );
   }
 
-  // ============================================================
   // === PLAYING PHASES — Dashboard layout ===
-  // ============================================================
   return (
     <div className="h-screen bg-[#0D1117] text-white flex flex-col overflow-hidden">
 
-      {/* === Header bar === */}
+      {/* Header bar */}
       <div className="flex items-center justify-between px-4 py-1.5 flex-shrink-0" style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <span className="text-xs font-bold text-[#00FFB2] tracking-wider">MARKET WARS</span>
         <span className="text-[11px] text-[#00D4FF] font-medium px-2.5 py-0.5 rounded-full" style={{ background: 'rgba(0,212,255,0.1)' }}>
@@ -181,7 +202,7 @@ export default function DisplayScreen() {
         </span>
       </div>
 
-      {/* === Step indicator bar === */}
+      {/* Step indicator bar */}
       <div className="flex items-center gap-0.5 px-3 py-1 flex-shrink-0" style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         {stepProgress.map((step, i) => (
           <div key={step.id} className="flex items-center">
@@ -202,10 +223,10 @@ export default function DisplayScreen() {
         ))}
       </div>
 
-      {/* === Main content area — flex-1 fills remaining space === */}
+      {/* Main content area */}
       <div className="flex-1 flex flex-col items-center justify-center overflow-hidden px-4 py-2">
 
-        {/* Timer bar (if applicable) */}
+        {/* Timer bar */}
         {timerDuration > 0 && (
           <div className="flex items-center gap-3 mb-3 w-full max-w-md">
             <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
@@ -217,19 +238,19 @@ export default function DisplayScreen() {
           </div>
         )}
 
-        {/* === Research Quiz (3 phases) — Component === */}
-        {(phase === 'research' || phase === 'research_reveal' || phase === 'news_feed') && (
+        {/* === Research Quiz (2 phases) — ✅ B13: ตัด news_feed === */}
+        {(phase === 'research' || phase === 'research_reveal') && (
           <ResearchDisplay
             roomId={roomId}
             round={round}
-            phase={phase as 'research' | 'research_reveal' | 'news_feed'}
+            phase={phase as 'research' | 'research_reveal'}
             players={players}
             quizSubmittedCount={quizSubmittedCount}
           />
         )}
 
-        {/* === Submitted count during invest/rebalance === */}
-        {(phase === 'invest' || phase === 'rebalance') && (
+        {/* === Submitted count during invest === */}
+        {phase === 'invest' && (
           <div className="text-center">
             <p className="text-6xl font-bold font-mono" style={{ color: '#00FFB2' }}>{submittedCount}/{players.length}</p>
             <p className="text-xl font-mono mt-2" style={{ color: '#ffffff40' }}>portfolios submitted</p>
@@ -245,9 +266,9 @@ export default function DisplayScreen() {
           </div>
         )}
 
-        {/* === Market Fight (B9) — Component === */}
-        {(phase === 'attack' || phase === 'attack_result') && (
-          <FightDisplay players={players} round={round} />
+        {/* === ✅ B13: Chance Card Display (แทน FightDisplay) === */}
+        {phase === 'chance_card' && (
+          <ChanceCardDisplay players={players} round={round} />
         )}
 
         {/* === Event + Event Result + Golden Deal — Component === */}
@@ -255,7 +276,7 @@ export default function DisplayScreen() {
           <EventDisplay round={round} phase={phase as 'event' | 'event_result' | 'golden_deal'} players={players} />
         )}
 
-        {/* === Results === */}
+        {/* === Results — ✅ B13-v2: แยก หุ้น vs การ์ด === */}
         {phase === 'results' && (
           <div className="w-full max-w-lg mx-auto">
             <div className="flex flex-wrap gap-2 justify-center mb-4">
@@ -274,10 +295,12 @@ export default function DisplayScreen() {
             <div className="text-xs tracking-widest text-gray-600 text-center mb-2">TOP EARNERS THIS ROUND</div>
             <div className="space-y-1.5">
               {(() => {
-                const earners = players.map((p) => ({
-                  id: p.id, name: p.name,
-                  profit: (p.round_returns?.[String(round)]?.total_return || 0) + (parseFloat(p.duel_money_change) || 0),
-                })).sort((a, b) => b.profit - a.profit).slice(0, 3);
+                const earners = players.map((p) => {
+                  const stockProfit = p.round_returns?.[String(round)]?.total_return || 0;
+                  const hasChance = ((p.duel_submitted_round || 0) >= round);
+                  const chanceProfit = hasChance ? (parseFloat(p.duel_money_change) || 0) : 0;
+                  return { id: p.id, name: p.name, profit: stockProfit + chanceProfit, stockProfit, chanceProfit };
+                }).sort((a, b) => b.profit - a.profit).slice(0, 3);
                 const medals = ['🥇', '🥈', '🥉'];
                 return earners.map((p, i) => (
                   <div key={p.id} className="bg-[#161b22] rounded-lg px-4 py-2.5 flex items-center justify-between">
@@ -285,9 +308,15 @@ export default function DisplayScreen() {
                       <span className="text-lg">{medals[i]}</span>
                       <span className="text-base font-bold text-gray-200">{p.name}</span>
                     </div>
-                    <span className="text-lg font-bold" style={{ color: p.profit >= 0 ? '#22c55e' : '#ef4444' }}>
-                      {p.profit >= 0 ? '+' : '-'}฿{Math.abs(p.profit).toLocaleString()}
-                    </span>
+                    <div className="text-right">
+                      <span className="text-lg font-bold" style={{ color: p.profit >= 0 ? '#22c55e' : '#ef4444' }}>
+                        {p.profit >= 0 ? '+' : '-'}฿{Math.abs(p.profit).toLocaleString()}
+                      </span>
+                      <div className="flex items-center justify-end gap-2 mt-0.5">
+                        <span className="text-[9px]" style={{ color: p.stockProfit >= 0 ? '#22c55e80' : '#ef444480' }}>📈{p.stockProfit >= 0 ? '+' : '-'}฿{Math.abs(p.stockProfit).toLocaleString()}</span>
+                        {p.chanceProfit !== 0 && <span className="text-[9px]" style={{ color: p.chanceProfit > 0 ? '#22c55e80' : '#ef444480' }}>🃏{p.chanceProfit > 0 ? '+' : '-'}฿{Math.abs(p.chanceProfit).toLocaleString()}</span>}
+                      </div>
+                    </div>
                   </div>
                 ));
               })()}

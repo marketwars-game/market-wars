@@ -1,32 +1,18 @@
 // FILE: app/api/game/phase/route.ts
-// VERSION: B12-UX-v1 — Start game goes to year_intro instead of research
+// VERSION: B13-BATCH1-v1 — Quiz bonus on research_reveal + remove duel calls
 // LAST MODIFIED: 26 Mar 2026
-// HISTORY: B3 created | B4 bug fix phase flow | B5 auto-calculate + event_result phase | B9 duel pair/resolve | B12-UX start → year_intro
+// HISTORY: B3 created | B4 bug fix phase flow | B5 auto-calculate + event_result phase | B9 duel pair/resolve | B12-UX start → year_intro | B13-BATCH1 quiz bonus + remove duel
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getNextPhase, getPhaseOrder } from '@/lib/game-engine';
-import { GOLDEN_DEAL_ROUNDS, TOTAL_ROUNDS, RETURN_TABLE, COMPANIES } from '@/lib/constants';
+import { getNextPhase } from '@/lib/game-engine';
+import { TOTAL_ROUNDS, RETURN_TABLE, COMPANIES, QUIZ_BONUS } from '@/lib/constants';
 
 // ใช้ Supabase client แบบ server-side (ไม่ต้องผ่าน browser)
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
-
-// ✅ B9: Helper — เรียก duel API (pair หรือ resolve)
-async function callDuelAPI(action: string, room_id: string) {
-  try {
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-    await fetch(`${baseUrl}/api/players/duel`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, room_id }),
-    });
-  } catch (err) {
-    console.error(`Duel ${action} error:`, err);
-  }
-}
 
 // ==============================================
 // POST /api/game/phase
@@ -78,7 +64,6 @@ export async function POST(request: Request) {
         );
       }
 
-      // ✅ B12-UX: เปลี่ยน status → playing, phase → year_intro (แทน research), round → 1
       const { error: updateError } = await supabase
         .from('rooms')
         .update({
@@ -146,11 +131,6 @@ export async function POST(request: Request) {
         );
       }
 
-      // ✅ B9: ถ้าออกจาก attack phase → resolve duel ก่อนเข้า attack_result
-      if (room.current_phase === 'attack') {
-        callDuelAPI('resolve', room_id);
-      }
-
       // คำนวณ phase ถัดไปจาก game-engine
       const next = getNextPhase(
         room.current_phase,
@@ -180,9 +160,39 @@ export async function POST(request: Request) {
         );
       }
 
-      // ✅ B9: ถ้าเข้า attack phase → จับคู่สุ่มอัตโนมัติ
-      if (next.phase === 'attack') {
-        callDuelAPI('pair', room_id);
+      // ✅ B13: Quiz Bonus — เมื่อเข้า research_reveal ให้ bonus เงินตามคะแนน quiz
+      if (next.phase === 'research_reveal') {
+        const currentRound = next.round;
+
+        const { data: allPlayers } = await supabase
+          .from('players')
+          .select('id, money, quiz_answered_round, quiz_correct_this_round')
+          .eq('room_id', room_id);
+
+        if (allPlayers) {
+          for (const player of allPlayers) {
+            // ข้ามถ้ายังไม่ได้ตอบ quiz รอบนี้
+            const answeredRound = player.quiz_answered_round || 0;
+            if (answeredRound < currentRound) continue;
+
+            const correctCount = player.quiz_correct_this_round || 0;
+            let bonus = QUIZ_BONUS.CORRECT_0;
+            if (correctCount >= 2) bonus = QUIZ_BONUS.CORRECT_2;
+            else if (correctCount === 1) bonus = QUIZ_BONUS.CORRECT_1;
+
+            // ข้ามถ้า bonus = 0
+            if (bonus <= 0) continue;
+
+            const currentMoney = parseFloat(player.money) || 0;
+
+            await supabase
+              .from('players')
+              .update({
+                money: currentMoney + bonus,
+              })
+              .eq('id', player.id);
+          }
+        }
       }
 
       // ✅ B5: Auto-calculate returns when entering results phase
