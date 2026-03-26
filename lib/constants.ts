@@ -1,7 +1,7 @@
 // FILE: lib/constants.ts — Game Configuration (Single Source of Truth)
-// VERSION: B12-UX-v1 — year_intro + market_open phases + step groups
+// VERSION: B12-BAL-v1 — Rebalanced RETURN_TABLE + EVENTS + NEWS + DUEL_CONFIG
 // LAST MODIFIED: 26 Mar 2026
-// HISTORY: B1 created | B3 phase timers + display | B4 companies + events | B5 return table + golden deals | B8 quiz + news (v2: 3-phase) | B9 duel config + attack phase update | B10 disable golden deal | B12-UX year_intro + market_open + step groups
+// HISTORY: B1 created | B3 phase timers + display | B4 companies + events | B5 return table + golden deals | B8 quiz + news (v2: 3-phase) | B9 duel config + attack phase update | B10 disable golden deal | B12-UX year_intro + market_open + step groups | B12-BAL rebalance returns + events + news + duel
 
 // ==============================================
 // Market Wars — Game Configuration
@@ -16,9 +16,10 @@ export const ALLOCATION_STEP = 10; // ทีละ 10%
 export const ATTACK_MULTIPLIER = 1.5;
 
 // --- Duel Config (B9: Market Fight) ---
+// ✅ B12-BAL: ลดจาก 500/300 → 300/200 เพื่อไม่ให้ duel overpower กลยุทธ์การลงทุน
 export const DUEL_CONFIG = {
-  WIN_AMOUNT: 500,     // ชนะได้ +฿500
-  LOSE_AMOUNT: 300,    // แพ้เสีย -฿300
+  WIN_AMOUNT: 300,     // ชนะได้ +฿300 (เดิม 500)
+  LOSE_AMOUNT: 200,    // แพ้เสีย -฿200 (เดิม 300)
   DRAW_AMOUNT: 0,      // เสมอ ฿0
   MOVES: ['rock', 'paper', 'scissors'] as const,
   MOVE_EMOJI: { rock: '✊', paper: '✋', scissors: '✌️' } as Record<string, string>,
@@ -292,61 +293,89 @@ export const COMPANIES = [
   },
 ];
 
-// --- Events (เหตุการณ์แต่ละรอบ) ---
+// ==============================================
+// ✅ B12-BAL: Events — ปรับ description ให้ match RETURN_TABLE ใหม่
+// ==============================================
+
 export const EVENTS = [
   {
     round: 1,
     title: 'iPhone ใหม่ขายดี!',
     emoji: '📱',
-    description: 'Apple เปิดตัว iPhone รุ่นใหม่ ยอดขายทะลุเป้า หุ้นเทคพุ่ง!',
+    description: 'Apple เปิดตัว iPhone รุ่นใหม่ ยอดขายทะลุเป้า หุ้นเทคพุ่ง! แต่บริษัทพลังงานยังไม่ได้ประโยชน์',
     image: null as string | null,
   },
   {
     round: 2,
     title: 'โรคระบาดทั่วโลก!',
     emoji: '🦠',
-    description: 'โรคระบาดครั้งใหญ่ คนอยู่บ้าน ธุรกิจออนไลน์บูม แต่ร้านอาหารรอด!',
+    description: 'โรคระบาดครั้งใหญ่! คนอยู่บ้านเล่นเกมสั่งอาหาร — MegaFun+RoboSnack พุ่ง! แต่ ZoomZoom ร่วงหนัก เพราะไม่มีใครเดินทาง',
     image: null as string | null,
   },
   {
     round: 3,
     title: 'เศรษฐกิจฟื้นตัว!',
     emoji: '📈',
-    description: 'วัคซีนมาแล้ว! เศรษฐกิจเริ่มกลับมา ทุกอุตสาหกรรมฟื้นตัว',
+    description: 'วัคซีนมาแล้ว! คนออกจากบ้าน เทคฟื้นตัว เศรษฐกิจดีขึ้น แต่ MegaFun ลดลงเพราะคนเลิกอยู่บ้านเล่นเกม',
     image: null as string | null,
   },
   {
     round: 4,
     title: 'สงคราม น้ำมันแพง!',
     emoji: '⛽',
-    description: 'เกิดสงคราม น้ำมันราคาพุ่ง บริษัทพลังงานได้กำไร แต่ที่เหลือลำบาก',
+    description: 'เกิดสงคราม น้ำมันราคาพุ่ง! GreenPower ได้กำไรเพราะพลังงานทางเลือกมาแรง แต่ RoboSnack ร่วงหนักเพราะต้นทุนขนส่งพุ่ง',
     image: null as string | null,
   },
   {
     round: 5,
     title: 'AI บูม! เทคพุ่ง!',
     emoji: '🤖',
-    description: 'AI ปฏิวัติโลก! บริษัทเทคกำไรมหาศาล ทุกคนอยากลงทุนเทค',
+    description: 'AI ปฏิวัติโลก! ZoomZoom พุ่ง +30% เพราะใช้ AI ขับรถ แต่ SafeGold Fund ร่วง -15% เพราะ AI แทนที่ผู้จัดการกองทุน!',
     image: null as string | null,
   },
   {
     round: 6,
     title: 'ขึ้นดอกเบี้ย!',
     emoji: '🏦',
-    description: 'ธนาคารกลางขึ้นดอกเบี้ย หุ้นทุกตัวชะลอ แต่ฝากเงินได้ดอกเบี้ยดี',
+    description: 'ธนาคารกลางขึ้นดอกเบี้ย! GreenPower+RoboSnack ฟื้นตัว ฝากเงินได้ดอกเบี้ยดี แต่หุ้นเทค+เกมร่วงหนักเพราะกู้เงินแพง!',
     image: null as string | null,
   },
 ];
 
-// --- Return Table (% ผลตอบแทนแต่ละรอบ) ---
+// ==============================================
+// ✅ B12-BAL: Return Table — Rebalanced
+// ==============================================
+// หลักออกแบบ:
+// 1. ไม่มีหุ้นตัวไหน dominate ตลอด 6 รอบ
+// 2. ทุกหุ้นมี "รอบพุ่ง" และ "รอบร่วง" อย่างน้อย 1 รอบ
+// 3. กระจายลงทุน (3+ ตัว) ชนะ all-in ทุกตัว (volatility drag)
+// 4. รอบ 6 มีทั้งบวกและลบ (ไม่ลบหมด)
+// 5. ผู้นำหมุนเวียนทุกรอบ — ไม่มี "คำตอบที่ถูกตลอด"
+// 6. Narrative ตรงกับ EVENTS
+// 7. PiggyBank บวกเสมอแต่น้อย (safe haven จริง)
+//
+// ผลลัพธ์ verified:
+// - Best all-in: GreenPower ฿12,242 (+22.4%)
+// - Best diversified (3+ stocks, max 40%): ฿12,284 (+22.8%) ✅ ชนะ!
+// - เด็กกระจายทั่วไป: ~฿12,052 (+20%) ชนะ 4/6 all-in strategies
+// - All-in MegaFun: ฿10,219 (+2.2%) — เคยเป็น king ตอนนี้แทบเจ๊ง
+// - All-in ZoomZoom: ฿9,930 (-0.7%) — ขาดทุน!
+
 export const RETURN_TABLE: Record<string, number[]> = {
   // [round1, round2, round3, round4, round5, round6]
-  zoomzoom:   [15, -15, 25, -10, 30, -8],
-  robosnack:  [5,   8, 10,  -8,  3, -3],
-  megafun:    [8,  20, 12,  -5, 15, -10],
-  greenpower: [3,  -5, 15,  20, -5, -5],
-  piggybank:  [2,   1,  2,   2,  1,  3],
-  safegold:   [6,  -3, 12,  -3,  8, -2],
+  //
+  // R1: iPhone → เทคพุ่ง, พลังงานยังไม่ได้ประโยชน์
+  // R2: โรคระบาด → เกม+อาหารบูม, เทค/รถร่วง
+  // R3: ฟื้นตัว → เทคกลับมา, เกมลด (คนออกจากบ้าน)
+  // R4: สงคราม → พลังงานพุ่ง, อาหารร่วง (น้ำมันแพง=ขนส่งแพง)
+  // R5: AI บูม → เทคพุ่งสุด, กองทุนร่วง (AI แทนที่ fund manager)
+  // R6: ขึ้นดอกเบี้ย → mixed! พลังงาน+อาหารฟื้น, เทค+เกมร่วง
+  zoomzoom:   [ 15,  -25,   20,  -10,   30,  -18],
+  robosnack:  [  5,   15,    8,  -20,   -5,   15],
+  megafun:    [ 10,   30,  -15,   -5,   18,  -25],
+  greenpower: [ -8,  -12,   12,   25,  -10,   20],
+  piggybank:  [  2,    3,    2,    3,    2,    5],
+  safegold:   [  5,    5,   10,    8,  -15,    8],
 };
 
 // --- Golden Deals ---
@@ -490,7 +519,12 @@ export function getQuizForRound(roomId: string, round: number): typeof QUIZ_POOL
   return shuffled.slice(startIndex, startIndex + 2);
 }
 
+// ==============================================
+// ✅ B12-BAL: Round News — ปรับข่าวให้ match RETURN_TABLE ใหม่
+// ==============================================
+
 // --- Round News (ข่าว 3 ข่าวต่อรอบ: จริง 1 + มั่ว 2) ---
+// ✅ B12-BAL: ข่าวจริงบอกใบ้ตรงกว่าเดิม + ข่าวมั่วล่อให้ลงผิดตัว
 export const ROUND_NEWS: {
   round: number;
   news: {
@@ -500,51 +534,57 @@ export const ROUND_NEWS: {
   }[];
 }[] = [
   {
+    // R1: เทคพุ่ง (ZoomZoom +15), พลังงานยังไม่ได้ประโยชน์ (GreenPower -8)
     round: 1,
     news: [
-      { text: 'Apple เตรียมเปิดตัว iPhone รุ่นใหม่ คาดหุ้นเทคพุ่ง', isReal: true, emoji: '📱' },
-      { text: 'บริษัทพลังงานกำลังจะล้มละลาย!', isReal: false, emoji: '⚡' },
-      { text: 'ธนาคารจะลดดอกเบี้ยเหลือ 0%', isReal: false, emoji: '🏦' },
+      { text: 'Apple เตรียมเปิดตัว iPhone รุ่นใหม่ คาดหุ้นเทคและแอปเรียกรถพุ่ง!', isReal: true, emoji: '📱' },
+      { text: 'บริษัทพลังงานสะอาดกำลังจะได้สัมปทานใหม่ กำไรพุ่งแน่!', isReal: false, emoji: '⚡' },
+      { text: 'ธนาคารจะลดดอกเบี้ยเหลือ 0% ฝากเงินไม่คุ้มแล้ว', isReal: false, emoji: '🏦' },
     ],
   },
   {
+    // R2: เกม+อาหารบูม (MegaFun +30, RoboSnack +15), เทคร่วง (ZoomZoom -25)
     round: 2,
     news: [
-      { text: 'โรคระบาดใหม่แพร่กระจาย คนอยู่บ้านเล่นเกม+สั่งอาหาร', isReal: true, emoji: '🦠' },
-      { text: 'บริษัทเทคเตรียมเปิดตัวสินค้าใหม่สุดล้ำ!', isReal: false, emoji: '🚀' },
-      { text: 'ทองคำจะราคาตก 50%!', isReal: false, emoji: '🪙' },
+      { text: 'โรคระบาดใหม่แพร่กระจาย! คนอยู่บ้านเล่นเกม+สั่งอาหาร แต่ไม่มีใครเดินทาง', isReal: true, emoji: '🦠' },
+      { text: 'ZoomZoom เตรียมเปิดตัวรถบินรุ่นใหม่ คาดหุ้นพุ่ง 50%!', isReal: false, emoji: '🚀' },
+      { text: 'ทองคำจะราคาตก 50% เพราะคนขายทิ้ง!', isReal: false, emoji: '🪙' },
     ],
   },
   {
+    // R3: ฟื้นตัว เทคกลับ (ZoomZoom +20), เกมลด (MegaFun -15), พลังงานเริ่มดี (GreenPower +12)
     round: 3,
     news: [
-      { text: 'วัคซีนสำเร็จ! เศรษฐกิจฟื้นตัวทุกอุตสาหกรรม', isReal: true, emoji: '💉' },
-      { text: 'รัฐบาลจะขึ้นภาษีบริษัทเทค 50%!', isReal: false, emoji: '📋' },
-      { text: 'ฝากเงินปีนี้ได้ดอกเบี้ย 20%!', isReal: false, emoji: '🤑' },
+      { text: 'วัคซีนสำเร็จ! คนออกจากบ้าน เศรษฐกิจฟื้น เทคและพลังงานเริ่มดีขึ้น', isReal: true, emoji: '💉' },
+      { text: 'MegaFun เตรียมเปิดตัวเกมใหม่สุดฮิต คาดรายได้ทะลุเป้า!', isReal: false, emoji: '🎮' },
+      { text: 'ฝากเงินปีนี้ได้ดอกเบี้ย 20% ธนาคารแจกหนัก!', isReal: false, emoji: '🤑' },
     ],
   },
   {
+    // R4: พลังงานพุ่ง (GreenPower +25), อาหารร่วง (RoboSnack -20)
     round: 4,
     news: [
-      { text: 'เกิดสงคราม น้ำมันราคาพุ่ง บริษัทพลังงานได้กำไร', isReal: true, emoji: '⛽' },
-      { text: 'บริษัทเกมเตรียมออกเกมใหม่สุดฮิต!', isReal: false, emoji: '🎮' },
-      { text: 'ร้านอาหารหุ่นยนต์จะขยาย 100 สาขา!', isReal: false, emoji: '🤖' },
+      { text: 'เกิดสงคราม น้ำมันราคาพุ่ง! บริษัทพลังงานทางเลือกได้กำไร แต่ต้นทุนขนส่งอาหารพุ่ง', isReal: true, emoji: '⛽' },
+      { text: 'RoboSnack เตรียมขยายร้าน 100 สาขาทั่วประเทศ!', isReal: false, emoji: '🤖' },
+      { text: 'บริษัทเกมเตรียมซื้อกิจการคู่แข่ง กำไรจะพุ่ง 3 เท่า!', isReal: false, emoji: '🎮' },
     ],
   },
   {
+    // R5: AI → เทคพุ่ง (ZoomZoom +30, MegaFun +18), กองทุนร่วง (SafeGold -15)
     round: 5,
     news: [
-      { text: 'ChatGPT รุ่นใหม่สุดล้ำ บริษัท AI และเกมกำไรมหาศาล', isReal: true, emoji: '🤖' },
-      { text: 'พลังงานสะอาดได้ทุนจาก AI ช่วยลดต้นทุน', isReal: false, emoji: '☀️' },
-      { text: 'ทุกกองทุนรวมการันตีกำไร 30%!', isReal: false, emoji: '📈' },
+      { text: 'AI ปฏิวัติโลก! บริษัทเทคและเกมใช้ AI ทำกำไร แต่ AI แทนที่ผู้จัดการกองทุนได้!', isReal: true, emoji: '🤖' },
+      { text: 'SafeGold Fund ประกาศกำไรสูงสุดเป็นประวัติการณ์!', isReal: false, emoji: '🛡️' },
+      { text: 'พลังงานสะอาดได้ทุนจาก AI ช่วยลดต้นทุน กำไรพุ่ง!', isReal: false, emoji: '☀️' },
     ],
   },
   {
+    // R6: ดอกเบี้ยขึ้น → mixed! พลังงาน+อาหารฟื้น, เทค+เกมร่วงหนัก, ฝากเงินดี
     round: 6,
     news: [
-      { text: 'แบงก์ชาติขึ้นดอกเบี้ย ฝากเงินคุ้มขึ้น หุ้นกู้เงินแพง', isReal: true, emoji: '🏦' },
-      { text: 'บริษัทเทคเตรียม IPO ใหม่ คาดหุ้นพุ่ง 50%!', isReal: false, emoji: '🚀' },
-      { text: 'ทองคำจะขึ้นราคา 3 เท่า!', isReal: false, emoji: '🪙' },
+      { text: 'แบงก์ชาติขึ้นดอกเบี้ย! ฝากเงินคุ้ม พลังงาน+อาหารฟื้น แต่หุ้นเทค+เกมกู้เงินแพงร่วงหนัก', isReal: true, emoji: '🏦' },
+      { text: 'MegaFun เตรียมเปิดตัวเกม Metaverse คาดหุ้นพุ่ง 100%!', isReal: false, emoji: '🎮' },
+      { text: 'ZoomZoom จะควบรวมกับ Tesla หุ้นจะพุ่ง 200%!', isReal: false, emoji: '🚀' },
     ],
   },
 ];
