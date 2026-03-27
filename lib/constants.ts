@@ -1,5 +1,5 @@
 // FILE: lib/constants.ts — Game Configuration (Single Source of Truth)
-// VERSION: B14-v1 — Content & Balance: Sector names, Return table v4, Quiz from Session 2, Events rewrite, Quiz bonus 200/100/0
+// VERSION: B14-v2 — Content & Balance: Sector names, Return table v5c, Quiz from Session 2, Events rewrite, Quiz bonus 200/100/0
 // LAST MODIFIED: 27 Mar 2026
 // HISTORY: B1 created | B3 phase timers + display | B4 companies + events | B5 return table + golden deals | B8 quiz + news (v2: 3-phase) | B9 duel config + attack phase update | B10 disable golden deal | B12-UX year_intro + market_open + step groups | B12-BAL rebalance returns + events + news + duel | B13-BATCH0 cut news/rebalance/attack, add quiz bonus + chance cards | B14 sector names + return table v4 + quiz Session 2 + events rewrite + quiz bonus 200/100/0
 
@@ -313,9 +313,10 @@ export const COMPANIES = [
 ];
 
 // ==============================================
-// ✅ B14: Events — เขียนใหม่ match return table v4
+// ✅ B14: Events — เขียนใหม่ match return table v5c
 // description สั้นกระชับสำหรับจอ Display
 // ดร.โบว์ ใช้ script แยก (เอกสารปริ้น) เล่าเพิ่ม
+// ทุกรอบ: top 2-3 sector ห่างกันแค่ 1-2% → เดาถูกยาก
 // ==============================================
 
 export const EVENTS = [
@@ -323,82 +324,86 @@ export const EVENTS = [
     round: 1,
     title: 'มือถือรุ่นใหม่ขายดี!',
     emoji: '📱',
-    description: 'บริษัทมือถือเปิดตัวรุ่นใหม่ ยอดขายทะลุเป้า! 📱เทค พุ่ง 🎮เกม ตามมา แต่ ☀️พลังงาน ยังไม่ได้ประโยชน์',
+    description: 'บริษัทมือถือเปิดตัวรุ่นใหม่ ยอดขายทะลุเป้า! 📱เทค 🍔อาหาร 🎮เกม ได้ประโยชน์ใกล้กัน แต่ ☀️พลังงาน ยังไม่ตาม',
     image: null as string | null,
   },
   {
     round: 2,
     title: 'โรคระบาดทั่วโลก!',
     emoji: '🦠',
-    description: 'โรคระบาดระลอกใหม่! คนอยู่บ้าน 🎮เกม+🍔อาหาร delivery บูม! แต่ 📱เทค ร่วงเพราะ supply chain สะดุด',
+    description: 'โรคระบาดระลอกใหม่! คนอยู่บ้าน 🎮เกม+🍔อาหาร delivery บูม! แต่ 📱เทค ร่วงหนักเพราะ supply chain สะดุด',
     image: null as string | null,
   },
   {
     round: 3,
     title: 'วัคซีนสำเร็จ!',
     emoji: '💉',
-    description: 'วัคซีนมาแล้ว! เศรษฐกิจฟื้นตัว 📱เทค กลับมาแรง แต่ 🎮เกม+🍔อาหาร ลดลงเพราะคนออกจากบ้าน',
+    description: 'วัคซีนมาแล้ว! เศรษฐกิจฟื้นตัว ☀️พลังงาน 📱เทค 🧺กองทุน กลับมาดีใกล้กัน แต่ 🎮เกม ร่วงหนักเพราะคนออกจากบ้าน',
     image: null as string | null,
   },
   {
     round: 4,
     title: 'สงคราม น้ำมันแพง!',
     emoji: '⛽',
-    description: 'เกิดสงคราม น้ำมันราคาพุ่ง! ☀️พลังงานสะอาด ได้กำไร แต่ 🍔อาหาร ต้นทุนขนส่งสูง กำไรหด',
+    description: 'เกิดสงคราม น้ำมันราคาพุ่ง! ☀️พลังงานสะอาด ได้กำไร แต่ 🍔อาหาร ร่วงหนัก ต้นทุนขนส่งพุ่งสูง!',
     image: null as string | null,
   },
   {
     round: 5,
     title: 'AI บูม!',
     emoji: '🤖',
-    description: 'AI ปฏิวัติโลก! 📱เทค พุ่งสุด ใช้ AI เพิ่มกำไร แต่ 🧺กองทุน ร่วงเพราะ AI แทนที่ผู้จัดการกองทุน',
+    description: 'AI ปฏิวัติโลก! 📱เทค+🍔อาหาร ใช้ AI เพิ่มกำไรได้ใกล้กัน แต่ 🎮เกม ร่วงหนัก 🧺กองทุน ก็โดน AI แทนที่',
     image: null as string | null,
   },
   {
     round: 6,
     title: 'ขึ้นดอกเบี้ย!',
     emoji: '🏦',
-    description: 'ธนาคารกลางขึ้นดอกเบี้ย! 🍔อาหาร สิ่งจำเป็นยังขายดี ☀️พลังงาน ฟื้นตัว แต่ 📱เทค+🎮เกม ร่วงหนัก กู้เงินแพง!',
+    description: 'ธนาคารกลางขึ้นดอกเบี้ย! 🍔อาหาร+☀️พลังงาน สิ่งจำเป็นยังดี แต่ 📱เทค ร่วงหนักมาก กู้เงินแพง!',
     image: null as string | null,
   },
 ];
 
 // ==============================================
-// ✅ B14: Return Table v4 — Rebalanced
+// ✅ B14: Return Table v5c — Rebalanced (tested with 41 real players)
 // ==============================================
 // หลักออกแบบ:
-// 1. max return ~15% (ลดจาก 30%)
-// 2. ตัวที่พุ่งรอบนี้ → มักร่วงรอบถัดไป ("สลับกัน")
-// 3. ทุกหุ้นมีรอบพุ่ง + รอบร่วง อย่างน้อย 1 รอบ
-// 4. กระจาย 3+ ตัว (max 40%) ชนะ all-in ทุกตัว
-// 5. PiggyBank บวกเสมอแต่น้อย (safe haven)
-// 6. R6 twist: อาหาร (สิ่งจำเป็น) ชนะ, เทค ร่วงหนัก
-// 7. ผู้นำหมุนเวียนทุกรอบ — ไม่มี "คำตอบที่ถูกตลอด"
-// 8. "วิ่งตามผู้ชนะ" = ขาดทุนหนัก (-39.5%)
+// 1. ทุกรอบ top 2-3 ตัว ห่างกันแค่ 1-2% → เดาถูกตัว #1 ยากมาก
+// 2. All-in ผิด = เจ็บหนัก (-15% ถึง -18%)
+// 3. กระจาย 3+ ตัว (max 40%) ชนะ all-in ทุกตัว
+// 4. PiggyBank บวกเสมอแต่น้อย (safe haven)
+// 5. R6 twist: อาหาร+พลังงาน (สิ่งจำเป็น) ดี, เทค ร่วงหนักสุด (-18%)
+// 6. ไม่มี pattern "สลับ" ชัดเจน → จับ pattern ยาก
+// 7. "วิ่งตามผู้ชนะ" = ขาดทุนหนัก (-30%)
 //
-// ผลลัพธ์ verified:
-// - Best all-in: อาหาร ฿11,863 (+18.6%)
-// - Best diversified (3+ stocks, max 40%): ฿11,957 (+19.6%) ✅ ชนะ!
-// - Equal weight 6 ตัว: ฿11,217 (+12.2%)
-// - "วิ่งตามผู้ชนะ": ฿6,050 (-39.5%) ❌ ขาดทุนหนัก!
-// - All-in เทค: ฿10,104 (+1.0%) — แทบเจ๊ง
-// - All-in เกม: ฿9,494 (-5.1%) — ขาดทุน!
+// ผลลัพธ์ verified (v5c):
+// - Best all-in: พลังงาน ฿11,490 (+14.9%)
+// - Best diversified (3+ stocks, max 40%): ฿11,587 (+15.9%) ✅ ชนะ!
+// - Equal weight 6 ตัว: ฿10,384 (+3.8%)
+// - "วิ่งตามผู้ชนะ": ฿6,997 (-30.0%) ❌ ขาดทุนหนัก!
+// - All-in เทค: ฿8,492 (-15.1%) — ขาดทุน!
+// - All-in เกม: ฿8,035 (-19.6%) — ขาดทุนหนัก!
+//
+// Tested with 41 real players:
+// - ที่ 1 = "semi-concentrated" (เน้น 70-80% + ออม safety net) ไม่ใช่ all-in 100%
+// - All-in switcher ตกอันดับ (Lynn: #2→#3, Korn: #4→#7)
+// - Diversified มีที่ยืนใน Top 10 มากขึ้น
 
 export const RETURN_TABLE: Record<string, number[]> = {
   // [round1, round2, round3, round4, round5, round6]
   //
-  // R1: มือถือรุ่นใหม่ → เทคพุ่ง, พลังงานยังไม่ได้ประโยชน์
-  // R2: โรคระบาด → เกม+อาหารบูม, เทค supply chain สะดุด
-  // R3: วัคซีนฟื้นตัว → เทคกลับมา, เกม+อาหารลด (คนออกจากบ้าน)
-  // R4: สงคราม → พลังงานพุ่ง, อาหารร่วง (ต้นทุนขนส่ง)
-  // R5: AI บูม → เทคพุ่งสุด, กองทุนร่วง (AI แทนที่ fund manager)
-  // R6: ขึ้นดอกเบี้ย → อาหาร win (inelastic demand), เทค+เกมร่วง (กู้แพง)
-  robosnack:   [  3,   12,   -8,  -10,    8,   15],
-  zoomzoom:    [ 14,  -12,   12,   -8,   15,  -15],
-  megafun:     [ 10,   15,  -12,    3,  -10,   -8],
-  greenpower:  [ -8,   -5,    8,   15,   -3,   12],
-  piggybank:   [  2,    2,    3,    2,    3,    3],
-  safegold:    [  5,    4,    6,   -5,   -8,   10],
+  // R1: มือถือรุ่นใหม่ → เทค+6% อาหาร+5% เกม+4% (ใกล้กัน!) พลังงาน-8%
+  // R2: โรคระบาด → เกม+9% อาหาร+8% (ใกล้กัน!) เทค-15% (supply chain)
+  // R3: วัคซีนฟื้นตัว → พลังงาน+10% เทค+9% กองทุน+8% (3ตัวใกล้!) เกม-12%
+  // R4: สงคราม → พลังงาน+11% เกม+3% อาหาร-18% (ต้นทุนขนส่งหนัก!)
+  // R5: AI บูม → เทค+11% อาหาร+10% (ใกล้!) เกม-15% กองทุน-8%
+  // R6: ขึ้นดอกเบี้ย → อาหาร+14% พลังงาน+11% (ใกล้!) เทค-18% (crash!)
+  robosnack:   [  5,    8,   -3,  -18,   10,   14],
+  zoomzoom:    [  6,  -15,    9,   -5,   11,  -18],
+  megafun:     [  4,    9,  -12,    3,  -15,   -8],
+  greenpower:  [ -8,   -5,   10,   11,   -3,   11],
+  piggybank:   [  2,    2,    2,    2,    2,    3],
+  safegold:    [  3,    4,    8,   -5,   -8,    9],
 };
 
 // --- Golden Deals ---
