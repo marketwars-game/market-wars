@@ -1,7 +1,7 @@
 // FILE: components/display/EventDisplay.tsx — Display Event + Event Result
-// VERSION: B12-UX-v1 — Compact layout for 16:9 projector (no scroll)
-// LAST MODIFIED: 26 Mar 2026
-// HISTORY: B5 created (inline) | B8R extracted to component | B12-UX compact layout
+// VERSION: B14-v1 — Event Result: description ตัวใหญ่ตรงกลาง (ไม่ใช่ bar เล็กด้านบน)
+// LAST MODIFIED: 27 Mar 2026
+// HISTORY: B5 created (inline) | B8R extracted to component | B12-UX compact layout | B14 large centered description
 'use client';
 
 import { COMPANIES, EVENTS, GOLDEN_DEALS, RETURN_TABLE } from '@/lib/constants';
@@ -32,34 +32,35 @@ export default function EventDisplay({ round, phase, players }: EventDisplayProp
     );
   }
 
-  // === Event Result — news bar + 3x2 grid ===
+  // === Event Result — description ตัวใหญ่ตรงกลาง + 3x2 grid ===
   if (phase === 'event_result' && EVENTS[round - 1]) {
     const ev = EVENTS[round - 1];
     return (
-      <div className="w-full h-full flex flex-col">
-        {/* News summary bar */}
-        <div className="flex items-center gap-2 px-4 py-1.5 flex-shrink-0" style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-          <span className="text-base">{ev.emoji}</span>
-          <span className="text-xs text-gray-400">{ev.title} — {ev.description}</span>
+      <div className="w-full h-full flex flex-col items-center justify-center px-6 gap-4">
+        {/* Event description — ตัวใหญ่ตรงกลาง */}
+        <div className="text-center max-w-2xl px-4">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <span className="text-3xl">{ev.emoji}</span>
+            <h3 className="text-xl font-bold text-[#FF6B6B]">{ev.title}</h3>
+          </div>
+          <p className="text-base text-gray-300 leading-relaxed">{ev.description}</p>
         </div>
         {/* Grid 3x2 */}
-        <div className="flex-1 flex items-center justify-center px-6">
-          <style>{`@keyframes fadeSlideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } } .return-card { opacity: 0; animation: fadeSlideUp 0.4s ease-out forwards; }`}</style>
-          <div className="grid grid-cols-3 gap-3 w-full max-w-xl">
-            {COMPANIES.map((c, i) => {
-              const returnPct = RETURN_TABLE[c.id]?.[round - 1] || 0;
-              const isPositive = returnPct >= 0;
-              return (
-                <div key={c.id} className="return-card rounded-lg p-3 text-center" style={{ animationDelay: `${i * 0.2}s`, background: '#161b22', borderTop: `2px solid ${c.color}` }}>
-                  <div className="text-xl mb-0.5">{c.icon}</div>
-                  <div className="text-[10px] font-semibold mb-1" style={{ color: c.color }}>{c.name}</div>
-                  <div className="text-2xl font-bold font-mono" style={{ color: isPositive ? '#22c55e' : '#ef4444' }}>
-                    {isPositive ? '+' : ''}{returnPct}%
-                  </div>
+        <style>{`@keyframes fadeSlideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } } .return-card { opacity: 0; animation: fadeSlideUp 0.4s ease-out forwards; }`}</style>
+        <div className="grid grid-cols-3 gap-3 w-full max-w-xl">
+          {COMPANIES.map((c, i) => {
+            const returnPct = RETURN_TABLE[c.id]?.[round - 1] || 0;
+            const isPositive = returnPct >= 0;
+            return (
+              <div key={c.id} className="return-card rounded-lg p-3 text-center" style={{ animationDelay: `${i * 0.2}s`, background: '#161b22', borderTop: `2px solid ${c.color}` }}>
+                <div className="text-xl mb-0.5">{c.icon}</div>
+                <div className="text-[10px] font-semibold mb-1" style={{ color: c.color }}>{c.name}</div>
+                <div className="text-2xl font-bold font-mono" style={{ color: isPositive ? '#22c55e' : '#ef4444' }}>
+                  {isPositive ? '+' : ''}{returnPct}%
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     );

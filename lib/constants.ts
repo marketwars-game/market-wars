@@ -1,7 +1,7 @@
 // FILE: lib/constants.ts — Game Configuration (Single Source of Truth)
-// VERSION: B13-BATCH0-v1 — Cut news/rebalance/attack, add QUIZ_BONUS + CHANCE_CARDS + chance_card phase
-// LAST MODIFIED: 26 Mar 2026
-// HISTORY: B1 created | B3 phase timers + display | B4 companies + events | B5 return table + golden deals | B8 quiz + news (v2: 3-phase) | B9 duel config + attack phase update | B10 disable golden deal | B12-UX year_intro + market_open + step groups | B12-BAL rebalance returns + events + news + duel | B13-BATCH0 cut news/rebalance/attack, add quiz bonus + chance cards
+// VERSION: B14-v1 — Content & Balance: Sector names, Return table v4, Quiz from Session 2, Events rewrite, Quiz bonus 200/100/0
+// LAST MODIFIED: 27 Mar 2026
+// HISTORY: B1 created | B3 phase timers + display | B4 companies + events | B5 return table + golden deals | B8 quiz + news (v2: 3-phase) | B9 duel config + attack phase update | B10 disable golden deal | B12-UX year_intro + market_open + step groups | B12-BAL rebalance returns + events + news + duel | B13-BATCH0 cut news/rebalance/attack, add quiz bonus + chance cards | B14 sector names + return table v4 + quiz Session 2 + events rewrite + quiz bonus 200/100/0
 
 // ==============================================
 // Market Wars — Game Configuration
@@ -15,11 +15,12 @@ export const STARTING_MONEY = 10000;
 export const ALLOCATION_STEP = 10; // ทีละ 10%
 
 // ==============================================
-// ✅ B13: Quiz Bonus — ตอบ quiz ถูกได้เงิน bonus
+// ✅ B14: Quiz Bonus — ปรับจาก 300/150/0 → 200/100/0
+// ลดน้ำหนัก quiz ให้ investment สำคัญขึ้น
 // ==============================================
 export const QUIZ_BONUS = {
-  CORRECT_2: 300,  // ถูกครบ 2 ข้อ → +฿300
-  CORRECT_1: 150,  // ถูก 1 ข้อ → +฿150
+  CORRECT_2: 200,  // ถูกครบ 2 ข้อ → +฿200
+  CORRECT_1: 100,  // ถูก 1 ข้อ → +฿100
   CORRECT_0: 0,    // ผิดหมด → ฿0
 };
 
@@ -101,16 +102,14 @@ export const GOLDEN_DEAL_ROUNDS: number[] = [];
 
 // --- Phase Timers (วินาที) ---
 // เฉพาะ phase ที่เด็กต้องทำอะไร (Pressure timer — แค่แสดง MC ยังกดเอง)
-// ✅ B13: ตัด attack + rebalance, เพิ่ม chance_card
 export const PHASE_TIMERS: Record<string, number> = {
   research: 90,       // ตอบ quiz 2 ข้อ
   invest: 120,        // เลือกลงทุน 6 บริษัท
-  chance_card: 30,    // ✅ B13: กดเปิดการ์ดโชคชะตา
+  chance_card: 30,    // กดเปิดการ์ดโชคชะตา
   golden_deal: 60,    // แข่ง quiz ชิงดีล (ปิดอยู่)
 };
 
 // --- Phase Display Info ---
-// ✅ B13: ตัด news_feed, rebalance, attack, attack_result / เพิ่ม chance_card / ปรับ research_reveal
 export const PHASE_DISPLAY: Record<string, {
   name: string;
   icon: string;
@@ -143,7 +142,6 @@ export const PHASE_DISPLAY: Record<string, {
     mcTip: 'รอเด็กตอบ quiz เสร็จ แล้วกด Next เพื่อเฉลย',
     hasTimer: true,
   },
-  // ✅ B13: ปรับ research_reveal — แสดง bonus เงินแทนปลดล็อกข่าว
   research_reveal: {
     name: 'Quiz Reveal',
     icon: '📝',
@@ -156,11 +154,10 @@ export const PHASE_DISPLAY: Record<string, {
     name: 'Investment',
     icon: '💰',
     displayMessage: 'Players choosing investments...',
-    playerMessage: 'จัดสรรงบประมาณประจำปีลงทุน 6 บริษัท',
+    playerMessage: 'จัดสรรงบประมาณประจำปีลงทุน 6 sector',
     mcTip: 'เด็กเลือกลงทุน ทุกรอบเริ่มจาก 0% ใหม่ — กด Next เมื่อพร้อม',
     hasTimer: true,
   },
-  // ✅ B13: Chance Card (แทน attack + attack_result)
   chance_card: {
     name: 'Chance Card',
     icon: '🃏',
@@ -181,16 +178,16 @@ export const PHASE_DISPLAY: Record<string, {
     name: 'Event Reveal',
     icon: '📰',
     displayMessage: 'Breaking news!',
-    playerMessage: 'Watch the big screen!',
-    mcTip: 'อ่านข่าวให้เด็กฟัง แล้วถามว่า "คิดว่าข่าวนี้จะกระทบหุ้นตัวไหนบ้าง?" ให้เด็กแสดงความเห็นก่อนกด Next เพื่อเฉลย',
+    playerMessage: '📺 ดูจอใหญ่!',
+    mcTip: 'ให้ ดร.โบว์ เล่า event ตาม script แล้วถามเด็กว่า "คิดว่า sector ไหนจะได้/เสียประโยชน์?" แล้วกด Next เฉลย',
     hasTimer: false,
   },
   event_result: {
     name: 'Market Impact',
     icon: '📊',
-    displayMessage: 'Market impact revealed!',
-    playerMessage: 'Watch the big screen!',
-    mcTip: 'อธิบายว่าทำไมแต่ละบริษัทถึงได้/เสียแบบนี้ เชื่อมกับข่าว แล้วกด Next',
+    displayMessage: 'ผลกระทบต่อตลาด!',
+    playerMessage: '📺 ดูจอใหญ่!',
+    mcTip: 'ให้ ดร.โบว์ อธิบายว่าทำไมแต่ละ sector ถึงได้/เสียแบบนี้ เชื่อมกับ event แล้วกด Next',
     hasTimer: false,
   },
   golden_deal: {
@@ -204,33 +201,31 @@ export const PHASE_DISPLAY: Record<string, {
   results: {
     name: 'Round Results',
     icon: '💰',
-    displayMessage: 'Returns calculated!',
-    playerMessage: 'See your returns this round!',
+    displayMessage: 'คำนวณผลตอบแทน!',
+    playerMessage: 'ดูผลตอบแทนรอบนี้!',
     mcTip: 'ให้เด็กดูผลตัวเองบนมือถือ ถามว่า "ใครได้เยอะสุด? ใครขาดทุน?" แล้วกด Next ไป Leaderboard',
     hasTimer: false,
   },
   leaderboard: {
     name: 'Leaderboard',
     icon: '🏆',
-    displayMessage: 'Rankings updated!',
-    playerMessage: 'Check your ranking!',
-    mcTip: 'Dramatic reveal! Comment on who moved up/down. Press Next to continue.',
+    displayMessage: 'อันดับอัปเดต!',
+    playerMessage: 'เช็คอันดับของคุณ!',
+    mcTip: 'Dramatic reveal! ใครขึ้น ใครลง? ถามเด็กว่า "คนที่ขึ้นมา ลงทุนยังไง?" แล้วกด Next',
     hasTimer: false,
   },
   final: {
     name: 'Final Summary',
     icon: '🎉',
-    displayMessage: 'Game Over!',
-    playerMessage: 'Game over! See your final results!',
-    mcTip: 'Game finished! Announce Top 3, awards, and 5 lessons.',
+    displayMessage: 'จบเกมแล้ว!',
+    playerMessage: 'จบเกม! ดูผลสรุป!',
+    mcTip: 'ประกาศ Top 3 + รางวัล + สรุป 5 บทเรียน',
     hasTimer: false,
   },
 };
 
 // ==============================================
 // ✅ B13: Step Groups — ปรับสำหรับ phase flow ใหม่
-// ตัด news_feed ออกจาก research / ตัด rebalance ออกจาก invest
-// เปลี่ยน fight → chance (attack+attack_result → chance_card)
 // ==============================================
 
 export const STEP_GROUPS = [
@@ -255,147 +250,155 @@ export const YEAR_INTRO_TEXT: Record<number, { title: string; subtitle: string }
   6: { title: 'ปีสุดท้าย!', subtitle: 'โอกาสสุดท้ายที่จะพลิกเกม!' },
 };
 
-// --- 6 Companies ---
+// ==============================================
+// ✅ B14: 6 Companies — เปลี่ยนเป็นชื่อ Sector + icon ใหม่
+// เด็ก 10-15 เห็นแล้วเข้าใจทันที
+// ==============================================
+
 export const COMPANIES = [
   {
     id: 'robosnack',
-    name: 'RoboSnack',
+    name: 'อาหาร (Food)',
     type: 'Food & Beverage',
     risk: 'Medium',
     color: '#FF6B6B',
-    icon: '🤖🍔',
-    description: 'ร้านขนมหุ่นยนต์ ขายดีมาก แต่ต้นทุนสูง',
+    icon: '🍔',
+    description: 'ร้านอาหาร ทุกคนต้องกิน ขายดีตลอด',
   },
   {
     id: 'zoomzoom',
-    name: 'ZoomZoom',
-    type: 'Tech / EV',
+    name: 'เทค (Tech)',
+    type: 'Technology',
     risk: 'High',
     color: '#00D4FF',
-    icon: '🚀',
-    description: 'แอปเรียกรถบินไฟฟ้า เพิ่งเปิดตัว',
+    icon: '📱',
+    description: 'บริษัทมือถือ แอป เทคโนโลยี ขึ้นลงแรง',
   },
   {
     id: 'megafun',
-    name: 'MegaFun',
+    name: 'เกม (Gaming)',
     type: 'Gaming',
     risk: 'High',
     color: '#A855F7',
     icon: '🎮',
-    description: 'บริษัทเกม เกมใหม่กำลังจะออก',
+    description: 'บริษัทเกม สนุกแต่ขึ้นลงเยอะ',
   },
   {
     id: 'greenpower',
-    name: 'GreenPower',
+    name: 'พลังงาน (Energy)',
     type: 'Energy',
     risk: 'Medium-High',
     color: '#22C55E',
-    icon: '⚡',
+    icon: '☀️',
     description: 'พลังงานสะอาด โซลาร์เซลล์',
   },
   {
     id: 'piggybank',
-    name: 'PiggyBank+',
+    name: 'ออมทรัพย์ (Savings)',
     type: 'Savings',
     risk: 'Very Low',
     color: '#F59E0B',
     icon: '🐷',
-    description: 'ฝากออมทรัพย์ ดอกเบี้ยต่ำแต่ปลอดภัย',
+    description: 'ฝากธนาคาร ดอกเบี้ยน้อยแต่ปลอดภัย',
   },
   {
     id: 'safegold',
-    name: 'SafeGold Fund',
+    name: 'กองทุน (Fund)',
     type: 'Fund',
     risk: 'Medium',
     color: '#EC4899',
-    icon: '🛡️',
-    description: 'กองทุนรวม มีผู้จัดการกองทุนดูแล',
+    icon: '🧺',
+    description: 'กองทุนรวม มีผู้เชี่ยวชาญเลือกให้',
   },
 ];
 
 // ==============================================
-// ✅ B12-BAL: Events — ปรับ description ให้ match RETURN_TABLE ใหม่
+// ✅ B14: Events — เขียนใหม่ match return table v4
+// description สั้นกระชับสำหรับจอ Display
+// ดร.โบว์ ใช้ script แยก (เอกสารปริ้น) เล่าเพิ่ม
 // ==============================================
 
 export const EVENTS = [
   {
     round: 1,
-    title: 'iPhone ใหม่ขายดี!',
+    title: 'มือถือรุ่นใหม่ขายดี!',
     emoji: '📱',
-    description: 'Apple เปิดตัว iPhone รุ่นใหม่ ยอดขายทะลุเป้า หุ้นเทคพุ่ง! แต่บริษัทพลังงานยังไม่ได้ประโยชน์',
+    description: 'บริษัทมือถือเปิดตัวรุ่นใหม่ ยอดขายทะลุเป้า! 📱เทค พุ่ง 🎮เกม ตามมา แต่ ☀️พลังงาน ยังไม่ได้ประโยชน์',
     image: null as string | null,
   },
   {
     round: 2,
     title: 'โรคระบาดทั่วโลก!',
     emoji: '🦠',
-    description: 'โรคระบาดครั้งใหญ่! คนอยู่บ้านเล่นเกมสั่งอาหาร — MegaFun+RoboSnack พุ่ง! แต่ ZoomZoom ร่วงหนัก เพราะไม่มีใครเดินทาง',
+    description: 'โรคระบาดระลอกใหม่! คนอยู่บ้าน 🎮เกม+🍔อาหาร delivery บูม! แต่ 📱เทค ร่วงเพราะ supply chain สะดุด',
     image: null as string | null,
   },
   {
     round: 3,
-    title: 'เศรษฐกิจฟื้นตัว!',
-    emoji: '📈',
-    description: 'วัคซีนมาแล้ว! คนออกจากบ้าน เทคฟื้นตัว เศรษฐกิจดีขึ้น แต่ MegaFun ลดลงเพราะคนเลิกอยู่บ้านเล่นเกม',
+    title: 'วัคซีนสำเร็จ!',
+    emoji: '💉',
+    description: 'วัคซีนมาแล้ว! เศรษฐกิจฟื้นตัว 📱เทค กลับมาแรง แต่ 🎮เกม+🍔อาหาร ลดลงเพราะคนออกจากบ้าน',
     image: null as string | null,
   },
   {
     round: 4,
     title: 'สงคราม น้ำมันแพง!',
     emoji: '⛽',
-    description: 'เกิดสงคราม น้ำมันราคาพุ่ง! GreenPower ได้กำไรเพราะพลังงานทางเลือกมาแรง แต่ RoboSnack ร่วงหนักเพราะต้นทุนขนส่งพุ่ง',
+    description: 'เกิดสงคราม น้ำมันราคาพุ่ง! ☀️พลังงานสะอาด ได้กำไร แต่ 🍔อาหาร ต้นทุนขนส่งสูง กำไรหด',
     image: null as string | null,
   },
   {
     round: 5,
-    title: 'AI บูม! เทคพุ่ง!',
+    title: 'AI บูม!',
     emoji: '🤖',
-    description: 'AI ปฏิวัติโลก! ZoomZoom พุ่ง +30% เพราะใช้ AI ขับรถ แต่ SafeGold Fund ร่วง -15% เพราะ AI แทนที่ผู้จัดการกองทุน!',
+    description: 'AI ปฏิวัติโลก! 📱เทค พุ่งสุด ใช้ AI เพิ่มกำไร แต่ 🧺กองทุน ร่วงเพราะ AI แทนที่ผู้จัดการกองทุน',
     image: null as string | null,
   },
   {
     round: 6,
     title: 'ขึ้นดอกเบี้ย!',
     emoji: '🏦',
-    description: 'ธนาคารกลางขึ้นดอกเบี้ย! GreenPower+RoboSnack ฟื้นตัว ฝากเงินได้ดอกเบี้ยดี แต่หุ้นเทค+เกมร่วงหนักเพราะกู้เงินแพง!',
+    description: 'ธนาคารกลางขึ้นดอกเบี้ย! 🍔อาหาร สิ่งจำเป็นยังขายดี ☀️พลังงาน ฟื้นตัว แต่ 📱เทค+🎮เกม ร่วงหนัก กู้เงินแพง!',
     image: null as string | null,
   },
 ];
 
 // ==============================================
-// ✅ B12-BAL: Return Table — Rebalanced
+// ✅ B14: Return Table v4 — Rebalanced
 // ==============================================
 // หลักออกแบบ:
-// 1. ไม่มีหุ้นตัวไหน dominate ตลอด 6 รอบ
-// 2. ทุกหุ้นมี "รอบพุ่ง" และ "รอบร่วง" อย่างน้อย 1 รอบ
-// 3. กระจายลงทุน (3+ ตัว) ชนะ all-in ทุกตัว (volatility drag)
-// 4. รอบ 6 มีทั้งบวกและลบ (ไม่ลบหมด)
-// 5. ผู้นำหมุนเวียนทุกรอบ — ไม่มี "คำตอบที่ถูกตลอด"
-// 6. Narrative ตรงกับ EVENTS
-// 7. PiggyBank บวกเสมอแต่น้อย (safe haven จริง)
+// 1. max return ~15% (ลดจาก 30%)
+// 2. ตัวที่พุ่งรอบนี้ → มักร่วงรอบถัดไป ("สลับกัน")
+// 3. ทุกหุ้นมีรอบพุ่ง + รอบร่วง อย่างน้อย 1 รอบ
+// 4. กระจาย 3+ ตัว (max 40%) ชนะ all-in ทุกตัว
+// 5. PiggyBank บวกเสมอแต่น้อย (safe haven)
+// 6. R6 twist: อาหาร (สิ่งจำเป็น) ชนะ, เทค ร่วงหนัก
+// 7. ผู้นำหมุนเวียนทุกรอบ — ไม่มี "คำตอบที่ถูกตลอด"
+// 8. "วิ่งตามผู้ชนะ" = ขาดทุนหนัก (-39.5%)
 //
 // ผลลัพธ์ verified:
-// - Best all-in: GreenPower ฿12,242 (+22.4%)
-// - Best diversified (3+ stocks, max 40%): ฿12,284 (+22.8%) ✅ ชนะ!
-// - เด็กกระจายทั่วไป: ~฿12,052 (+20%) ชนะ 4/6 all-in strategies
-// - All-in MegaFun: ฿10,219 (+2.2%) — เคยเป็น king ตอนนี้แทบเจ๊ง
-// - All-in ZoomZoom: ฿9,930 (-0.7%) — ขาดทุน!
+// - Best all-in: อาหาร ฿11,863 (+18.6%)
+// - Best diversified (3+ stocks, max 40%): ฿11,957 (+19.6%) ✅ ชนะ!
+// - Equal weight 6 ตัว: ฿11,217 (+12.2%)
+// - "วิ่งตามผู้ชนะ": ฿6,050 (-39.5%) ❌ ขาดทุนหนัก!
+// - All-in เทค: ฿10,104 (+1.0%) — แทบเจ๊ง
+// - All-in เกม: ฿9,494 (-5.1%) — ขาดทุน!
 
 export const RETURN_TABLE: Record<string, number[]> = {
   // [round1, round2, round3, round4, round5, round6]
   //
-  // R1: iPhone → เทคพุ่ง, พลังงานยังไม่ได้ประโยชน์
-  // R2: โรคระบาด → เกม+อาหารบูม, เทค/รถร่วง
-  // R3: ฟื้นตัว → เทคกลับมา, เกมลด (คนออกจากบ้าน)
-  // R4: สงคราม → พลังงานพุ่ง, อาหารร่วง (น้ำมันแพง=ขนส่งแพง)
+  // R1: มือถือรุ่นใหม่ → เทคพุ่ง, พลังงานยังไม่ได้ประโยชน์
+  // R2: โรคระบาด → เกม+อาหารบูม, เทค supply chain สะดุด
+  // R3: วัคซีนฟื้นตัว → เทคกลับมา, เกม+อาหารลด (คนออกจากบ้าน)
+  // R4: สงคราม → พลังงานพุ่ง, อาหารร่วง (ต้นทุนขนส่ง)
   // R5: AI บูม → เทคพุ่งสุด, กองทุนร่วง (AI แทนที่ fund manager)
-  // R6: ขึ้นดอกเบี้ย → mixed! พลังงาน+อาหารฟื้น, เทค+เกมร่วง
-  zoomzoom:   [ 15,  -25,   20,  -10,   30,  -18],
-  robosnack:  [  5,   15,    8,  -20,   -5,   15],
-  megafun:    [ 10,   30,  -15,   -5,   18,  -25],
-  greenpower: [ -8,  -12,   12,   25,  -10,   20],
-  piggybank:  [  2,    3,    2,    3,    2,    5],
-  safegold:   [  5,    5,   10,    8,  -15,    8],
+  // R6: ขึ้นดอกเบี้ย → อาหาร win (inelastic demand), เทค+เกมร่วง (กู้แพง)
+  robosnack:   [  3,   12,   -8,  -10,    8,   15],
+  zoomzoom:    [ 14,  -12,   12,   -8,   15,  -15],
+  megafun:     [ 10,   15,  -12,    3,  -10,   -8],
+  greenpower:  [ -8,   -5,    8,   15,   -3,   12],
+  piggybank:   [  2,    2,    3,    2,    3,    3],
+  safegold:    [  5,    4,    6,   -5,   -8,   10],
 };
 
 // --- Golden Deals ---
@@ -424,7 +427,6 @@ export const GOLDEN_DEALS = [
 ];
 
 // --- MC Tips (คำแนะนำ MC เพิ่มเติมตามรอบ) ---
-// ✅ B13: ปรับข้อความ — ตัด Golden Deal, เปลี่ยนเป็น Chance Card
 export const MC_TIPS: Record<number, string> = {
   1: 'รอบแรก! อธิบายให้เด็กเข้าใจว่าต้องทำอะไรบ้างในแต่ละขั้นตอน',
   2: 'เด็กเริ่มเข้าใจแล้ว ลองถามว่า "ใครเปลี่ยนกลยุทธ์บ้าง? ทำไม?"',
@@ -435,67 +437,70 @@ export const MC_TIPS: Record<number, string> = {
 };
 
 // ==============================================
-// ✅ B8: Research Quiz — คำถาม
-// (B13: ตัด news ออก — quiz ยังเหมือนเดิม)
+// ✅ B14: Research Quiz — คำถามจาก Session 2 Kahoot
+// เรียงตามรอบ ไม่สุ่ม — ร้อยเรียงกับ Event ของแต่ละรอบ
 // ==============================================
 
-// --- Quiz Pool (12 ข้อ จาก Session 1-2 Kahoot) ---
+// --- Quiz Pool (13 ข้อ จาก Session 2 Kahoot — Young Investor) ---
 export const QUIZ_POOL: {
   id: number;
   question: string;
   choices: string[];
   correct: number; // 0-based index
 }[] = [
-  // จาก Session 1 — Money Master
+  // === R1: เงินเฟ้อ — ทำไมต้องลงทุน ===
   {
     id: 1,
-    question: 'เงินคือสิ่งที่แลกมาจากอะไร?',
-    choices: ['ความโชคดี', 'เวลาและแรงงาน', 'ATM', 'พ่อแม่ให้มาเฉยๆ'],
-    correct: 1,
-  },
-  {
-    id: 2,
-    question: 'ข้อไหนเป็น "Needs" (สิ่งจำเป็น)?',
-    choices: ['สกินเกม Roblox', 'ชานมไข่มุก', 'อาหารกลางวัน', 'การ์ดโปเกมอน'],
-    correct: 2,
-  },
-  {
-    id: 3,
-    question: '"Pay Yourself First" หมายถึงอะไร?',
-    choices: ['ซื้อของให้ตัวเองก่อน', 'แบ่งเงินออมก่อนแล้วค่อยใช้', 'กู้เงินมาใช้', 'ขอเงินพ่อแม่เพิ่ม'],
-    correct: 1,
-  },
-  {
-    id: 4,
-    question: 'ถ้าออมวันละ 20 บาท 1 ปี จะมีเงินประมาณเท่าไหร่?',
-    choices: ['2,400 บาท', '5,200 บาท', '7,300 บาท', '10,000 บาท'],
-    correct: 2,
-  },
-  // จาก Session 2 — Young Investor
-  {
-    id: 5,
     question: 'เงินเฟ้อคืออะไร?',
     choices: ['เงินบวม', 'ของแพงขึ้น เงินเท่าเดิมซื้อได้น้อยลง', 'ดอกเบี้ยสูง', 'เงินเยอะขึ้น'],
     correct: 1,
   },
   {
-    id: 6,
+    id: 2,
+    question: 'ชานมไข่มุกเมื่อ 15 ปีก่อนแก้วละ 30 บาท ตอนนี้ 70 บาท เพราะอะไร?',
+    choices: ['ชานมอร่อยขึ้น', 'เงินเฟ้อ', 'ร้านโลภ', 'เส้นใหญ่ขึ้น'],
+    correct: 1,
+  },
+  // === R2: รู้จักหุ้น + ความเสี่ยง ===
+  {
+    id: 3,
     question: 'ซื้อหุ้น Apple 1 หุ้น แปลว่าอะไร?',
     choices: ['ได้ iPhone ฟรี', 'เป็นเจ้าของส่วนหนึ่งของบริษัท Apple', 'ได้ทำงานที่ Apple', 'ได้ส่วนลดซื้อ Mac'],
     correct: 1,
   },
   {
-    id: 7,
+    id: 4,
     question: 'ข้อไหนเสี่ยงน้อยที่สุด?',
     choices: ['หุ้น Tesla', 'Bitcoin', 'ฝากออมทรัพย์', 'หุ้น Roblox'],
     correct: 2,
   },
+  // === R3: รู้จักการลงทุน 3 แบบ ===
   {
-    id: 8,
+    id: 5,
+    question: 'กองทุนรวมเปรียบเทียบเหมือนอะไร?',
+    choices: ['ซื้อขนมชิ้นเดียว', 'ชุดรวมมิตร มีคนเก่งๆ ช่วยเลือกให้', 'ล็อตเตอรี่', 'ฝากเงินธนาคาร'],
+    correct: 1,
+  },
+  {
+    id: 6,
+    question: 'ฝากเงิน = ม้าหมุน, กองทุน = ชิงช้าสวรรค์, แล้วหุ้น = ?',
+    choices: ['ม้าหมุนอีกรอบ', 'รถไฟเหาะ', 'ร้านขายของ', 'ที่นั่งพัก'],
+    correct: 1,
+  },
+  // === R4: กระจายความเสี่ยง ===
+  {
+    id: 7,
     question: '"อย่าใส่ไข่ทุกฟองในตะกร้าใบเดียว" หมายถึงอะไร?',
     choices: ['ระวังไข่แตก', 'กระจายการลงทุน อย่าลงตัวเดียว', 'ซื้อไข่หลายร้าน', 'อย่ากินไข่เยอะ'],
     correct: 1,
   },
+  {
+    id: 8,
+    question: 'มี 1,000 บาท portfolio ไหนดีที่สุด?',
+    choices: ['หุ้น 100%', 'ฝากเงิน 100%', 'กระจาย: ฝาก+กองทุน+หุ้น', 'ไม่ลงทุนเลย'],
+    correct: 2,
+  },
+  // === R5: ดอกเบี้ยทบต้น + เริ่มเร็ว ===
   {
     id: 9,
     question: 'ดอกเบี้ยทบต้น พิเศษยังไง?',
@@ -508,98 +513,45 @@ export const QUIZ_POOL: {
     choices: ['พี่เจ เพราะโตกว่า', 'เท่ากัน', 'น้องไดม์ เพราะเริ่มเร็วกว่า', 'ไม่รู้'],
     correct: 2,
   },
+  // === R6: ระวังภัย + ราคาหุ้นขึ้นลง ===
   {
     id: 11,
-    question: 'กองทุนรวมเปรียบเทียบเหมือนอะไร?',
-    choices: ['ซื้อขนมชิ้นเดียว', 'ชุดรวมมิตร มีคนเก่งๆ ช่วยเลือกให้', 'ล็อตเตอรี่', 'ฝากเงินธนาคาร'],
-    correct: 1,
+    question: 'มีคนชวนลงทุน บอก "การันตีกำไร 100%" ควรทำอย่างไร?',
+    choices: ['รีบลงทุนเลย', 'ชวนเพื่อนมาด้วย', 'ไม่เชื่อ ถ้าดีเกินจริงมักไม่จริง', 'ขอดูรายละเอียด'],
+    correct: 2,
   },
   {
     id: 12,
-    question: 'ฝากเงิน = ม้าหมุน, กองทุน = ชิงช้าสวรรค์, แล้วหุ้น = ?',
-    choices: ['ม้าหมุนอีกรอบ', 'รถไฟเหาะ', 'ร้านขายของ', 'ที่นั่งพัก'],
+    question: 'หุ้น Netflix ราคาลง 70% เพราะสูญเสียสมาชิก ข้อไหนถูก?',
+    choices: ['ราคาจะไม่มีวันกลับมา', 'ราคาหุ้นขึ้นลงตามผลประกอบการ', 'ต้องรีบขายทิ้ง', 'Netflix จะล้มละลาย'],
+    correct: 1,
+  },
+  // === สำรอง (ไม่ถูกใช้ในรอบปกติ — เก็บไว้ใน pool) ===
+  {
+    id: 13,
+    question: 'ถ้ามี 1,000 บาท ลงทุนได้ 10% ต่อปี ปีที่ 2 จะได้ดอกเบี้ยเท่าไหร่?',
+    choices: ['100 บาทเท่าเดิม', '110 บาท (ดอกเบี้ยทบต้น)', '200 บาท', '50 บาท'],
     correct: 1,
   },
 ];
 
-// --- ฟังก์ชั่นสุ่ม quiz จาก room_id (seed-based, ไม่ซ้ำ) ---
-export function getQuizForRound(roomId: string, round: number): typeof QUIZ_POOL[number][] {
-  let hash = 0;
-  for (let i = 0; i < roomId.length; i++) {
-    hash = ((hash << 5) - hash) + roomId.charCodeAt(i);
-    hash |= 0;
-  }
+// ==============================================
+// ✅ B14: Quiz Mapping — กำหนดคำถามตายตัวต่อรอบ (ไม่สุ่ม)
+// ร้อยเรียงกับ Event ของแต่ละรอบ ให้ ดร.โบว์ สอนต่อเนื่อง
+// ==============================================
 
-  const shuffled = [...QUIZ_POOL];
-  const seed = Math.abs(hash);
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = (seed * (i + 1) + i * 7) % (i + 1);
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
+export const QUIZ_PER_ROUND: Record<number, number[]> = {
+  1: [1, 2],    // เงินเฟ้อ → Event: มือถือรุ่นใหม่
+  2: [3, 4],    // หุ้น + ความเสี่ยง → Event: โรคระบาด
+  3: [5, 6],    // การลงทุน 3 แบบ → Event: วัคซีนฟื้นตัว
+  4: [7, 8],    // กระจายความเสี่ยง → Event: สงคราม
+  5: [9, 10],   // ดอกเบี้ยทบต้น + เริ่มเร็ว → Event: AI บูม
+  6: [11, 12],  // ระวังภัย + หุ้นขึ้นลง → Event: ขึ้นดอกเบี้ย
+};
 
-  const startIndex = (round - 1) * 2;
-  return shuffled.slice(startIndex, startIndex + 2);
+// --- ฟังก์ชั่นดึง quiz ตามรอบ (แทนฟังก์ชันสุ่มเดิม) ---
+// ✅ B14: เปลี่ยนจากสุ่ม → กำหนดตายตัว (roomId ยังรับไว้เพื่อ backward compatibility)
+export function getQuizForRound(_roomId: string, round: number): typeof QUIZ_POOL[number][] {
+  const quizIds = QUIZ_PER_ROUND[round] || [1, 2]; // fallback to round 1
+  return quizIds.map(id => QUIZ_POOL.find(q => q.id === id)!);
 }
-
-// ==============================================
-// ✅ B12-BAL: Round News — ยังเก็บไว้สำหรับ reference
-// (B13: ตัด news_feed phase แล้ว — data ยังอยู่ไม่ลบ เผื่อใช้ในอนาคต)
-// ==============================================
-
-export const ROUND_NEWS: {
-  round: number;
-  news: {
-    text: string;
-    isReal: boolean;
-    emoji: string;
-  }[];
-}[] = [
-  {
-    round: 1,
-    news: [
-      { text: 'Apple เตรียมเปิดตัว iPhone รุ่นใหม่ คาดหุ้นเทคและแอปเรียกรถพุ่ง!', isReal: true, emoji: '📱' },
-      { text: 'บริษัทพลังงานสะอาดกำลังจะได้สัมปทานใหม่ กำไรพุ่งแน่!', isReal: false, emoji: '⚡' },
-      { text: 'ธนาคารจะลดดอกเบี้ยเหลือ 0% ฝากเงินไม่คุ้มแล้ว', isReal: false, emoji: '🏦' },
-    ],
-  },
-  {
-    round: 2,
-    news: [
-      { text: 'โรคระบาดใหม่แพร่กระจาย! คนอยู่บ้านเล่นเกม+สั่งอาหาร แต่ไม่มีใครเดินทาง', isReal: true, emoji: '🦠' },
-      { text: 'ZoomZoom เตรียมเปิดตัวรถบินรุ่นใหม่ คาดหุ้นพุ่ง 50%!', isReal: false, emoji: '🚀' },
-      { text: 'ทองคำจะราคาตก 50% เพราะคนขายทิ้ง!', isReal: false, emoji: '🪙' },
-    ],
-  },
-  {
-    round: 3,
-    news: [
-      { text: 'วัคซีนสำเร็จ! คนออกจากบ้าน เศรษฐกิจฟื้น เทคและพลังงานเริ่มดีขึ้น', isReal: true, emoji: '💉' },
-      { text: 'MegaFun เตรียมเปิดตัวเกมใหม่สุดฮิต คาดรายได้ทะลุเป้า!', isReal: false, emoji: '🎮' },
-      { text: 'ฝากเงินปีนี้ได้ดอกเบี้ย 20% ธนาคารแจกหนัก!', isReal: false, emoji: '🤑' },
-    ],
-  },
-  {
-    round: 4,
-    news: [
-      { text: 'เกิดสงคราม น้ำมันราคาพุ่ง! บริษัทพลังงานทางเลือกได้กำไร แต่ต้นทุนขนส่งอาหารพุ่ง', isReal: true, emoji: '⛽' },
-      { text: 'RoboSnack เตรียมขยายร้าน 100 สาขาทั่วประเทศ!', isReal: false, emoji: '🤖' },
-      { text: 'บริษัทเกมเตรียมซื้อกิจการคู่แข่ง กำไรจะพุ่ง 3 เท่า!', isReal: false, emoji: '🎮' },
-    ],
-  },
-  {
-    round: 5,
-    news: [
-      { text: 'AI ปฏิวัติโลก! บริษัทเทคและเกมใช้ AI ทำกำไร แต่ AI แทนที่ผู้จัดการกองทุนได้!', isReal: true, emoji: '🤖' },
-      { text: 'SafeGold Fund ประกาศกำไรสูงสุดเป็นประวัติการณ์!', isReal: false, emoji: '🛡️' },
-      { text: 'พลังงานสะอาดได้ทุนจาก AI ช่วยลดต้นทุน กำไรพุ่ง!', isReal: false, emoji: '☀️' },
-    ],
-  },
-  {
-    round: 6,
-    news: [
-      { text: 'แบงก์ชาติขึ้นดอกเบี้ย! ฝากเงินคุ้ม พลังงาน+อาหารฟื้น แต่หุ้นเทค+เกมกู้เงินแพงร่วงหนัก', isReal: true, emoji: '🏦' },
-      { text: 'MegaFun เตรียมเปิดตัวเกม Metaverse คาดหุ้นพุ่ง 100%!', isReal: false, emoji: '🎮' },
-      { text: 'ZoomZoom จะควบรวมกับ Tesla หุ้นจะพุ่ง 200%!', isReal: false, emoji: '🚀' },
-    ],
-  },
-];
