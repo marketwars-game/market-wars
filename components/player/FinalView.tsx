@@ -1,5 +1,5 @@
 // FILE: components/player/FinalView.tsx — Player Final Phase
-// VERSION: B13-v1 — Chance card stats + ปี labels
+// VERSION: B15-v1 — Quiz Master: show co-winners in award badge
 // LAST MODIFIED: 27 Mar 2026
 // HISTORY: B7 created (rank + profit + bars + top5) | B8R extracted to component | B11 stats + badge | B13 chance card stats + ปี labels
 
@@ -76,13 +76,20 @@ export default function FinalView({ player, players }: FinalViewProps) {
           {myAwards.map((award) => (
             <div
               key={award.id}
-              className="bg-gradient-to-r from-yellow-900/30 to-yellow-700/10 border border-yellow-600/40 rounded-lg px-4 py-3 text-center mb-2"
+              className="border rounded-lg px-4 py-3 text-center mb-2"
+              style={{ background: 'rgba(253,211,77,0.08)', borderColor: 'rgba(253,211,77,0.3)' }}
             >
-              <span className="text-2xl">{award.emoji}</span>
-              <span className="text-sm font-bold ml-2" style={{ color: '#FCD34D' }}>
-                {award.name}
-              </span>
-              <div className="text-xs text-gray-400 mt-1">{award.stat}</div>
+              <div className="flex items-center justify-center gap-2 mb-1">
+                <span className="text-2xl">{award.emoji}</span>
+                <span className="text-sm font-bold" style={{ color: '#FCD34D' }}>{award.name}</span>
+              </div>
+              <div className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.6)' }}>{award.stat}</div>
+              {/* ✅ B15: ถ้ามีผู้ชนะร่วม แสดงชื่อทั้งหมด */}
+              {award.winnerNames && award.winnerNames.length > 1 && (
+                <div className="text-xs mt-1.5" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                  ร่วมกับ: {award.winnerNames.filter((n) => n !== award.winnerNames?.[award.winnerNames.indexOf(n)]).join(', ') || award.winnerName}
+                </div>
+              )}
             </div>
           ))}
         </div>

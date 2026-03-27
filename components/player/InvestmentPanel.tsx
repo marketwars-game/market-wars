@@ -280,15 +280,14 @@ export default function InvestmentPanel({
           >
             <div className="flex items-center gap-3">
               {/* Emoji + Info */}
-              <div className="text-2xl">{c.icon}</div>
+              <div className="text-2xl flex-shrink-0">{c.icon}</div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="font-bold text-sm text-white truncate">{c.name}</span>
+                <span className="font-bold text-sm text-white block truncate">{c.name}</span>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className="text-xs" style={{ color: '#ffffff50' }}>{c.type}</span>
+                  <span className="text-xs" style={{ color: '#ffffff30' }}>·</span>
                   <RiskBadge risk={c.risk} />
                 </div>
-                <p className="text-xs" style={{ color: '#ffffff40' }}>
-                  {c.type}
-                </p>
               </div>
 
               {/* +/- Controls */}

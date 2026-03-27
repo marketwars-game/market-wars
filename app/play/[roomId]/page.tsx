@@ -1,5 +1,5 @@
 // FILE: app/play/[roomId]/page.tsx — Player game screen
-// VERSION: B13-BATCH3-v1 — ChanceCard + Realtime optimize + cut news/rebalance/attack + invest from 0%
+// VERSION: B15-v1 — Add refresh button to header + refactor fetchData
 // LAST MODIFIED: 26 Mar 2026
 // HISTORY: B2 created | B3 phase sync + timer | B4 InvestmentPanel | B5 event_result + ResultsPanel | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components | B9 MarketFight | B12-UX mini step + year_intro + market_open | B13-BATCH3 ChanceCard + Realtime optimize + cut news/rebalance/attack
 'use client';
@@ -39,6 +39,9 @@ function PlayerContent() {
   const [joinError, setJoinError] = useState('');
   const [showDuplicatePopup, setShowDuplicatePopup] = useState(false);
 
+  // Refresh state
+  const [refreshing, setRefreshing] = useState(false);
+
   // Quiz state
   const [quizAnswers, setQuizAnswers] = useState<(number | null)[]>([null, null]);
   const [quizSubmitted, setQuizSubmitted] = useState(false);
@@ -49,21 +52,22 @@ function PlayerContent() {
     if (saved) { try { const parsed = JSON.parse(saved); setPlayer(parsed); playerIdRef.current = parsed.id; } catch {} }
   }, [roomId]);
 
-  // === Fetch initial data ===
-  useEffect(() => {
-    async function fetchData() {
-      const { data: roomData } = await supabase.from('rooms').select('*').eq('id', roomId).single();
-      setRoom(roomData);
-      const { data: playerData } = await supabase.from('players').select('*').eq('room_id', roomId).order('joined_at', { ascending: true });
-      setPlayers(playerData || []);
-      if (playerIdRef.current && playerData) {
-        const me = playerData.find((p) => p.id === playerIdRef.current);
-        if (me) { setPlayer(me); localStorage.setItem(`mw_player_${roomId}`, JSON.stringify(me)); }
-      }
-      setLoading(false);
+  // === Fetch data (reusable for refresh) ===
+  const fetchData = async (showLoader = false) => {
+    if (showLoader) setRefreshing(true);
+    const { data: roomData } = await supabase.from('rooms').select('*').eq('id', roomId).single();
+    setRoom(roomData);
+    const { data: playerData } = await supabase.from('players').select('*').eq('room_id', roomId).order('joined_at', { ascending: true });
+    setPlayers(playerData || []);
+    if (playerIdRef.current && playerData) {
+      const me = playerData.find((p) => p.id === playerIdRef.current);
+      if (me) { setPlayer(me); localStorage.setItem(`mw_player_${roomId}`, JSON.stringify(me)); }
     }
-    fetchData();
-  }, [roomId]);
+    setLoading(false);
+    if (showLoader) setTimeout(() => setRefreshing(false), 800);
+  };
+
+  useEffect(() => { fetchData(); }, [roomId]);
 
   // === ✅ B13: Realtime subscriptions — Player subscribe เฉพาะ row ตัวเอง ===
   useEffect(() => {
@@ -198,7 +202,17 @@ function PlayerContent() {
             ปีที่ {round}
           </span>
         )}
-        <span className="text-gray-500 text-xs">฿{(parseFloat(player.money) || 0).toLocaleString()}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>฿{(parseFloat(player.money) || 0).toLocaleString()}</span>
+          <button
+            onClick={() => fetchData(true)}
+            className="w-7 h-7 rounded-full flex items-center justify-center transition-all active:scale-90"
+            style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)' }}
+            title="Refresh"
+          >
+            <span className={refreshing ? 'animate-spin inline-block' : ''} style={{ fontSize: '13px' }}>↻</span>
+          </button>
+        </div>
       </div>
 
       {/* Mini step indicator — 6 dots + current label */}

@@ -1,5 +1,5 @@
 // FILE: lib/awards.ts — Awards calculation logic for Final Summary
-// VERSION: B13-BATCH2-v1 — Chance card stats replace duel stats
+// VERSION: B15-v1 — Quiz Master: show all players with top score (no tiebreak)
 // LAST MODIFIED: 26 Mar 2026
 // HISTORY: B11 created | B13-BATCH2 chance card replaces duel
 
@@ -17,6 +17,9 @@ export interface Award {
   winnerId: string | null;
   winnerName: string;
   stat: string;       // สถิติที่แสดง เช่น "10/12 correct"
+  // ✅ B15: หลายคนได้รางวัลพร้อมกัน (quiz_master)
+  winnerIds?: string[];
+  winnerNames?: string[];
   // MC detail: portfolio breakdown ทุกรอบ (สำหรับนักลงทุนรอบคอบ)
   portfolioBreakdown?: { round: number; allocations: Record<string, number> }[];
 }
@@ -24,26 +27,21 @@ export interface Award {
 // ==============================================
 // Quiz Master — นักวิจัยยอดเยี่ยม 🧠
 // เกณฑ์: quiz_score สูงสุดสะสม 6 รอบ
-// Tiebreak: เงินน้อยกว่าชนะ (รู้เยอะแต่ยังไม่รวย = เก่งกว่า)
+// ✅ B15: ถ้าหลายคนได้ score สูงสุดเท่ากัน → แสดงทุกคน (ไม่มี tiebreak)
 // ==============================================
 
 function calcQuizMaster(players: any[]): Award {
-  const candidates = players
-    .map((p) => ({
-      id: p.id,
-      name: p.name,
-      quizScore: parseFloat(p.quiz_score) || 0,
-      money: parseFloat(p.money) || 0,
-    }))
-    .sort((a, b) => {
-      // Primary: quiz score สูงสุด
-      if (b.quizScore !== a.quizScore) return b.quizScore - a.quizScore;
-      // Tiebreak: เงินน้อยกว่าชนะ (underdog)
-      return a.money - b.money;
-    });
+  const totalQuestions = TOTAL_ROUNDS * 2;
 
-  const winner = candidates[0];
-  if (!winner || winner.quizScore === 0) {
+  const candidates = players.map((p) => ({
+    id: p.id,
+    name: p.name,
+    quizScore: parseFloat(p.quiz_score) || 0,
+  }));
+
+  const topScore = Math.max(...candidates.map((c) => c.quizScore), 0);
+
+  if (topScore === 0) {
     return {
       id: 'quiz_master',
       name: 'นักวิจัยยอดเยี่ยม',
@@ -52,20 +50,24 @@ function calcQuizMaster(players: any[]): Award {
       winnerId: null,
       winnerName: 'ไม่มีผู้ชนะ',
       stat: '',
+      winnerIds: [],
+      winnerNames: [],
     };
   }
 
-  // คำนวณ correct จาก quiz_score (ถูกรอบละ 0-2, สะสม 6 รอบ = max 12)
-  const totalQuestions = TOTAL_ROUNDS * 2;
+  // ✅ B15: ทุกคนที่ได้ score สูงสุดได้รางวัลร่วมกัน
+  const winners = candidates.filter((c) => c.quizScore === topScore);
 
   return {
     id: 'quiz_master',
     name: 'นักวิจัยยอดเยี่ยม',
     emoji: '🧠',
     lesson: 'ความรู้ = เงิน — ยิ่งตอบ quiz ถูกมาก ยิ่งได้ bonus เงินมากกว่าคนอื่น',
-    winnerId: winner.id,
-    winnerName: winner.name,
-    stat: `${winner.quizScore}/${totalQuestions} ข้อ`,
+    winnerId: winners[0].id,
+    winnerName: winners.length === 1 ? winners[0].name : winners.map((w) => w.name).join(', '),
+    stat: `${topScore}/${totalQuestions} ข้อ`,
+    winnerIds: winners.map((w) => w.id),
+    winnerNames: winners.map((w) => w.name),
   };
 }
 
@@ -219,7 +221,10 @@ export function calculateAwards(players: any[]): Award[] {
 // ==============================================
 
 export function getPlayerAwards(playerId: string, awards: Award[]): Award[] {
-  return awards.filter((a) => a.winnerId === playerId);
+  return awards.filter((a) =>
+    a.winnerId === playerId ||
+    (a.winnerIds && a.winnerIds.includes(playerId))
+  );
 }
 
 // ==============================================
