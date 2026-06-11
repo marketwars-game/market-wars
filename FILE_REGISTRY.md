@@ -1,10 +1,10 @@
 # Market Wars — File Registry
 
 **Location:** วางที่ root ของ repo (`/FILE_REGISTRY.md`) — version control โดย git
-**Last Updated:** Season 2 Planning (after Season 1 done)
+**Last Updated:** B16a Done — 11 Jun 2026
 **Repo:** https://github.com/marketwars-game/market-wars
 **Default branch:** `main`
-**Latest stable tag:** `Season1-stable` = `B15-stable`
+**Latest stable tag:** `B16a-stable` (Season 1 = `Season1-stable` = `B15-stable`)
 
 ---
 
@@ -86,6 +86,13 @@ https://raw.githubusercontent.com/marketwars-game/market-wars/Season1-stable/<pa
 | ChanceCardDisplay | สรุปการ์ดโชคชะตา | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/ChanceCardDisplay.tsx |
 | LeaderboardDisplay | Podium + ranking | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/LeaderboardDisplay.tsx |
 | FinalDisplay | สรุปจบเกม + awards | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/FinalDisplay.tsx |
+| DisplayHeader | แถบบน: phase progress + ปี (B16a) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/DisplayHeader.tsx |
+| LobbyDisplay | Lobby: QR + players (qrOpen local) (B16a) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/LobbyDisplay.tsx |
+| YearIntroDisplay | Splash ต้นปี (B16a) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/YearIntroDisplay.tsx |
+| MarketOpenDisplay | Splash ตลาดเปิด (B16a) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/MarketOpenDisplay.tsx |
+| InvestDisplay | Invest: submitted count + sectors (B16a) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/InvestDisplay.tsx |
+| ResultsDisplay | Results: returns + top earners (B16a) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/ResultsDisplay.tsx |
+| SoundGate | Overlay ปลดล็อก autoplay เต็มจอ (B16a) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/SoundGate.tsx |
 
 ---
 
@@ -100,6 +107,14 @@ https://raw.githubusercontent.com/marketwars-game/market-wars/Season1-stable/<pa
 
 ---
 
+## Hooks
+
+| ไฟล์ | หน้าที่ | Raw URL |
+|------|--------|---------|
+| useDisplaySound | จัดการเสียงจอ Display — unlock / SFX / BGM crossfade / graceful (B16a) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/hooks/useDisplaySound.ts |
+
+---
+
 ## lib/ — Game Logic & Config
 
 | ไฟล์ | หน้าที่ | Raw URL |
@@ -108,6 +123,7 @@ https://raw.githubusercontent.com/marketwars-game/market-wars/Season1-stable/<pa
 | game-engine | Phase flow, state machine, step progress | https://raw.githubusercontent.com/marketwars-game/market-wars/main/lib/game-engine.ts |
 | constants | COMPANIES, RETURN_TABLE v5c, EVENTS, QUIZ_POOL, CHANCE_CARDS, STEP_GROUPS | https://raw.githubusercontent.com/marketwars-game/market-wars/main/lib/constants.ts |
 | awards | calculateAwards, Quiz Master multi-winner | https://raw.githubusercontent.com/marketwars-game/market-wars/main/lib/awards.ts |
+| sound | Registry 18 assets (5 BGM + 13 SFX) + PHASE_BGM map (B16a) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/lib/sound.ts |
 
 ---
 
