@@ -1,7 +1,7 @@
 // FILE: app/display/[roomId]/page.tsx — Display screen (shell)
-// VERSION: B16a-v1 — refactor shell: extract phase views to components (no behavior change)
+// VERSION: B16a-v2 — wire sound: SoundGate + phase BGM crossfade + transition/bell/countdown/timeup SFX
 // LAST MODIFIED: 11 Jun 2026
-// HISTORY: B1 created | B3 phase sync + timer | B4 submitted count | B5 event_result + results UI | B6 leaderboard | B7 final phase | B8 research quiz | B8R refactor | B9 FightDisplay | B12-UX dashboard layout | B13-BATCH3 ChanceCardDisplay + throttle | B15-v1 projector font+color polish | B15-v2 CSS zoom + header redesign + lobby redesign + QR popup + market_open dramatic | B16a-BATCH0 refactor: extract DisplayHeader/LobbyDisplay/YearIntroDisplay/MarketOpenDisplay/InvestDisplay/ResultsDisplay (shell only)
+// HISTORY: B1 created | B3 phase sync + timer | B4 submitted count | B5 event_result + results UI | B6 leaderboard | B7 final phase | B8 research quiz | B8R refactor | B9 FightDisplay | B12-UX dashboard layout | B13-BATCH3 ChanceCardDisplay + throttle | B15-v1 projector font+color polish | B15-v2 CSS zoom + header redesign + lobby redesign + QR popup + market_open dramatic | B16a-BATCH0 refactor shell (6 phase components) | B16a-BATCH1 sound: SoundGate + useDisplaySound wiring
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
@@ -9,6 +9,7 @@ import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { PHASE_TIMERS } from '@/lib/constants';
 import { getStepGroupProgress } from '@/lib/game-engine';
+import { useDisplaySound } from '@/hooks/useDisplaySound';
 import ResearchDisplay from '@/components/display/ResearchDisplay';
 import EventDisplay from '@/components/display/EventDisplay';
 import LeaderboardDisplay from '@/components/display/LeaderboardDisplay';
@@ -20,6 +21,7 @@ import YearIntroDisplay from '@/components/display/YearIntroDisplay';
 import MarketOpenDisplay from '@/components/display/MarketOpenDisplay';
 import InvestDisplay from '@/components/display/InvestDisplay';
 import ResultsDisplay from '@/components/display/ResultsDisplay';
+import SoundGate from '@/components/display/SoundGate';
 
 export default function DisplayScreen() {
   const params = useParams();
@@ -32,6 +34,11 @@ export default function DisplayScreen() {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const pendingReload = useRef(false);
   const throttleTimer = useRef<NodeJS.Timeout | null>(null);
+
+  // B16a: sound
+  const { isUnlocked, unlock, playSfx, playBgmForPhase } = useDisplaySound();
+  const prevPhaseRef = useRef<string | null>(null);
+  const prevTimeRef = useRef(0);
 
   // B15-v2: CSS zoom — client-side only, update on resize
   useEffect(() => {
@@ -92,6 +99,30 @@ export default function DisplayScreen() {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [room?.current_phase, room?.status]);
 
+  // B16a: phase change → BGM crossfade + transition/bell SFX
+  useEffect(() => {
+    if (!isUnlocked) return;
+    const ph = room?.current_phase;
+    if (!ph) return;
+    if (prevPhaseRef.current === ph) return;
+    const isFirst = prevPhaseRef.current === null;
+    prevPhaseRef.current = ph;
+    playBgmForPhase(ph);
+    if (!isFirst) playSfx('sfx_transition');
+    if (ph === 'market_open') playSfx('sfx_market_bell');
+  }, [room?.current_phase, isUnlocked, playBgmForPhase, playSfx]);
+
+  // B16a: countdown tick (last 10s) + time-up SFX
+  useEffect(() => {
+    if (!isUnlocked) { prevTimeRef.current = timeLeft; return; }
+    const prev = prevTimeRef.current;
+    prevTimeRef.current = timeLeft;
+    const dur = room?.current_phase ? (PHASE_TIMERS[room.current_phase] || 0) : 0;
+    if (dur <= 0) return;
+    if (timeLeft > 0 && timeLeft <= 10 && timeLeft < prev) playSfx('sfx_countdown');
+    if (timeLeft === 0 && prev === 1) playSfx('sfx_timeup');
+  }, [timeLeft, isUnlocked, room?.current_phase, playSfx]);
+
   const submittedCount = players.filter((p) => p.portfolio_submitted_round === room?.current_round).length;
   const quizSubmittedCount = players.filter((p) => (p.quiz_answered_round || 0) >= (room?.current_round || 0)).length;
 
@@ -106,67 +137,64 @@ export default function DisplayScreen() {
   const joinUrl = typeof window !== 'undefined' ? `${window.location.origin}/?room=${roomId}` : '';
   const stepProgress = getStepGroupProgress(phase);
 
-  // === LOBBY ===
+  let content;
   if (phase === 'lobby') {
-    return <LobbyDisplay players={players} roomId={roomId} joinUrl={joinUrl} zoom={zoom} />;
-  }
-
-  // === FINAL ===
-  if (phase === 'final') {
-    return (
+    content = <LobbyDisplay players={players} roomId={roomId} joinUrl={joinUrl} zoom={zoom} />;
+  } else if (phase === 'final') {
+    content = (
       <div className="h-screen bg-[#0D1117] text-white" style={{ zoom }}>
         <FinalDisplay players={players} />
       </div>
     );
-  }
+  } else if (phase === 'year_intro') {
+    content = <YearIntroDisplay round={round} zoom={zoom} />;
+  } else if (phase === 'market_open') {
+    content = <MarketOpenDisplay round={round} zoom={zoom} />;
+  } else {
+    content = (
+      <div className="h-screen bg-[#0D1117] text-white flex flex-col overflow-hidden" style={{ zoom }}>
+        <DisplayHeader steps={stepProgress} round={round} />
+        <div className="flex-1 flex flex-col items-center justify-center overflow-hidden px-6 py-3">
 
-  // === YEAR INTRO ===
-  if (phase === 'year_intro') {
-    return <YearIntroDisplay round={round} zoom={zoom} />;
-  }
-
-  // === MARKET OPEN ===
-  if (phase === 'market_open') {
-    return <MarketOpenDisplay round={round} zoom={zoom} />;
-  }
-
-  // === PLAYING PHASES ===
-  return (
-    <div className="h-screen bg-[#0D1117] text-white flex flex-col overflow-hidden" style={{ zoom }}>
-      <DisplayHeader steps={stepProgress} round={round} />
-      <div className="flex-1 flex flex-col items-center justify-center overflow-hidden px-6 py-3">
-
-        {timerDuration > 0 && (
-          <div className="flex items-center gap-4 mb-4 w-full max-w-2xl">
-            <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
-              <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${timerPercent}%`, backgroundColor: timerColor }} />
+          {timerDuration > 0 && (
+            <div className="flex items-center gap-4 mb-4 w-full max-w-2xl">
+              <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
+                <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${timerPercent}%`, backgroundColor: timerColor }} />
+              </div>
+              <span className={`font-mono text-lg font-bold ${timeLeft <= 10 && timeLeft > 0 ? 'animate-pulse' : ''}`} style={{ color: timerColor }}>
+                {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}
+              </span>
             </div>
-            <span className={`font-mono text-lg font-bold ${timeLeft <= 10 && timeLeft > 0 ? 'animate-pulse' : ''}`} style={{ color: timerColor }}>
-              {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}
-            </span>
-          </div>
-        )}
+          )}
 
-        {(phase === 'research' || phase === 'research_reveal') && (
-          <ResearchDisplay roomId={roomId} round={round} phase={phase as 'research' | 'research_reveal'} players={players} quizSubmittedCount={quizSubmittedCount} />
-        )}
+          {(phase === 'research' || phase === 'research_reveal') && (
+            <ResearchDisplay roomId={roomId} round={round} phase={phase as 'research' | 'research_reveal'} players={players} quizSubmittedCount={quizSubmittedCount} />
+          )}
 
-        {phase === 'invest' && (
-          <InvestDisplay submittedCount={submittedCount} playerCount={players.length} />
-        )}
+          {phase === 'invest' && (
+            <InvestDisplay submittedCount={submittedCount} playerCount={players.length} />
+          )}
 
-        {phase === 'chance_card' && <ChanceCardDisplay players={players} round={round} />}
+          {phase === 'chance_card' && <ChanceCardDisplay players={players} round={round} />}
 
-        {(phase === 'event' || phase === 'event_result' || phase === 'golden_deal') && (
-          <EventDisplay round={round} phase={phase as 'event' | 'event_result' | 'golden_deal'} players={players} />
-        )}
+          {(phase === 'event' || phase === 'event_result' || phase === 'golden_deal') && (
+            <EventDisplay round={round} phase={phase as 'event' | 'event_result' | 'golden_deal'} players={players} />
+          )}
 
-        {phase === 'results' && (
-          <ResultsDisplay players={players} round={round} />
-        )}
+          {phase === 'results' && (
+            <ResultsDisplay players={players} round={round} />
+          )}
 
-        {phase === 'leaderboard' && <LeaderboardDisplay players={players} round={round} />}
+          {phase === 'leaderboard' && <LeaderboardDisplay players={players} round={round} />}
+        </div>
       </div>
-    </div>
+    );
+  }
+
+  return (
+    <>
+      {content}
+      {!isUnlocked && <SoundGate onUnlock={unlock} />}
+    </>
   );
 }
