@@ -1,7 +1,7 @@
 // FILE: app/display/[roomId]/page.tsx — Display screen (shell)
-// VERSION: B16c-v1 — leaderboard drumroll/rankup + results reveal swell SFX (post-round spectator)
+// VERSION: B16d-v1 — Final 4-step router (suspense/podium/awards/ranking) + animate-first/settled-revisit + research_reveal sfx
 // LAST MODIFIED: 11 Jun 2026
-// HISTORY: B1 created | B3 phase sync + timer | B4 submitted count | B5 event_result + results UI | B6 leaderboard | B7 final phase | B8 research quiz | B8R refactor | B9 FightDisplay | B12-UX dashboard layout | B13-BATCH3 ChanceCardDisplay + throttle | B15-v1 projector font+color polish | B15-v2 CSS zoom + header redesign + lobby redesign + QR popup + market_open dramatic | B16a-BATCH0 refactor shell (6 phase components) | B16a-BATCH1 sound: SoundGate + useDisplaySound wiring | B16b-BATCH1 invest live wall props | B16c leaderboard+results spectator SFX
+// HISTORY: B1 created | B3 phase sync + timer | B4 submitted count | B5 event_result + results UI | B6 leaderboard | B7 final phase | B8 research quiz | B8R refactor | B9 FightDisplay | B12-UX dashboard layout | B13-BATCH3 ChanceCardDisplay + throttle | B15-v1 projector font+color polish | B15-v2 CSS zoom + header redesign + lobby redesign + QR popup + market_open dramatic | B16a-BATCH0 refactor shell (6 phase components) | B16a-BATCH1 sound: SoundGate + useDisplaySound wiring | B16b-BATCH1 invest live wall props | B16c leaderboard+results spectator SFX | B16d final 4-step + research_reveal sfx
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
@@ -43,6 +43,14 @@ export default function DisplayScreen() {
   const prevSfxTagRef = useRef<string>('');
   const prevSubmitCountRef = useRef(0);
   const lbTimer = useRef<NodeJS.Timeout | null>(null); // B16c: leaderboard rankup delay
+
+  // B16d: Final 4-step — animate ครั้งแรกที่เข้า step / settled เมื่อกลับมาดูซ้ำ (เผื่อน้องถ่ายรูป)
+  // ตัดสิน animate แบบ synchronous ตอน render (ดูด้านล่าง); ตรงนี้แค่ mark ว่าเปิด step ไปแล้วหลัง commit
+  const seenFinal = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const ph = room?.current_phase;
+    if (ph && ph.startsWith('final')) seenFinal.current.add(ph);
+  }, [room?.current_phase]);
 
   // B15-v2: CSS zoom — client-side only, update on resize
   useEffect(() => {
@@ -114,15 +122,18 @@ export default function DisplayScreen() {
     prevPhaseRef.current = ph;
     if (lbTimer.current) { clearTimeout(lbTimer.current); lbTimer.current = null; }
     playBgmForPhase(ph);
-    // themed cue replaces the generic transition on the two post-round spectator screens
-    const themed = ph === 'leaderboard' || ph === 'results';
+    // themed cue replaces the generic transition on screens that own their SFX
+    const isFinalStep = ph.startsWith('final');
+    const themed = ph === 'leaderboard' || ph === 'results' || isFinalStep;
     if (!isFirst && !themed) playSfx('sfx_transition');
     if (ph === 'market_open') playSfx('sfx_market_bell');
+    if (ph === 'research_reveal') playSfx('sfx_reveal');        // B16d: reveal swell synced to stagger
     if (ph === 'leaderboard') {
       playSfx('sfx_drumroll');                                  // roll while rows race
       lbTimer.current = setTimeout(() => playSfx('sfx_rankup'), 1100); // ding as ranks settle / dark horse pops
     }
     if (ph === 'results') playSfx('sfx_reveal');                // swell synced to heatmap wave
+    // B16d: final_podium / final_awards / final_ranking → SFX จัดการในตัว component (sync กับ animation)
   }, [room?.current_phase, isUnlocked, playBgmForPhase, playSfx]);
 
   // B16a: countdown tick (last 10s) + time-up SFX
@@ -176,6 +187,8 @@ export default function DisplayScreen() {
 
   const phase = room.current_phase || 'lobby';
   const round = room.current_round || 1;
+  // B16d: ตัดสิน animate ตอน render — ครั้งแรกของแต่ละ final step = true, กลับมาซ้ำ = false (settled)
+  const finalAnimate = phase.startsWith('final') ? !seenFinal.current.has(phase) : true;
   const timerDuration = PHASE_TIMERS[phase] || 0;
   const timerPercent = timerDuration > 0 ? (timeLeft / timerDuration) * 100 : 0;
   const timerColor = timeLeft <= 10 ? '#FF4444' : timeLeft <= 30 ? '#F59E0B' : '#00FFB2';
@@ -185,10 +198,10 @@ export default function DisplayScreen() {
   let content;
   if (phase === 'lobby') {
     content = <LobbyDisplay players={players} roomId={roomId} joinUrl={joinUrl} zoom={zoom} />;
-  } else if (phase === 'final') {
+  } else if (phase === 'final' || phase === 'final_podium' || phase === 'final_awards' || phase === 'final_ranking') {
     content = (
       <div className="h-screen bg-[#0D1117] text-white" style={{ zoom }}>
-        <FinalDisplay players={players} />
+        <FinalDisplay players={players} phase={phase as any} animate={finalAnimate} playSfx={playSfx} />
       </div>
     );
   } else if (phase === 'year_intro') {

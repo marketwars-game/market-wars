@@ -1,7 +1,7 @@
 // FILE: lib/sound.ts — Display sound registry (18 assets) + phase→BGM map
-// VERSION: B16a-v1 — sound foundation (registry only, no playback logic)
+// VERSION: B16d-v1 — research_reveal → bgm_results; final steps BGM (suspense→final)
 // LAST MODIFIED: 11 Jun 2026
-// HISTORY: B16a-BATCH1 created — 5 BGM loops + 13 SFX one-shots + PHASE_BGM map
+// HISTORY: B16a-BATCH1 created — 5 BGM loops + 13 SFX one-shots + PHASE_BGM map | B16d research_reveal mood + final_podium/awards/ranking BGM
 //
 // ไฟล์เสียงทั้งหมดวางที่ /public/sounds/<name>.mp3 (ตั้งชื่อให้ตรง key เป๊ะ)
 // โค้ด graceful: ถ้าไฟล์ไหนยังไม่มา จะเงียบเฉยๆ ไม่พัง
@@ -61,7 +61,7 @@ export const SFX_FILES: Record<SfxKey, string> = {
 export const PHASE_BGM: Record<string, BgmKey> = {
   lobby: 'bgm_lobby',
   research: 'bgm_play',
-  research_reveal: 'bgm_play',
+  research_reveal: 'bgm_results', // B16d: reveal มู้ดเฉลย (เปลี่ยนจาก bgm_play)
   invest: 'bgm_play',
   chance_card: 'bgm_play',
   year_intro: 'bgm_suspense',
@@ -71,7 +71,10 @@ export const PHASE_BGM: Record<string, BgmKey> = {
   golden_deal: 'bgm_results',
   results: 'bgm_results',
   leaderboard: 'bgm_results',
-  final: 'bgm_final',
+  final: 'bgm_suspense',          // B16d: step① "ใครคือแชมป์" = ตึงเครียด
+  final_podium: 'bgm_final',      // B16d: เฉลย/ฉลอง
+  final_awards: 'bgm_final',
+  final_ranking: 'bgm_final',
 };
 
 // ระดับเสียง (BGM เบากว่า SFX ให้ SFX เด่น)

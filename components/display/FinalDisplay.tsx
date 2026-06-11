@@ -1,154 +1,49 @@
-// FILE: components/display/FinalDisplay.tsx — Display Final Phase
-// VERSION: B15-v3 — Quiz Master: show all top scorers
-// LAST MODIFIED: 27 Mar 2026
-// HISTORY: B7 created | B8R extracted | B11 awards | B12-UX horizontal | B12-UX-v2 fix awards | B13-v1 fix height | B13-v2 full screen redesign | B15 projector polish
+// FILE: components/display/FinalDisplay.tsx — Display Final Phase ROUTER (4 steps)
+// VERSION: B16d-v1 — split single screen → suspense / podium / awards / ranking (MC-controlled steps)
+// LAST MODIFIED: 11 Jun 2026
+// HISTORY: B7 created | B8R extracted | B11 awards | B12-UX horizontal | B13 redesign | B15 projector polish | B16d 4-step router (FinalPodium/FinalAwards/FinalRanking)
+'use client';
 
-import { STARTING_MONEY } from '@/lib/constants';
-import { calculateAwards } from '@/lib/awards';
+import type { SfxKey } from '@/lib/sound';
+import FinalPodium from '@/components/display/FinalPodium';
+import FinalAwards from '@/components/display/FinalAwards';
+import FinalRanking from '@/components/display/FinalRanking';
+
+export type FinalPhase = 'final' | 'final_podium' | 'final_awards' | 'final_ranking';
 
 interface FinalDisplayProps {
   players: any[];
+  phase: FinalPhase;
+  animate: boolean;
+  playSfx?: (k: SfxKey) => void;
 }
 
-export default function FinalDisplay({ players }: FinalDisplayProps) {
-  const sorted = [...players].sort(
-    (a, b) => (parseFloat(b.money) || 0) - (parseFloat(a.money) || 0)
-  );
-  const top3 = sorted.slice(0, 3);
-
-  const totalPlayers = players.length;
-  const avgReturn =
-    totalPlayers > 0
-      ? players.reduce((sum, p) => {
-          const m = parseFloat(p.money) || STARTING_MONEY;
-          return sum + ((m - STARTING_MONEY) / STARTING_MONEY) * 100;
-        }, 0) / totalPlayers
-      : 0;
-  const profitCount = players.filter((p) => (parseFloat(p.money) || 0) > STARTING_MONEY).length;
-  const lossCount = players.filter((p) => (parseFloat(p.money) || 0) < STARTING_MONEY).length;
-
-  const awards = calculateAwards(players);
-  const quizMaster = awards.find((a) => a.id === 'quiz_master');
-  const smartDiversifier = awards.find((a) => a.id === 'smart_diversifier');
-
-  const medals = ['🥇', '🥈', '🥉'];
-  const podiumColors = ['#FFD700', '#C0C0C0', '#CD7F32'];
-  const podiumBg = ['rgba(255,215,0,0.12)', 'rgba(192,192,192,0.1)', 'rgba(205,127,50,0.1)'];
-  const nameColors = ['#FCD34D', '#D1D5DB', '#FBBF24'];
-
-  const getReturnPct = (money: number) => (((money || STARTING_MONEY) - STARTING_MONEY) / STARTING_MONEY * 100).toFixed(1);
-  const getReturnColor = (money: number) => (money || 0) >= STARTING_MONEY ? '#22c55e' : '#ef4444';
-
+// === Step ① suspense — "ใครคือแชมป์?" ค้างไว้ รอ MC กดเฉลย ===
+function FinalSuspense() {
   return (
-    <div className="h-screen flex flex-col items-center justify-center px-8 overflow-hidden">
-      <style>{`@keyframes fadeSlideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }`}</style>
-
-      {/* === Title === */}
-      <div className="text-center mb-8" style={{ animation: 'fadeSlideUp 0.6s ease-out both', animationDelay: '0.2s' }}>
-        <div className="text-7xl mb-3">🏆</div>
-        <h1 className="text-6xl font-black" style={{ color: '#FCD34D' }}>Game Over!</h1>
-        <p className="text-xl mt-2" style={{ color: 'rgba(255,255,255,0.75)' }}>จบครบ 6 ปี</p>
-      </div>
-
-      {/* === Podium === */}
-      <div className="flex items-end gap-5 mb-8" style={{ animation: 'fadeSlideUp 0.6s ease-out both', animationDelay: '0.5s' }}>
-        {/* 2nd place */}
-        {top3[1] && (
-          <div className="text-center rounded-t-xl px-7 pt-6 pb-5 flex flex-col justify-end" style={{ background: podiumBg[1], height: '185px', width: '205px', borderTop: `3px solid ${podiumColors[1]}` }}>
-            <p className="text-4xl mb-2">{medals[1]}</p>
-            <p className="text-xl font-bold truncate" style={{ color: nameColors[1] }}>{top3[1].name}</p>
-            <p className="text-lg mt-1" style={{ color: 'rgba(255,255,255,0.75)' }}>฿{(parseFloat(top3[1].money) || 0).toLocaleString()}</p>
-            <p className="text-base mt-0.5" style={{ color: getReturnColor(parseFloat(top3[1].money)) }}>
-              {getReturnPct(parseFloat(top3[1].money))}%
-            </p>
-          </div>
-        )}
-        {/* 1st place */}
-        {top3[0] && (
-          <div className="text-center rounded-t-xl px-7 pt-6 pb-5 flex flex-col justify-end" style={{ background: podiumBg[0], height: '230px', width: '225px', borderTop: `3px solid ${podiumColors[0]}` }}>
-            <p className="text-5xl mb-2">{medals[0]}</p>
-            <p className="text-2xl font-bold truncate" style={{ color: nameColors[0] }}>{top3[0].name}</p>
-            <p className="text-xl mt-1" style={{ color: 'rgba(255,255,255,0.85)' }}>฿{(parseFloat(top3[0].money) || 0).toLocaleString()}</p>
-            <p className="text-lg mt-0.5" style={{ color: getReturnColor(parseFloat(top3[0].money)) }}>
-              {getReturnPct(parseFloat(top3[0].money))}%
-            </p>
-          </div>
-        )}
-        {/* 3rd place */}
-        {top3[2] && (
-          <div className="text-center rounded-t-xl px-7 pt-6 pb-5 flex flex-col justify-end" style={{ background: podiumBg[2], height: '175px', width: '205px', borderTop: `3px solid ${podiumColors[2]}` }}>
-            <p className="text-4xl mb-2">{medals[2]}</p>
-            <p className="text-xl font-bold truncate" style={{ color: nameColors[2] }}>{top3[2].name}</p>
-            <p className="text-lg mt-1" style={{ color: 'rgba(255,255,255,0.75)' }}>฿{(parseFloat(top3[2].money) || 0).toLocaleString()}</p>
-            <p className="text-base mt-0.5" style={{ color: getReturnColor(parseFloat(top3[2].money)) }}>
-              {getReturnPct(parseFloat(top3[2].money))}%
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* === Stats + Awards === */}
-      <div className="flex gap-5 items-stretch flex-wrap justify-center mb-6" style={{ animation: 'fadeSlideUp 0.6s ease-out both', animationDelay: '0.8s' }}>
-        <div className="flex gap-4">
-          <div className="rounded-xl px-6 py-4 text-center" style={{ background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.2)' }}>
-            <p className="text-3xl font-bold text-[#00D4FF]">{totalPlayers}</p>
-            <p className="text-base mt-1" style={{ color: 'rgba(255,255,255,0.75)' }}>Players</p>
-          </div>
-          <div className="rounded-xl px-6 py-4 text-center" style={{ background: avgReturn >= 0 ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${avgReturn >= 0 ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'}` }}>
-            <p className="text-3xl font-bold" style={{ color: avgReturn >= 0 ? '#22c55e' : '#ef4444' }}>{avgReturn >= 0 ? '+' : ''}{avgReturn.toFixed(1)}%</p>
-            <p className="text-base mt-1" style={{ color: 'rgba(255,255,255,0.75)' }}>Avg Return</p>
-          </div>
-          <div className="rounded-xl px-6 py-4 text-center" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)' }}>
-            <p className="text-3xl font-bold">
-              <span style={{ color: '#22c55e' }}>{profitCount}</span>
-              <span className="text-xl mx-2" style={{ color: 'rgba(255,255,255,0.45)' }}>/</span>
-              <span style={{ color: '#ef4444' }}>{lossCount}</span>
-            </p>
-            <p className="text-base mt-1" style={{ color: 'rgba(255,255,255,0.75)' }}>Profit / Loss</p>
-          </div>
-        </div>
-
-        <div className="w-px self-stretch" style={{ background: 'rgba(255,255,255,0.1)' }} />
-
-        <div className="flex gap-4">
-          {quizMaster && quizMaster.winnerId && (
-            <div className="rounded-xl px-5 py-4 flex items-center gap-4" style={{ background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.2)' }}>
-              <span className="text-3xl">{quizMaster.emoji}</span>
-              <div>
-                <p className="text-base font-bold" style={{ color: '#A855F7' }}>{quizMaster.name}</p>
-                {/* ✅ B15: แสดงทุกคนที่ได้ score สูงสุด */}
-                {quizMaster.winnerNames && quizMaster.winnerNames.length > 1 ? (
-                  <div className="mt-1">
-                    <p className="text-sm" style={{ color: 'rgba(255,255,255,0.65)' }}>{quizMaster.stat}</p>
-                    <div className="flex flex-wrap gap-1.5 mt-1">
-                      {quizMaster.winnerNames.map((name, i) => (
-                        <span key={i} className="text-sm px-2 py-0.5 rounded-full font-semibold" style={{ background: 'rgba(168,85,247,0.2)', color: '#C084FC' }}>{name}</span>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-base mt-0.5" style={{ color: 'rgba(255,255,255,0.75)' }}>{quizMaster.winnerName} ({quizMaster.stat})</p>
-                )}
-              </div>
-            </div>
-          )}
-          {smartDiversifier && smartDiversifier.winnerId && (
-            <div className="rounded-xl px-5 py-4 flex items-center gap-4" style={{ background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.2)' }}>
-              <span className="text-3xl">{smartDiversifier.emoji}</span>
-              <div>
-                <p className="text-base font-bold" style={{ color: '#00D4FF' }}>{smartDiversifier.name}</p>
-                <p className="text-base mt-0.5" style={{ color: 'rgba(255,255,255,0.75)' }}>{smartDiversifier.winnerName}</p>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* === Thank you === */}
-      <div className="text-center" style={{ animation: 'fadeSlideUp 0.6s ease-out both', animationDelay: '1.1s' }}>
-        <p className="text-xl text-[#00FFB2]">Thank you for playing Market Wars!</p>
-        <p className="text-base mt-2" style={{ color: 'rgba(255,255,255,0.65)' }}>Powered by Dime Kids Camp</p>
-      </div>
+    <div className="relative h-screen flex flex-col items-center justify-center px-8 overflow-hidden">
+      <style>{`
+        @keyframes mwPulse { 0%,100%{ transform:scale(1); opacity:.9 } 50%{ transform:scale(1.06); opacity:1 } }
+        @keyframes mwBlink { 0%,100%{ opacity:.25 } 50%{ opacity:1 } }
+      `}</style>
+      <h1 className="text-7xl font-black" style={{ animation: 'mwPulse 0.8s ease-in-out infinite', background: 'linear-gradient(90deg,#fff,#00FFB2)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>
+        ใครคือแชมป์?
+      </h1>
+      <p className="text-3xl mt-5" style={{ color: 'rgba(255,255,255,0.78)' }}>Who's the champion of Market Wars?</p>
+      <p className="text-xl mt-10" style={{ color: 'rgba(255,255,255,0.65)' }}>
+        รอ MC เฉลย
+        <span style={{ animation: 'mwBlink 1.2s infinite' }}> ●</span>
+        <span style={{ animation: 'mwBlink 1.2s infinite', animationDelay: '0.2s' }}>●</span>
+        <span style={{ animation: 'mwBlink 1.2s infinite', animationDelay: '0.4s' }}>●</span>
+      </p>
     </div>
   );
+}
+
+export default function FinalDisplay({ players, phase, animate, playSfx }: FinalDisplayProps) {
+  // key={phase} → remount per step so entrance animation runs fresh; settled handled via `animate`
+  if (phase === 'final_podium') return <FinalPodium key="podium" players={players} animate={animate} playSfx={playSfx} />;
+  if (phase === 'final_awards') return <FinalAwards key="awards" players={players} animate={animate} playSfx={playSfx} />;
+  if (phase === 'final_ranking') return <FinalRanking key="ranking" players={players} animate={animate} />;
+  return <FinalSuspense />;
 }
