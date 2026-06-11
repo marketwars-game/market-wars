@@ -1,10 +1,10 @@
 # Market Wars — File Registry
 
 **Location:** วางที่ root ของ repo (`/FILE_REGISTRY.md`) — version control โดย git
-**Last Updated:** B16a Done — 11 Jun 2026
+**Last Updated:** B16b Done — 11 Jun 2026
 **Repo:** https://github.com/marketwars-game/market-wars
 **Default branch:** `main`
-**Latest stable tag:** `B16a-stable` (Season 1 = `Season1-stable` = `B15-stable`)
+**Latest stable tag:** `B16b-stable` (Season 1 = `Season1-stable` = `B15-stable`)
 
 ---
 
@@ -81,18 +81,20 @@ https://raw.githubusercontent.com/marketwars-game/market-wars/Season1-stable/<pa
 
 | ไฟล์ | หน้าที่ | Raw URL |
 |------|--------|---------|
-| ResearchDisplay | Quiz + Reveal | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/ResearchDisplay.tsx |
+| ResearchDisplay | Quiz (→ LiveNameFeed ชื่อสด) + Reveal (B16b) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/ResearchDisplay.tsx |
 | EventDisplay | Event reveal + Result + Golden Deal | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/EventDisplay.tsx |
-| ChanceCardDisplay | สรุปการ์ดโชคชะตา | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/ChanceCardDisplay.tsx |
+| ChanceCardDisplay | Live luck wall ทุกคน เขียว/แดง + เงิน (B16b → LiveNameBoard) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/ChanceCardDisplay.tsx |
 | LeaderboardDisplay | Podium + ranking | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/LeaderboardDisplay.tsx |
 | FinalDisplay | สรุปจบเกม + awards | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/FinalDisplay.tsx |
 | DisplayHeader | แถบบน: phase progress + ปี (B16a) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/DisplayHeader.tsx |
 | LobbyDisplay | Lobby: QR + players (qrOpen local) (B16a) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/LobbyDisplay.tsx |
 | YearIntroDisplay | Splash ต้นปี (B16a) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/YearIntroDisplay.tsx |
 | MarketOpenDisplay | Splash ตลาดเปิด (B16a) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/MarketOpenDisplay.tsx |
-| InvestDisplay | Invest: submitted count + sectors (B16a) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/InvestDisplay.tsx |
+| InvestDisplay | Live allocation wall ทุกคน + แถบสัดส่วน (B16b → LiveNameBoard) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/InvestDisplay.tsx |
 | ResultsDisplay | Results: returns + top earners (B16a) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/ResultsDisplay.tsx |
 | SoundGate | Overlay ปลดล็อก autoplay เต็มจอ (B16a) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/SoundGate.tsx |
+| LiveNameBoard | Spectator wall ทุกคน A-Z (fit-all+degrade, light-in-place) — ใช้ invest+chance (B16b) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/LiveNameBoard.tsx |
+| LiveNameFeed | Research sidebar ชื่อสดล่าสุดบนสุด + avatar (B16b) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/LiveNameFeed.tsx |
 
 ---
 
