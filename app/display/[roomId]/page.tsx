@@ -1,5 +1,5 @@
 // FILE: app/display/[roomId]/page.tsx — Display screen (shell)
-// VERSION: B16b-v1 — pass players+round to InvestDisplay (live allocation wall)
+// VERSION: B16b-v2 — BATCH2 per-wave SFX (sfx_join research/invest, sfx_card_flip chance_card)
 // LAST MODIFIED: 11 Jun 2026
 // HISTORY: B1 created | B3 phase sync + timer | B4 submitted count | B5 event_result + results UI | B6 leaderboard | B7 final phase | B8 research quiz | B8R refactor | B9 FightDisplay | B12-UX dashboard layout | B13-BATCH3 ChanceCardDisplay + throttle | B15-v1 projector font+color polish | B15-v2 CSS zoom + header redesign + lobby redesign + QR popup + market_open dramatic | B16a-BATCH0 refactor shell (6 phase components) | B16a-BATCH1 sound: SoundGate + useDisplaySound wiring | B16b-BATCH1 invest live wall props
 'use client';
@@ -10,6 +10,7 @@ import { supabase } from '@/lib/supabase';
 import { PHASE_TIMERS } from '@/lib/constants';
 import { getStepGroupProgress } from '@/lib/game-engine';
 import { useDisplaySound } from '@/hooks/useDisplaySound';
+import type { SfxKey } from '@/lib/sound';
 import ResearchDisplay from '@/components/display/ResearchDisplay';
 import EventDisplay from '@/components/display/EventDisplay';
 import LeaderboardDisplay from '@/components/display/LeaderboardDisplay';
@@ -39,6 +40,8 @@ export default function DisplayScreen() {
   const { isUnlocked, unlock, playSfx, playBgmForPhase } = useDisplaySound();
   const prevPhaseRef = useRef<string | null>(null);
   const prevTimeRef = useRef(0);
+  const prevSfxTagRef = useRef<string>('');
+  const prevSubmitCountRef = useRef(0);
 
   // B15-v2: CSS zoom — client-side only, update on resize
   useEffect(() => {
@@ -122,6 +125,39 @@ export default function DisplayScreen() {
     if (timeLeft > 0 && timeLeft <= 10 && timeLeft < prev) playSfx('sfx_countdown');
     if (timeLeft === 0 && prev === 1) playSfx('sfx_timeup');
   }, [timeLeft, isUnlocked, room?.current_phase, playSfx]);
+
+  // B16b: per-wave SFX when submitted count rises (sfx_join / sfx_card_flip)
+  // ผูกกับ count ที่เพิ่มขึ้นต่อรอบ throttled reload → 1 เสียงต่อคลื่น (ไม่รัวต่อคน)
+  useEffect(() => {
+    const ph = room?.current_phase;
+    const r = room?.current_round || 0;
+    if (!ph) return;
+    let count = 0;
+    let key: SfxKey | null = null;
+    if (ph === 'research') {
+      count = players.filter((p) => (p.quiz_answered_round || 0) >= r).length;
+      key = 'sfx_join';
+    } else if (ph === 'invest') {
+      count = players.filter((p) => p.portfolio_submitted_round === r).length;
+      key = 'sfx_join';
+    } else if (ph === 'chance_card') {
+      count = players.filter((p) => (p.duel_submitted_round || 0) >= r).length;
+      key = 'sfx_card_flip';
+    } else {
+      prevSfxTagRef.current = `${ph}-${r}`;
+      prevSubmitCountRef.current = 0;
+      return;
+    }
+    const tag = `${ph}-${r}`;
+    // เข้า phase/รอบใหม่ → ตั้ง baseline ไม่เล่นเสียง (กันเสียงตอน reconnect/เข้าหน้า)
+    if (prevSfxTagRef.current !== tag) {
+      prevSfxTagRef.current = tag;
+      prevSubmitCountRef.current = count;
+      return;
+    }
+    if (isUnlocked && key && count > prevSubmitCountRef.current) playSfx(key);
+    prevSubmitCountRef.current = count;
+  }, [players, room?.current_phase, room?.current_round, isUnlocked, playSfx]);
 
   const quizSubmittedCount = players.filter((p) => (p.quiz_answered_round || 0) >= (room?.current_round || 0)).length;
 
