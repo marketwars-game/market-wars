@@ -1,10 +1,11 @@
 // FILE: components/display/ResearchDisplay.tsx — Display Research Quiz (2 phases)
-// VERSION: B15-v1 — Projector Polish: font scale up, dim colors → rgba(255,255,255,0.75)
-// LAST MODIFIED: 27 Mar 2026
-// HISTORY: B8 created (inline) | B8R extracted to component | B12-UX horizontal layout | B13-BATCH1 cut news_feed + bonus stats | B15 projector polish
+// VERSION: B16b-v1 — research right column → LiveNameFeed (live submitted names); reveal unchanged
+// LAST MODIFIED: 11 Jun 2026
+// HISTORY: B8 created (inline) | B8R extracted | B12-UX horizontal | B13-BATCH1 cut news_feed + bonus stats | B15 projector polish | B16b live name feed
 'use client';
 
 import { getQuizForRound, QUIZ_BONUS } from '@/lib/constants';
+import LiveNameFeed from '@/components/display/LiveNameFeed';
 
 interface ResearchDisplayProps {
   roomId: string;
@@ -14,9 +15,9 @@ interface ResearchDisplayProps {
   quizSubmittedCount: number;
 }
 
-export default function ResearchDisplay({ roomId, round, phase, players, quizSubmittedCount }: ResearchDisplayProps) {
+export default function ResearchDisplay({ roomId, round, phase, players }: ResearchDisplayProps) {
 
-  // === PHASE 1: Research Quiz — ซ้าย: คำถาม | ขวา: counter ===
+  // === PHASE 1: Research Quiz — ซ้าย: คำถาม | ขวา: ชื่อสด (feed) ===
   if (phase === 'research') {
     const questions = getQuizForRound(roomId, round);
     return (
@@ -37,10 +38,9 @@ export default function ResearchDisplay({ roomId, round, phase, players, quizSub
             </div>
           ))}
         </div>
-        {/* Right: Counter */}
-        <div className="w-56 flex flex-col items-center justify-center px-6">
-          <p className="text-6xl font-bold font-mono" style={{ color: '#00FFB2' }}>{quizSubmittedCount}/{players.length}</p>
-          <p className="text-base font-mono mt-2" style={{ color: 'rgba(255,255,255,0.65)' }}>quiz submitted</p>
+        {/* Right: Live submitted names */}
+        <div className="w-72 flex-shrink-0 px-5 py-2">
+          <LiveNameFeed players={players} round={round} />
         </div>
       </div>
     );

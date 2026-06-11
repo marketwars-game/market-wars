@@ -1,7 +1,7 @@
 // FILE: app/display/[roomId]/page.tsx — Display screen (shell)
-// VERSION: B16a-v2 — wire sound: SoundGate + phase BGM crossfade + transition/bell/countdown/timeup SFX
+// VERSION: B16b-v1 — pass players+round to InvestDisplay (live allocation wall)
 // LAST MODIFIED: 11 Jun 2026
-// HISTORY: B1 created | B3 phase sync + timer | B4 submitted count | B5 event_result + results UI | B6 leaderboard | B7 final phase | B8 research quiz | B8R refactor | B9 FightDisplay | B12-UX dashboard layout | B13-BATCH3 ChanceCardDisplay + throttle | B15-v1 projector font+color polish | B15-v2 CSS zoom + header redesign + lobby redesign + QR popup + market_open dramatic | B16a-BATCH0 refactor shell (6 phase components) | B16a-BATCH1 sound: SoundGate + useDisplaySound wiring
+// HISTORY: B1 created | B3 phase sync + timer | B4 submitted count | B5 event_result + results UI | B6 leaderboard | B7 final phase | B8 research quiz | B8R refactor | B9 FightDisplay | B12-UX dashboard layout | B13-BATCH3 ChanceCardDisplay + throttle | B15-v1 projector font+color polish | B15-v2 CSS zoom + header redesign + lobby redesign + QR popup + market_open dramatic | B16a-BATCH0 refactor shell (6 phase components) | B16a-BATCH1 sound: SoundGate + useDisplaySound wiring | B16b-BATCH1 invest live wall props
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
@@ -123,7 +123,6 @@ export default function DisplayScreen() {
     if (timeLeft === 0 && prev === 1) playSfx('sfx_timeup');
   }, [timeLeft, isUnlocked, room?.current_phase, playSfx]);
 
-  const submittedCount = players.filter((p) => p.portfolio_submitted_round === room?.current_round).length;
   const quizSubmittedCount = players.filter((p) => (p.quiz_answered_round || 0) >= (room?.current_round || 0)).length;
 
   if (loading) return <div className="h-screen bg-[#0D1117] flex items-center justify-center"><div className="text-4xl font-bold animate-pulse" style={{ color: '#00FFB2' }}>MARKET WARS</div></div>;
@@ -172,7 +171,7 @@ export default function DisplayScreen() {
           )}
 
           {phase === 'invest' && (
-            <InvestDisplay submittedCount={submittedCount} playerCount={players.length} />
+            <InvestDisplay players={players} round={round} />
           )}
 
           {phase === 'chance_card' && <ChanceCardDisplay players={players} round={round} />}
