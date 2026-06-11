@@ -1,7 +1,7 @@
 // FILE: app/display/[roomId]/page.tsx — Display screen (shell)
-// VERSION: B16b-v2 — BATCH2 per-wave SFX (sfx_join research/invest, sfx_card_flip chance_card)
+// VERSION: B16c-v1 — leaderboard drumroll/rankup + results reveal swell SFX (post-round spectator)
 // LAST MODIFIED: 11 Jun 2026
-// HISTORY: B1 created | B3 phase sync + timer | B4 submitted count | B5 event_result + results UI | B6 leaderboard | B7 final phase | B8 research quiz | B8R refactor | B9 FightDisplay | B12-UX dashboard layout | B13-BATCH3 ChanceCardDisplay + throttle | B15-v1 projector font+color polish | B15-v2 CSS zoom + header redesign + lobby redesign + QR popup + market_open dramatic | B16a-BATCH0 refactor shell (6 phase components) | B16a-BATCH1 sound: SoundGate + useDisplaySound wiring | B16b-BATCH1 invest live wall props
+// HISTORY: B1 created | B3 phase sync + timer | B4 submitted count | B5 event_result + results UI | B6 leaderboard | B7 final phase | B8 research quiz | B8R refactor | B9 FightDisplay | B12-UX dashboard layout | B13-BATCH3 ChanceCardDisplay + throttle | B15-v1 projector font+color polish | B15-v2 CSS zoom + header redesign + lobby redesign + QR popup + market_open dramatic | B16a-BATCH0 refactor shell (6 phase components) | B16a-BATCH1 sound: SoundGate + useDisplaySound wiring | B16b-BATCH1 invest live wall props | B16c leaderboard+results spectator SFX
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
@@ -42,6 +42,7 @@ export default function DisplayScreen() {
   const prevTimeRef = useRef(0);
   const prevSfxTagRef = useRef<string>('');
   const prevSubmitCountRef = useRef(0);
+  const lbTimer = useRef<NodeJS.Timeout | null>(null); // B16c: leaderboard rankup delay
 
   // B15-v2: CSS zoom — client-side only, update on resize
   useEffect(() => {
@@ -103,6 +104,7 @@ export default function DisplayScreen() {
   }, [room?.current_phase, room?.status]);
 
   // B16a: phase change → BGM crossfade + transition/bell SFX
+  // B16c: leaderboard drumroll→rankup, results reveal swell
   useEffect(() => {
     if (!isUnlocked) return;
     const ph = room?.current_phase;
@@ -110,9 +112,17 @@ export default function DisplayScreen() {
     if (prevPhaseRef.current === ph) return;
     const isFirst = prevPhaseRef.current === null;
     prevPhaseRef.current = ph;
+    if (lbTimer.current) { clearTimeout(lbTimer.current); lbTimer.current = null; }
     playBgmForPhase(ph);
-    if (!isFirst) playSfx('sfx_transition');
+    // themed cue replaces the generic transition on the two post-round spectator screens
+    const themed = ph === 'leaderboard' || ph === 'results';
+    if (!isFirst && !themed) playSfx('sfx_transition');
     if (ph === 'market_open') playSfx('sfx_market_bell');
+    if (ph === 'leaderboard') {
+      playSfx('sfx_drumroll');                                  // roll while rows race
+      lbTimer.current = setTimeout(() => playSfx('sfx_rankup'), 1100); // ding as ranks settle / dark horse pops
+    }
+    if (ph === 'results') playSfx('sfx_reveal');                // swell synced to heatmap wave
   }, [room?.current_phase, isUnlocked, playBgmForPhase, playSfx]);
 
   // B16a: countdown tick (last 10s) + time-up SFX
