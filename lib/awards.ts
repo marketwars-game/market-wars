@@ -1,7 +1,7 @@
 // FILE: lib/awards.ts — Awards calculation logic for Final Summary
-// VERSION: B15-v1 — Quiz Master: show all players with top score (no tiebreak)
-// LAST MODIFIED: 26 Mar 2026
-// HISTORY: B11 created | B13-BATCH2 chance card replaces duel
+// VERSION: B16d-v1 — Smart Diversifier → decision-based (≥3 sectors & ≤70% every round) + egg/basket metaphor + bilingual labels
+// LAST MODIFIED: 11 Jun 2026
+// HISTORY: B11 created | B13-BATCH2 chance card replaces duel | B15 Quiz Master multi-winner | B16d Smart Diversifier decision-based
 
 import { STARTING_MONEY, TOTAL_ROUNDS, COMPANIES } from './constants';
 
@@ -11,16 +11,18 @@ import { STARTING_MONEY, TOTAL_ROUNDS, COMPANIES } from './constants';
 
 export interface Award {
   id: string;
-  name: string;       // ชื่อรางวัล
+  name: string;       // ชื่อรางวัล (TH)
+  nameEn?: string;    // ✅ B16d: ชื่อรางวัล (EN) — แสดงสองภาษาบนจอ Display
   emoji: string;      // emoji แสดงบน UI
-  lesson: string;     // บทเรียนที่สอน (MC ใช้อธิบาย)
+  lesson: string;     // บทเรียนที่สอน (MC ใช้อธิบาย, TH)
+  lessonEn?: string;  // ✅ B16d: บทเรียน (EN)
   winnerId: string | null;
   winnerName: string;
   stat: string;       // สถิติที่แสดง เช่น "10/12 correct"
-  // ✅ B15: หลายคนได้รางวัลพร้อมกัน (quiz_master)
+  // ✅ B15: หลายคนได้รางวัลพร้อมกัน (quiz_master / เสมอเงินเป๊ะ)
   winnerIds?: string[];
   winnerNames?: string[];
-  // MC detail: portfolio breakdown ทุกรอบ (สำหรับนักลงทุนรอบคอบ)
+  // MC detail: portfolio breakdown ทุกรอบ (สำหรับนักลงทุนกระจายความเสี่ยง)
   portfolioBreakdown?: { round: number; allocations: Record<string, number> }[];
 }
 
@@ -45,8 +47,10 @@ function calcQuizMaster(players: any[]): Award {
     return {
       id: 'quiz_master',
       name: 'นักวิจัยยอดเยี่ยม',
+      nameEn: 'Top Researcher',
       emoji: '🧠',
       lesson: 'ความรู้ = เงิน — ยิ่งตอบ quiz ถูกมาก ยิ่งได้ bonus เงินมากกว่าคนอื่น',
+      lessonEn: 'Knowledge pays — more correct answers, more bonus money',
       winnerId: null,
       winnerName: 'ไม่มีผู้ชนะ',
       stat: '',
@@ -61,8 +65,10 @@ function calcQuizMaster(players: any[]): Award {
   return {
     id: 'quiz_master',
     name: 'นักวิจัยยอดเยี่ยม',
+    nameEn: 'Top Researcher',
     emoji: '🧠',
     lesson: 'ความรู้ = เงิน — ยิ่งตอบ quiz ถูกมาก ยิ่งได้ bonus เงินมากกว่าคนอื่น',
+    lessonEn: 'Knowledge pays — more correct answers, more bonus money',
     winnerId: winners[0].id,
     winnerName: winners.length === 1 ? winners[0].name : winners.map((w) => w.name).join(', '),
     stat: `${topScore}/${totalQuestions} ข้อ`,
@@ -72,136 +78,134 @@ function calcQuizMaster(players: any[]): Award {
 }
 
 // ==============================================
-// Smart Diversifier — นักลงทุนรอบคอบ 🛡️
-// Filter 1: avg max allocation ≤ 40%
-// Filter 2: จบเกมด้วยกำไร (money > STARTING_MONEY)
-// Rank: avg max allocation ต่ำสุด
-// Tiebreak 1: จำนวนหุ้นเฉลี่ย (มากกว่า)
-// Tiebreak 2: total return สูงกว่า
-// Fallback: ถ้าไม่มีใครผ่าน filter → ผ่อนเงื่อนไข
+// Smart Diversifier — นักลงทุนกระจายความเสี่ยง 🧺  (B16d: decision-based)
+// "อย่าใส่ไข่ทั้งหมดในตะกร้าใบเดียว"
+//
+// เกณฑ์ต่อรอบ (วัดที่ "การตัดสินใจ" ไม่ใช่ผลลัพธ์):
+//   • ลง ≥ MIN_SECTORS กลุ่ม (>0%)   และ
+//   • ไม่ทุ่มเกิน MAX_SINGLE_PCT% ในกลุ่มเดียว
+// ต้องผ่าน "ทุกรอบที่เล่นจริง" — รอบที่ไม่ submit = พอร์ตว่าง = ตกเกณฑ์รอบนั้น
+// ผู้ชนะ: ในกลุ่มที่ผ่าน → เงินสูงสุด (เสมอเป๊ะ → ได้ร่วมกัน)
+// ยอมให้ทับแชมป์ได้ (คำนวณแยกอิสระ)
+//
+// Safety net (กันหน้า award ว่างวันงาน): ถ้าไม่มีใครผ่าน "ครบทุกรอบ"
+//   → เลือกคนที่ผ่าน "มากรอบที่สุด" (ยังเป็น decision-based, ไม่เลือกคน all-in)
+//   แล้วค่อยตัดสินด้วยเงินสูงสุด
 // ==============================================
+
+const MIN_SECTORS = 3;
+const MAX_SINGLE_PCT = 70;
+
+function roundIsDiversified(portfolio: Record<string, any> | undefined | null): boolean {
+  if (!portfolio) return false;
+  const vals = COMPANIES.map((c) => parseFloat(portfolio[c.id]) || 0);
+  const sectorCount = vals.filter((v) => v > 0).length;
+  const maxAlloc = Math.max(...vals, 0);
+  return sectorCount >= MIN_SECTORS && maxAlloc <= MAX_SINGLE_PCT;
+}
 
 interface DiversifierCandidate {
   id: string;
   name: string;
   money: number;
-  avgMaxAlloc: number;     // เฉลี่ย max allocation 6 รอบ
-  avgStockCount: number;   // เฉลี่ยจำนวนหุ้นที่ลง
-  totalReturn: number;     // กำไร/ขาดทุนรวม
+  qualRounds: number;       // จำนวนรอบที่กระจายผ่านเกณฑ์
+  diversifiedAll: boolean;  // ผ่านครบทุกรอบที่เล่นจริง
   portfolioBreakdown: { round: number; allocations: Record<string, number> }[];
 }
 
 function calcDiversifier(players: any[]): Award {
+  // หา "จำนวนรอบที่เล่นจริง" จาก round_returns (กันเคสจบเกมก่อนครบ 6 รอบ)
+  let playedRounds = 0;
+  players.forEach((p) => {
+    const rr = p.round_returns || {};
+    for (let r = 1; r <= TOTAL_ROUNDS; r++) {
+      if (rr[String(r)]) playedRounds = Math.max(playedRounds, r);
+    }
+  });
+  if (playedRounds === 0) playedRounds = TOTAL_ROUNDS;
+
   const candidates: DiversifierCandidate[] = players.map((p) => {
     const rr = p.round_returns || {};
-    let totalMaxAlloc = 0;
-    let totalStockCount = 0;
-    let roundsCounted = 0;
+    let qualRounds = 0;
     const breakdown: { round: number; allocations: Record<string, number> }[] = [];
 
-    for (let r = 1; r <= TOTAL_ROUNDS; r++) {
-      const roundData = rr[String(r)];
-      const portfolio = roundData?.portfolio_used;
-      if (!portfolio) continue;
+    for (let r = 1; r <= playedRounds; r++) {
+      const portfolio = rr[String(r)]?.portfolio_used;
+      if (roundIsDiversified(portfolio)) qualRounds++;
 
-      roundsCounted++;
-
-      // คำนวณ max allocation ของรอบนี้
-      const allocValues = COMPANIES.map((c) => parseFloat(portfolio[c.id]) || 0);
-      const maxAlloc = Math.max(...allocValues, 0);
-      totalMaxAlloc += maxAlloc;
-
-      // จำนวนหุ้นที่ลง (ไม่ใช่ 0%)
-      const stockCount = allocValues.filter((v) => v > 0).length;
-      totalStockCount += stockCount;
-
-      // เก็บ breakdown สำหรับ MC
+      // breakdown สำหรับ MC (เฉพาะกลุ่มที่ลง >0)
       const allocs: Record<string, number> = {};
-      COMPANIES.forEach((c) => {
-        const val = parseFloat(portfolio[c.id]) || 0;
-        if (val > 0) allocs[c.name] = val;
-      });
+      if (portfolio) {
+        COMPANIES.forEach((c) => {
+          const val = parseFloat(portfolio[c.id]) || 0;
+          if (val > 0) allocs[c.name] = val;
+        });
+      }
       breakdown.push({ round: r, allocations: allocs });
     }
-
-    const avgMaxAlloc = roundsCounted > 0 ? totalMaxAlloc / roundsCounted : 100;
-    const avgStockCount = roundsCounted > 0 ? totalStockCount / roundsCounted : 0;
-    const money = parseFloat(p.money) || 0;
 
     return {
       id: p.id,
       name: p.name,
-      money,
-      avgMaxAlloc,
-      avgStockCount,
-      totalReturn: money - STARTING_MONEY,
+      money: parseFloat(p.money) || 0,
+      qualRounds,
+      diversifiedAll: qualRounds === playedRounds,
       portfolioBreakdown: breakdown,
     };
   });
 
-  // Sort function
-  const sortCandidates = (list: DiversifierCandidate[]) =>
-    list.sort((a, b) => {
-      // Primary: avg max allocation ต่ำสุด
-      if (a.avgMaxAlloc !== b.avgMaxAlloc) return a.avgMaxAlloc - b.avgMaxAlloc;
-      // Tiebreak 1: จำนวนหุ้นเฉลี่ย (มากกว่า)
-      if (b.avgStockCount !== a.avgStockCount) return b.avgStockCount - a.avgStockCount;
-      // Tiebreak 2: total return สูงกว่า
-      return b.totalReturn - a.totalReturn;
-    });
+  // 1) คนที่กระจายครบทุกรอบ
+  let pool = candidates.filter((c) => c.diversifiedAll);
+  let usedFallback = false;
 
-  // Try strict filter: avg max ≤ 40% AND กำไร
-  let filtered = candidates.filter((c) => c.avgMaxAlloc <= 40 && c.money > STARTING_MONEY);
-  if (filtered.length > 0) {
-    sortCandidates(filtered);
-    const w = filtered[0];
-    return makeDiversifierAward(w);
+  // 2) safety net — ถ้าไม่มีใครครบ ใช้คนที่ผ่านมากรอบสุด (>0)
+  if (pool.length === 0) {
+    const maxQual = Math.max(...candidates.map((c) => c.qualRounds), 0);
+    if (maxQual > 0) {
+      pool = candidates.filter((c) => c.qualRounds === maxQual);
+      usedFallback = true;
+    }
   }
 
-  // Fallback 1: ตัดเงื่อนไขกำไร ใช้แค่ avg max ≤ 40%
-  filtered = candidates.filter((c) => c.avgMaxAlloc <= 40);
-  if (filtered.length > 0) {
-    sortCandidates(filtered);
-    const w = filtered[0];
-    return makeDiversifierAward(w);
+  // 3) ไม่มีใครกระจายเลย → ไม่มีผู้ชนะ
+  if (pool.length === 0) {
+    return {
+      id: 'smart_diversifier',
+      name: 'นักลงทุนกระจายความเสี่ยง',
+      nameEn: 'Smart Diversifier',
+      emoji: '🧺',
+      lesson: 'อย่าใส่ไข่ทั้งหมดในตะกร้าใบเดียว — กระจาย ≥3 กลุ่มทุกปี ไม่ทุ่มหมดหน้าตัก',
+      lessonEn: "Don't put all your eggs in one basket",
+      winnerId: null,
+      winnerName: 'ไม่มีผู้ชนะ',
+      stat: '',
+      winnerIds: [],
+      winnerNames: [],
+    };
   }
 
-  // Fallback 2: ขยาย threshold เป็น ≤ 50%
-  filtered = candidates.filter((c) => c.avgMaxAlloc <= 50);
-  if (filtered.length > 0) {
-    sortCandidates(filtered);
-    const w = filtered[0];
-    return makeDiversifierAward(w);
-  }
+  // ผู้ชนะ = เงินสูงสุดในกลุ่มที่ผ่าน (เสมอเป๊ะ → ร่วมกัน)
+  const topMoney = Math.max(...pool.map((c) => c.money));
+  const winners = pool.filter((c) => c.money === topMoney);
+  const lead = winners[0];
 
-  // Fallback 3: ใช้คนที่ avg max ต่ำสุดเลย (ไม่มี filter)
-  sortCandidates(candidates);
-  if (candidates.length > 0) {
-    const w = candidates[0];
-    return makeDiversifierAward(w);
-  }
+  const stat = lead.diversifiedAll
+    ? `กระจาย ≥${MIN_SECTORS} กลุ่ม ครบทั้ง ${playedRounds} ปี`
+    : `กระจาย ≥${MIN_SECTORS} กลุ่ม ${lead.qualRounds}/${playedRounds} ปี`;
 
   return {
     id: 'smart_diversifier',
-    name: 'นักลงทุนรอบคอบ',
-    emoji: '🛡️',
-    lesson: 'กระจายความเสี่ยง = รอดดีที่สุด — อย่าใส่ไข่ทุกฟองในตะกร้าใบเดียว',
-    winnerId: null,
-    winnerName: 'ไม่มีผู้ชนะ',
-    stat: '',
-  };
-}
-
-function makeDiversifierAward(w: DiversifierCandidate): Award {
-  return {
-    id: 'smart_diversifier',
-    name: 'นักลงทุนรอบคอบ',
-    emoji: '🛡️',
-    lesson: 'กระจายความเสี่ยง = รอดดีที่สุด — อย่าใส่ไข่ทุกฟองในตะกร้าใบเดียว',
-    winnerId: w.id,
-    winnerName: w.name,
-    stat: `เฉลี่ยลง ${w.avgStockCount.toFixed(1)} หุ้น/รอบ (max ${w.avgMaxAlloc.toFixed(0)}%)`,
-    portfolioBreakdown: w.portfolioBreakdown,
+    name: 'นักลงทุนกระจายความเสี่ยง',
+    nameEn: 'Smart Diversifier',
+    emoji: '🧺',
+    lesson: 'อย่าใส่ไข่ทั้งหมดในตะกร้าใบเดียว — กระจาย ≥3 กลุ่มทุกปี ไม่ทุ่มหมดหน้าตัก',
+    lessonEn: "Don't put all your eggs in one basket",
+    winnerId: lead.id,
+    winnerName: winners.length === 1 ? lead.name : winners.map((w) => w.name).join(', '),
+    stat,
+    winnerIds: winners.map((w) => w.id),
+    winnerNames: winners.map((w) => w.name),
+    portfolioBreakdown: lead.portfolioBreakdown,
   };
 }
 
@@ -228,7 +232,7 @@ export function getPlayerAwards(playerId: string, awards: Award[]): Award[] {
 }
 
 // ==============================================
-// ✅ B13: Player stats สำหรับ FinalView — เปลี่ยน duel → chance card
+// ✅ B13: Player stats สำหรับ FinalView — chance card
 // ==============================================
 
 export interface PlayerStats {
@@ -243,9 +247,7 @@ export function calcPlayerStats(player: any): PlayerStats {
   const quizCorrect = parseFloat(player.quiz_score) || 0;
   const quizTotal = TOTAL_ROUNDS * 2; // 2 ข้อต่อรอบ
 
-  // ✅ B13: Chance card stats — ใช้ duel_money_change ปัจจุบัน (เป็นค่าของรอบล่าสุด)
-  // ในอนาคตถ้าอยากเก็บทุกรอบ ต้องเก็บใน round_returns
-  // ตอนนี้ใช้ current duel_money_change เป็น chanceTotal (ประมาณ)
+  // ✅ B13: Chance card stats — ใช้ duel_money_change ปัจจุบัน (ค่าของรอบล่าสุด)
   const currentChance = parseFloat(player.duel_money_change) || 0;
 
   return {

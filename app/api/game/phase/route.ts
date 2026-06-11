@@ -1,7 +1,7 @@
 // FILE: app/api/game/phase/route.ts
-// VERSION: B15-v2 — Fix: unsubmitted players use cash portfolio (not previous round portfolio)
-// LAST MODIFIED: 26 Mar 2026
-// HISTORY: B3 created | B4 bug fix phase flow | B5 auto-calculate + event_result phase | B9 duel pair/resolve | B12-UX start → year_intro | B13-BATCH1 quiz bonus + remove duel
+// VERSION: B16d-v1 — Add "set" action for MC Final step navigation (final / final_podium / final_awards / final_ranking)
+// LAST MODIFIED: 11 Jun 2026
+// HISTORY: B3 created | B4 bug fix phase flow | B5 auto-calculate + event_result phase | B9 duel pair/resolve | B12-UX start → year_intro | B13-BATCH1 quiz bonus + remove duel | B15 Promise.all + portfolio_submitted_round | B16d set action (final steps)
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
@@ -16,10 +16,12 @@ const supabase = createClient(
 
 // ==============================================
 // POST /api/game/phase
-// MC กดเปลี่ยน phase — ทำได้ 3 อย่าง:
+// MC กดเปลี่ยน phase — ทำได้ 4 อย่าง:
 //   1. action: "start"      → เริ่มเกม (lobby → playing)
 //   2. action: "next"       → เลื่อนไป phase ถัดไป
-//   3. action: "end"        → จบเกมทันที (→ final)
+//   3. action: "end"        → จบเกมทันที (→ final = suspense "ใครคือแชมป์")
+//   4. action: "set"        → ตั้ง current_phase ตรงๆ (เฉพาะ final steps) สำหรับ MC step nav
+//                             phase ∈ final | final_podium | final_awards | final_ranking
 // ==============================================
 export async function POST(request: Request) {
   try {
@@ -34,9 +36,9 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!['start', 'next', 'end'].includes(action)) {
+    if (!['start', 'next', 'end', 'set'].includes(action)) {
       return NextResponse.json(
-        { error: 'Invalid action. Use: start, next, end' },
+        { error: 'Invalid action. Use: start, next, end, set' },
         { status: 400 }
       );
     }
@@ -119,6 +121,44 @@ export async function POST(request: Request) {
         status: 'finished',
         current_round: room.current_round,
         current_phase: 'final',
+      });
+    }
+
+    // === ACTION: SET FINAL STEP (MC step nav) ===
+    // ตั้ง current_phase ตรงๆ — จำกัดเฉพาะ final steps เพื่อให้ MC กระโดดได้อิสระ
+    // (① suspense=final → ② final_podium → ③ final_awards → ④ final_ranking)
+    if (action === 'set') {
+      const ALLOWED_FINAL = ['final', 'final_podium', 'final_awards', 'final_ranking'];
+      const target = body.phase;
+
+      if (!ALLOWED_FINAL.includes(target)) {
+        return NextResponse.json(
+          { error: 'Invalid target phase. Allowed: ' + ALLOWED_FINAL.join(', ') },
+          { status: 400 }
+        );
+      }
+
+      const { error: updateError } = await supabase
+        .from('rooms')
+        .update({
+          status: 'finished',
+          current_phase: target,
+        })
+        .eq('id', room_id);
+
+      if (updateError) {
+        return NextResponse.json(
+          { error: 'Failed to set final phase' },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        action: 'set',
+        status: 'finished',
+        current_round: room.current_round,
+        current_phase: target,
       });
     }
 
