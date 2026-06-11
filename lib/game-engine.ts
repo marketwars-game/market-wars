@@ -1,7 +1,7 @@
 // FILE: lib/game-engine.ts — State Machine + Room Code Generator
-// VERSION: B13-BATCH0-v1 — New phase flow: cut news/rebalance/attack, add chance_card
-// LAST MODIFIED: 26 Mar 2026
-// HISTORY: B1 created | B3 state machine | B4 fix phase flow | B5 event_result | B8 research_reveal + news_feed | B9 attack_result | B10 disable golden deal | B12-UX year_intro + market_open + step groups | B13-BATCH0 new phase flow
+// VERSION: B16d-v1 — getNextPhase guards all final_* steps (MC controls final via action 'set')
+// LAST MODIFIED: 11 Jun 2026
+// HISTORY: B1 created | B3 state machine | B4 fix phase flow | B5 event_result | B8 research_reveal + news_feed | B9 attack_result | B10 disable golden deal | B12-UX year_intro + market_open + step groups | B13-BATCH0 new phase flow | B16d guard final_* steps
 
 import { ROOM_CODE_CONFIG, GOLDEN_DEAL_ROUNDS, TOTAL_ROUNDS, STEP_GROUPS } from './constants';
 
@@ -65,8 +65,9 @@ export function getNextPhase(
     return { phase: 'year_intro', round: 1, status: 'playing' };
   }
 
-  // ถ้าอยู่ที่ final แล้ว → ไม่มี next
-  if (currentPhase === 'final') {
+  // ถ้าอยู่ที่ final หรือ final step ใดๆ (final_podium/awards/ranking) → ไม่มี next
+  // MC คุม step ด้วย action 'set' เอง (ไม่ผ่าน next)
+  if (currentPhase.startsWith('final')) {
     return null;
   }
 

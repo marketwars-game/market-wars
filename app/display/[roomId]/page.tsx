@@ -1,5 +1,5 @@
 // FILE: app/display/[roomId]/page.tsx — Display screen (shell)
-// VERSION: B16d-v1 — Final 4-step router (suspense/podium/awards/ranking) + animate-first/settled-revisit + research_reveal sfx
+// VERSION: B16d-v2 — final step replay (MC re-set same final phase → re-animate) on top of B16d-v1 4-step router
 // LAST MODIFIED: 11 Jun 2026
 // HISTORY: B1 created | B3 phase sync + timer | B4 submitted count | B5 event_result + results UI | B6 leaderboard | B7 final phase | B8 research quiz | B8R refactor | B9 FightDisplay | B12-UX dashboard layout | B13-BATCH3 ChanceCardDisplay + throttle | B15-v1 projector font+color polish | B15-v2 CSS zoom + header redesign + lobby redesign + QR popup + market_open dramatic | B16a-BATCH0 refactor shell (6 phase components) | B16a-BATCH1 sound: SoundGate + useDisplaySound wiring | B16b-BATCH1 invest live wall props | B16c leaderboard+results spectator SFX | B16d final 4-step + research_reveal sfx
 'use client';
@@ -47,9 +47,15 @@ export default function DisplayScreen() {
   // B16d: Final 4-step — animate ครั้งแรกที่เข้า step / settled เมื่อกลับมาดูซ้ำ (เผื่อน้องถ่ายรูป)
   // ตัดสิน animate แบบ synchronous ตอน render (ดูด้านล่าง); ตรงนี้แค่ mark ว่าเปิด step ไปแล้วหลัง commit
   const seenFinal = useRef<Set<string>>(new Set());
+  const forcedReplayRef = useRef<string | null>(null); // B16d-v2: MC สั่ง replay step ปัจจุบัน
+  const phaseRef = useRef<string>('lobby');            // phase ปัจจุบัน (ให้ realtime handler อ่านได้)
+  const [replayTick, setReplayTick] = useState(0);     // bump → remount FinalDisplay เพื่อเล่น animation ใหม่
   useEffect(() => {
     const ph = room?.current_phase;
-    if (ph && ph.startsWith('final')) seenFinal.current.add(ph);
+    if (ph && ph.startsWith('final')) {
+      seenFinal.current.add(ph);
+      forcedReplayRef.current = null; // เข้า step ใหม่ → เคลียร์ replay flag
+    }
   }, [room?.current_phase]);
 
   // B15-v2: CSS zoom — client-side only, update on resize
@@ -87,7 +93,15 @@ export default function DisplayScreen() {
 
   useEffect(() => {
     const roomChannel = supabase.channel(`display-room-${roomId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` }, (payload) => setRoom(payload.new))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` }, (payload) => {
+        // B16d-v2: MC ตั้ง phase final เดิมซ้ำ = สั่ง "เล่น animation ใหม่" → re-animate
+        const np = (payload.new as any)?.current_phase;
+        if (np && typeof np === 'string' && np.startsWith('final') && np === phaseRef.current) {
+          forcedReplayRef.current = np;
+          setReplayTick((t) => t + 1);
+        }
+        setRoom(payload.new);
+      })
       .subscribe();
     const playerChannel = supabase.channel(`display-players-${roomId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `room_id=eq.${roomId}` }, () => throttledReload())
@@ -187,8 +201,12 @@ export default function DisplayScreen() {
 
   const phase = room.current_phase || 'lobby';
   const round = room.current_round || 1;
-  // B16d: ตัดสิน animate ตอน render — ครั้งแรกของแต่ละ final step = true, กลับมาซ้ำ = false (settled)
-  const finalAnimate = phase.startsWith('final') ? !seenFinal.current.has(phase) : true;
+  phaseRef.current = phase; // ให้ realtime handler เทียบ replay ได้
+  // B16d: ตัดสิน animate ตอน render — ครั้งแรกของแต่ละ final step = true, กลับมาซ้ำ = false (settled),
+  // ยกเว้น MC สั่ง replay step ปัจจุบัน → true อีกครั้ง
+  const finalAnimate = phase.startsWith('final')
+    ? (!seenFinal.current.has(phase) || forcedReplayRef.current === phase)
+    : true;
   const timerDuration = PHASE_TIMERS[phase] || 0;
   const timerPercent = timerDuration > 0 ? (timeLeft / timerDuration) * 100 : 0;
   const timerColor = timeLeft <= 10 ? '#FF4444' : timeLeft <= 30 ? '#F59E0B' : '#00FFB2';
@@ -201,7 +219,7 @@ export default function DisplayScreen() {
   } else if (phase === 'final' || phase === 'final_podium' || phase === 'final_awards' || phase === 'final_ranking') {
     content = (
       <div className="h-screen bg-[#0D1117] text-white" style={{ zoom }}>
-        <FinalDisplay players={players} phase={phase as any} animate={finalAnimate} playSfx={playSfx} />
+        <FinalDisplay key={`final-${replayTick}`} players={players} phase={phase as any} animate={finalAnimate} playSfx={playSfx} />
       </div>
     );
   } else if (phase === 'year_intro') {

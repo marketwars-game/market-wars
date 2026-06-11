@@ -1,7 +1,7 @@
 // FILE: app/play/[roomId]/page.tsx — Player game screen
-// VERSION: B15-v1 — Add refresh button to header + refactor fetchData
-// LAST MODIFIED: 26 Mar 2026
-// HISTORY: B2 created | B3 phase sync + timer | B4 InvestmentPanel | B5 event_result + ResultsPanel | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components | B9 MarketFight | B12-UX mini step + year_intro + market_open | B13-BATCH3 ChanceCard + Realtime optimize + cut news/rebalance/attack
+// VERSION: B16d-v1 — render FinalView for all final_* variants (B15-v1: refresh button)
+// LAST MODIFIED: 11 Jun 2026
+// HISTORY: B2 created | B3 phase sync + timer | B4 InvestmentPanel | B5 event_result + ResultsPanel | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components | B9 MarketFight | B12-UX mini step + year_intro + market_open | B13-BATCH3 ChanceCard + Realtime optimize + cut news/rebalance/attack | B16d final_* variants → FinalView
 'use client';
 
 import { useEffect, useState, useRef, Suspense } from 'react';
@@ -97,7 +97,7 @@ function PlayerContent() {
   // ✅ B13: Fetch players list เมื่อ phase เปลี่ยนเป็น leaderboard/final (ต้องการ players array)
   useEffect(() => {
     const phase = room?.current_phase;
-    if (phase === 'leaderboard' || phase === 'final' || phase === 'lobby') {
+    if (phase === 'leaderboard' || (phase && phase.startsWith('final')) || phase === 'lobby') {
       supabase.from('players').select('*').eq('room_id', roomId).order('joined_at', { ascending: true })
         .then(({ data }) => { if (data) setPlayers(data); });
     }
@@ -156,6 +156,7 @@ function PlayerContent() {
   if (loading) return <div className="min-h-screen bg-[#0D1117] flex items-center justify-center"><div className="text-[#00FFB2] text-xl animate-pulse">Loading...</div></div>;
 
   const phase = room?.current_phase || 'lobby';
+  const isFinal = phase.startsWith('final'); // B16d: final / final_podium / final_awards / final_ranking
   const round = room?.current_round || 1;
   const phaseInfo = PHASE_DISPLAY[phase] || PHASE_DISPLAY.lobby;
   const timerDuration = PHASE_TIMERS[phase] || 0;
@@ -197,7 +198,7 @@ function PlayerContent() {
       {/* Player header — name + year badge + money */}
       <div className="flex items-center justify-between mb-1">
         <span className="text-[#00FFB2] font-bold text-sm">{player.name}</span>
-        {phase !== 'lobby' && phase !== 'final' && (
+        {phase !== 'lobby' && !isFinal && (
           <span className="text-[10px] text-[#00D4FF] font-medium px-2 py-0.5 rounded-full" style={{ background: 'rgba(0,212,255,0.1)' }}>
             ปีที่ {round}
           </span>
@@ -216,7 +217,7 @@ function PlayerContent() {
       </div>
 
       {/* Mini step indicator — 6 dots + current label */}
-      {phase !== 'lobby' && phase !== 'final' && phase !== 'year_intro' && (
+      {phase !== 'lobby' && !isFinal && phase !== 'year_intro' && (
         <div className="flex items-center gap-0 mb-3 px-1">
           <div className="flex items-center gap-0 flex-1">
             {stepProgress.map((step, i) => (
@@ -308,7 +309,7 @@ function PlayerContent() {
       )}
 
       {/* Phase info — only for phases without custom UI */}
-      {!['invest', 'research', 'research_reveal', 'chance_card', 'year_intro', 'market_open', 'lobby', 'final'].includes(phase) && (
+      {!isFinal && !['invest', 'research', 'research_reveal', 'chance_card', 'year_intro', 'market_open', 'lobby'].includes(phase) && (
         <div className="text-center py-4">
           <div className="text-3xl mb-1">{phaseInfo.icon}</div>
           <h2 className="text-xl font-bold text-[#00FFB2]">{phaseInfo.name}</h2>
@@ -353,7 +354,7 @@ function PlayerContent() {
       {phase === 'leaderboard' && <LeaderboardView player={player} players={players} round={round} />}
 
       {/* === Final — Component === */}
-      {phase === 'final' && <FinalView player={player} players={players} />}
+      {isFinal && <FinalView player={player} players={players} />}
     </div>
   );
 }

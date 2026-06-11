@@ -1,7 +1,7 @@
 // FILE: app/mc/[roomId]/page.tsx — MC Control screen
-// VERSION: B13-BATCH3-v1 — Throttle + cut news/attack/rebalance + chance card summary
-// LAST MODIFIED: 26 Mar 2026
-// HISTORY: B1 created | B3 phase control + timer | B4 submitted count + bug fix | B5 event_result + results | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components | B9 attack stats | B12-UX full step bar + year_intro + market_open | B13-BATCH3 throttle + cut news/attack/rebalance + chance card
+// VERSION: B16d-v1 — Final 4-step controls (suspense→reveal→①②③+◀▶+replay) via action 'set'
+// LAST MODIFIED: 11 Jun 2026
+// HISTORY: B1 created | B3 phase control + timer | B4 submitted count + bug fix | B5 event_result + results | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components | B9 attack stats | B12-UX full step bar + year_intro + market_open | B13-BATCH3 throttle + cut news/attack/rebalance + chance card | B16d final 4-step controls
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -118,6 +118,17 @@ export default function MCControlRoom() {
     setActionLoading(false);
   };
 
+  // B16d: ตั้ง final step ตรงๆ (suspense/podium/awards/ranking) — กระโดดอิสระ + re-set step เดิม = replay
+  const handleSetFinal = async (targetPhase: string) => {
+    setActionLoading(true); setError('');
+    try {
+      const res = await fetch('/api/game/phase', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ room_id: roomId, action: 'set', phase: targetPhase }) });
+      const data = await res.json();
+      if (!res.ok) setError(data.error || 'Something went wrong');
+    } catch (err) { setError('Network error'); }
+    setActionLoading(false);
+  };
+
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const handleEndGame = () => { if (!showEndConfirm) { setShowEndConfirm(true); return; } handleAction('end'); setShowEndConfirm(false); };
 
@@ -131,6 +142,7 @@ export default function MCControlRoom() {
   if (!room) return <div className="min-h-screen bg-[#0D1117] flex items-center justify-center"><div className="text-red-400 text-xl">Room not found</div></div>;
 
   const phase = room.current_phase || 'lobby';
+  const isFinal = phase.startsWith('final'); // B16d: final / final_podium / final_awards / final_ranking
   const round = room.current_round || 1;
   const phaseInfo = PHASE_DISPLAY[phase] || PHASE_DISPLAY.lobby;
   const timerDuration = PHASE_TIMERS[phase] || 0;
@@ -149,7 +161,7 @@ export default function MCControlRoom() {
           <p className="text-xs text-gray-500">Room: <span className="text-[#00D4FF] font-mono">{roomId}</span></p>
         </div>
         <div className="flex items-center gap-2">
-          {phase !== 'lobby' && phase !== 'final' && (
+          {phase !== 'lobby' && !isFinal && (
             <span className="text-[10px] text-[#00D4FF] font-medium px-2.5 py-0.5 rounded-full" style={{ background: 'rgba(0,212,255,0.1)' }}>
               ปีที่ {round} / {TOTAL_ROUNDS}
             </span>
@@ -159,7 +171,7 @@ export default function MCControlRoom() {
       </div>
 
       {/* Step bar */}
-      {phase !== 'lobby' && phase !== 'final' && (
+      {phase !== 'lobby' && !isFinal && (
         <div className="flex items-center gap-0.5 px-1 py-1.5 mb-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
           {stepProgress.map((step, i) => (
             <div key={step.id} className="flex items-center">
@@ -185,7 +197,7 @@ export default function MCControlRoom() {
       <div className="bg-[#161b22] rounded-lg p-3 mb-3">
         <div className="flex items-center justify-between mb-1">
           <span className="text-gray-400 text-xs uppercase tracking-wider">{phaseInfo.icon} {phaseInfo.name}</span>
-          {phase !== 'lobby' && phase !== 'final' && <span className="text-gray-500 text-xs">Players: {players.length}</span>}
+          {phase !== 'lobby' && !isFinal && <span className="text-gray-500 text-xs">Players: {players.length}</span>}
         </div>
         {phase === 'lobby' && (
           <div className="mt-2 space-y-1">
@@ -332,7 +344,7 @@ export default function MCControlRoom() {
       })()}
 
       {/* Timer */}
-      {timerDuration > 0 && phase !== 'lobby' && phase !== 'final' && (
+      {timerDuration > 0 && phase !== 'lobby' && !isFinal && (
         <div className="flex items-center gap-3 bg-[#161b22] rounded-lg px-4 py-3 mb-3">
           <div className="flex-1 h-2 bg-[#2a2d35] rounded-full overflow-hidden"><div className="h-full rounded-full transition-all duration-1000" style={{ width: `${timerPercent}%`, backgroundColor: getTimerColor() }} /></div>
           <span className={`font-mono text-lg font-bold min-w-[50px] text-right ${timeLeft <= 10 && timeLeft > 0 ? 'animate-pulse' : ''}`} style={{ color: getTimerColor() }}>{formatTime(timeLeft)}</span>
@@ -343,7 +355,7 @@ export default function MCControlRoom() {
       {phase !== 'year_intro' && phase !== 'market_open' && (
         <div className="border-l-4 border-[#00D4FF] bg-[#1a1f2e] rounded-r-lg p-3 mb-3">
           <p className="text-gray-400 text-sm">💡 {phaseInfo.mcTip}</p>
-          {MC_TIPS[round] && phase !== 'lobby' && phase !== 'final' && <p className="text-gray-500 text-xs mt-1">📌 Round tip: {MC_TIPS[round]}</p>}
+          {MC_TIPS[round] && phase !== 'lobby' && !isFinal && <p className="text-gray-500 text-xs mt-1">📌 Round tip: {MC_TIPS[round]}</p>}
         </div>
       )}
 
@@ -369,8 +381,42 @@ export default function MCControlRoom() {
       {/* === Leaderboard — Component === */}
       {phase === 'leaderboard' && <LeaderboardMC round={round} players={players} />}
 
+      {/* === B16d: Final step controls === */}
+      {isFinal && (() => {
+        const order = ['final', 'final_podium', 'final_awards', 'final_ranking'];
+        const idx = order.indexOf(phase);
+        const stepBtns = [
+          { key: 'final_podium', label: '① Podium' },
+          { key: 'final_awards', label: '② Awards' },
+          { key: 'final_ranking', label: '③ Ranking' },
+        ];
+        return (
+          <div className="bg-[#161b22] rounded-lg p-3 mb-3 border border-[#00FFB2]/30">
+            <p className="text-[#00FFB2] text-sm font-bold mb-2">🏆 Final — คุมจังหวะ Step</p>
+            <div className="flex items-center gap-2 mb-2">
+              <button onClick={() => idx > 0 && handleSetFinal(order[idx - 1])} disabled={idx <= 0 || actionLoading} className="px-3 py-2 rounded-lg border border-white/15 text-white disabled:opacity-30">◀</button>
+              <div className="flex gap-2 flex-1">
+                {stepBtns.map((b) => {
+                  const active = phase === b.key;
+                  return (
+                    <button key={b.key} onClick={() => handleSetFinal(b.key)} disabled={actionLoading} className="flex-1 px-2 py-2 rounded-lg text-sm font-semibold border" style={{ background: active ? 'rgba(0,255,178,0.15)' : '#0d1117', borderColor: active ? '#00FFB2' : 'rgba(255,255,255,0.12)', color: active ? '#fff' : 'rgba(255,255,255,0.7)' }}>{b.label}</button>
+                  );
+                })}
+              </div>
+              <button onClick={() => idx < order.length - 1 && handleSetFinal(order[idx + 1])} disabled={idx >= order.length - 1 || actionLoading} className="px-3 py-2 rounded-lg border border-white/15 text-white disabled:opacity-30">▶</button>
+            </div>
+            {phase === 'final' ? (
+              <button onClick={() => handleSetFinal('final_podium')} disabled={actionLoading} className="w-full py-2.5 rounded-lg font-bold text-[#04210f]" style={{ background: 'linear-gradient(135deg,#00FFB2,#22c55e)' }}>🎉 เฉลยแชมป์ · Reveal champion</button>
+            ) : (
+              <button onClick={() => handleSetFinal(phase)} disabled={actionLoading} className="w-full py-2.5 rounded-lg font-bold text-[#FCD34D] border border-[#FCD34D]/40">▶ เล่น animation ใหม่</button>
+            )}
+            <p className="text-gray-500 text-[11px] mt-2">เปิด step ไหนก็ได้ — เผื่อให้น้องมาถ่ายรูปหน้า Ranking · กลับมาดูซ้ำจอจะนิ่ง (ไม่เล่นซ้ำ) กด &quot;เล่นใหม่&quot; ถ้าอยากรีรัน</p>
+          </div>
+        );
+      })()}
+
       {/* === Final — Component === */}
-      {phase === 'final' && <FinalMC players={players} />}
+      {isFinal && <FinalMC players={players} />}
 
       {/* Error */}
       {error && <div className="bg-red-900/30 border border-red-500 rounded-lg p-3 mb-3 text-red-400 text-sm">{error}</div>}

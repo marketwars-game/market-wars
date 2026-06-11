@@ -1,7 +1,7 @@
 // FILE: components/player/FinalView.tsx — Player Final Phase
-// VERSION: B15-v1 — Quiz Master: show co-winners in award badge
-// LAST MODIFIED: 27 Mar 2026
-// HISTORY: B7 created (rank + profit + bars + top5) | B8R extracted to component | B11 stats + badge | B13 chance card stats + ปี labels
+// VERSION: B16d-v1 — fix co-winner list (exclude self); Smart Diversifier badge flows through getPlayerAwards
+// LAST MODIFIED: 11 Jun 2026
+// HISTORY: B7 created (rank + profit + bars + top5) | B8R extracted to component | B11 stats + badge | B13 chance card stats + ปี labels | B15 co-winner names | B16d fix co-winner filter
 
 import { STARTING_MONEY, TOTAL_ROUNDS } from '@/lib/constants';
 import { calculateAwards, getPlayerAwards, calcPlayerStats } from '@/lib/awards';
@@ -84,10 +84,10 @@ export default function FinalView({ player, players }: FinalViewProps) {
                 <span className="text-sm font-bold" style={{ color: '#FCD34D' }}>{award.name}</span>
               </div>
               <div className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.6)' }}>{award.stat}</div>
-              {/* ✅ B15: ถ้ามีผู้ชนะร่วม แสดงชื่อทั้งหมด */}
+              {/* ✅ B15: ถ้ามีผู้ชนะร่วม แสดงชื่อคนอื่น (B16d: fix filter — ตัดชื่อตัวเองออก) */}
               {award.winnerNames && award.winnerNames.length > 1 && (
                 <div className="text-xs mt-1.5" style={{ color: 'rgba(255,255,255,0.5)' }}>
-                  ร่วมกับ: {award.winnerNames.filter((n) => n !== award.winnerNames?.[award.winnerNames.indexOf(n)]).join(', ') || award.winnerName}
+                  ร่วมกับ: {award.winnerNames.filter((n) => n !== player.name).join(', ')}
                 </div>
               )}
             </div>

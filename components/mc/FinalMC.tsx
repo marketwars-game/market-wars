@@ -1,7 +1,7 @@
 // FILE: components/mc/FinalMC.tsx — MC Final Phase
-// VERSION: B11-v1 — Awards box + portfolio breakdown + MC script
-// LAST MODIFIED: 26 Mar 2026
-// HISTORY: B7 created (stats + leaderboard + tip) | B8R extracted to component | B11 awards + portfolio + script
+// VERSION: B16d-v1 — script aligned to decision-based Smart Diversifier + Dr.Bow twist + 4-step note
+// LAST MODIFIED: 11 Jun 2026
+// HISTORY: B7 created (stats + leaderboard + tip) | B8R extracted to component | B11 awards + portfolio + script | B16d script update (Dr.Bow twist + 4-step)
 
 import { STARTING_MONEY, COMPANIES } from '@/lib/constants';
 import { calculateAwards } from '@/lib/awards';
@@ -45,15 +45,16 @@ export default function FinalMC({ players }: FinalMCProps) {
     <div className="space-y-3">
       {/* MC Tip — Script for announcing awards */}
       <div className="border-l-4 border-[#FCD34D] bg-[#1a1f2e] rounded-r-lg p-3">
-        <p className="text-[#FCD34D] text-sm font-bold mb-2">🎤 Script แจกรางวัล</p>
+        <p className="text-[#FCD34D] text-sm font-bold mb-2">🎤 Script แจกรางวัล (คุมจังหวะด้วยปุ่ม Step ด้านบน)</p>
         <div className="text-gray-400 text-xs space-y-2">
-          <p>1. ประกาศ Top 3 นักลงทุนยอดเยี่ยม (อันดับ 3 → 2 → 1)</p>
-          <p>2. ประกาศรางวัล "นักวิจัยยอดเยี่ยม 🧠" — ถามเด็ก: "ตอบ quiz ถูกเยอะขนาดนี้ ช่วยให้ตัดสินใจลงทุนดีขึ้นยังไง?"</p>
-          <p>3. ประกาศรางวัล "นักลงทุนรอบคอบ 🛡️" — ถามเด็ก: "น้องลงหุ้นกี่ตัว? ทำไมถึงเลือกกระจายแบบนี้?"</p>
+          <p>① <b>Podium</b> — ปั่นบรรยากาศ &quot;ใครคือแชมป์?&quot; แล้วกด <b>เฉลยแชมป์</b> → ประกาศ Top 3 (จอไล่ #3→#2→#1)</p>
+          <p>② <b>Awards</b> — ประกาศ &quot;นักวิจัยยอดเยี่ยม 🧠&quot; ก่อน → ถามเด็ก: &quot;ตอบ quiz ถูกเยอะ ช่วยตัดสินใจลงทุนยังไง?&quot;</p>
+          <p className="text-[#34d399]">…แล้วค่อยเฉลย <b>twist</b>: &quot;นักลงทุนกระจายความเสี่ยง 🧺&quot; — ดร.โบว์เชื่อมว่า &quot;ใครฟังพี่โบว์เรื่องกระจายความเสี่ยงแล้วทำตาม นี่คือรางวัลของเขา&quot;</p>
+          <p>③ <b>Ranking</b> — เปิดอันดับทุกคน เผื่อให้น้องๆ มาถ่ายรูปร่วมกัน 📸</p>
           <p className="text-gray-500 italic mt-2">
-            💡 รางวัลนักลงทุนรอบคอบ = คนที่ไม่ทุ่มหุ้นตัวเดียว แต่กระจายลงหลายตัว แล้วยังกำไรด้วย — สอนว่า "อย่าใส่ไข่ทุกฟองในตะกร้าใบเดียว" ได้ผลจริง!
+            💡 รางวัลกระจายความเสี่ยง = คนที่ลง ≥3 กลุ่มทุกปี ไม่ทุ่มหมดหน้าตัก แล้วเงินสูงสุดในกลุ่มนั้น — สอน &quot;อย่าใส่ไข่ทั้งหมดในตะกร้าใบเดียว&quot; แบบเห็นจริง (ถ้าทับแชมป์ = บทเรียนยิ่งดี!)
           </p>
-          <p>4. สรุปบทเรียน 5 ข้อ (ดูด้านล่าง)</p>
+          <p>④ สรุปบทเรียน 5 ข้อ (ดูด้านล่าง)</p>
         </div>
       </div>
 
@@ -111,7 +112,7 @@ export default function FinalMC({ players }: FinalMCProps) {
             <div className="text-xs" style={{ color: '#00D4FF' }}>{award.stat}</div>
             <div className="text-xs text-gray-500 mt-0.5">{award.lesson}</div>
 
-            {/* Portfolio breakdown สำหรับนักลงทุนรอบคอบ */}
+            {/* Portfolio breakdown สำหรับนักลงทุนกระจายความเสี่ยง */}
             {award.portfolioBreakdown && award.portfolioBreakdown.length > 0 && (
               <div className="mt-2 bg-[#0d1117] rounded p-2">
                 <div className="text-xs text-gray-500 mb-1">📊 Portfolio ทุกรอบ:</div>
