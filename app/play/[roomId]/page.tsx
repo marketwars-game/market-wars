@@ -1,7 +1,7 @@
 // FILE: app/play/[roomId]/page.tsx — Player game screen
-// VERSION: B16d-v1+perf-v1 — leaderboard/final fetch: trim cols + jitter; ?debug=1 instrumentation
+// VERSION: B18-v1 — capture quiz response speed (researchShownAt → elapsed_ms on submit)
 // LAST MODIFIED: 12 Jun 2026
-// HISTORY: B2 created | B3 phase sync + timer | B4 InvestmentPanel | B5 event_result + ResultsPanel | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components | B9 MarketFight | B12-UX mini step + year_intro + market_open | B13-BATCH3 ChanceCard + Realtime optimize + cut news/rebalance/attack | B16d final_* variants → FinalView | perf-v1 trim+jitter list fetch + debug badge
+// HISTORY: B2 created | B3 phase sync + timer | B4 InvestmentPanel | B5 event_result + ResultsPanel | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components | B9 MarketFight | B12-UX mini step + year_intro + market_open | B13-BATCH3 ChanceCard + Realtime optimize + cut news/rebalance/attack | B16d final_* variants → FinalView | perf-v1 trim+jitter list fetch + debug badge | B18 quiz speed capture
 'use client';
 
 import { useEffect, useState, useRef, Suspense } from 'react';
@@ -47,6 +47,7 @@ function PlayerContent() {
   // Quiz state
   const [quizAnswers, setQuizAnswers] = useState<(number | null)[]>([null, null]);
   const [quizSubmitted, setQuizSubmitted] = useState(false);
+  const researchShownAt = useRef<number | null>(null); // ✅ B18: เวลาที่เห็นโจทย์ quiz (จับ speed)
 
   // === perf-v1: ?debug=1 instrumentation (no behaviour change when off) ===
   const [, setDbgTick] = useState(0);
@@ -157,6 +158,13 @@ function PlayerContent() {
     }
   }, [room?.current_phase, room?.current_round, player?.quiz_answered_round]);
 
+  // ✅ B18: เริ่มจับเวลาเมื่อเข้า research phase (ต่อรอบ) — แยก effect ไม่ให้โดน player update รีเซ็ต
+  useEffect(() => {
+    if (room?.current_phase === 'research') {
+      researchShownAt.current = performance.now();
+    }
+  }, [room?.current_phase, room?.current_round]);
+
   // === Join handler ===
   const handleJoin = async (forceReconnect = false) => {
     setJoining(true); setJoinError('');
@@ -182,8 +190,11 @@ function PlayerContent() {
     const round = room?.current_round || 1;
     const questions = getQuizForRound(roomId, round);
     const correctCount = quizAnswers.filter((a, i) => a === questions[i].correct).length;
+    // ✅ B18: เวลาตอบ (ms) ตั้งแต่เห็นโจทย์ → กด submit
+    const start = researchShownAt.current;
+    const elapsedMs = start != null ? Math.max(0, Math.round(performance.now() - start)) : 0;
     try {
-      await fetch('/api/players/quiz', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ player_id: player.id, room_id: roomId, round, correct_count: correctCount }) });
+      await fetch('/api/players/quiz', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ player_id: player.id, room_id: roomId, round, correct_count: correctCount, elapsed_ms: elapsedMs }) });
     } catch {}
   };
 
