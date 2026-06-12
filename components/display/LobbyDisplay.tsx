@@ -1,21 +1,20 @@
 // FILE: components/display/LobbyDisplay.tsx — Display lobby (QR + joined players)
-// VERSION: B16a-v1 — extracted from display/page.tsx (refactor shell, no behavior change)
-// LAST MODIFIED: 11 Jun 2026
-// HISTORY: B16a-BATCH0 extracted inline lobby from display/page.tsx (qrOpen state moved local)
+// VERSION: B19-v2 — AnimatedBackdrop (Network+Grid) replaces static radial glows
+// LAST MODIFIED: 13 Jun 2026
+// HISTORY: B16a-BATCH0 extracted inline lobby from display/page.tsx (qrOpen state moved local) | B19-BATCH2 AnimatedBackdrop
 'use client';
 
 import { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
+import AnimatedBackdrop from '@/components/display/AnimatedBackdrop';
 
 export default function LobbyDisplay({ players, roomId, joinUrl, zoom }: { players: any[]; roomId: string; joinUrl: string; zoom: number }) {
   const [qrOpen, setQrOpen] = useState(false);
   return (
     <div className="h-screen bg-[#0D1117] text-white overflow-hidden relative" style={{ zoom }}>
-      <div className="absolute rounded-full pointer-events-none" style={{ width: '600px', height: '600px', background: 'rgba(0,255,178,0.04)', top: '-150px', right: '-150px' }} />
-      <div className="absolute rounded-full pointer-events-none" style={{ width: '400px', height: '400px', background: 'rgba(0,212,255,0.05)', top: '-80px', right: '80px' }} />
-      <div className="absolute rounded-full pointer-events-none" style={{ width: '300px', height: '300px', background: 'rgba(0,255,178,0.03)', bottom: '-80px', left: '120px' }} />
+      <AnimatedBackdrop accent="#00FFB2" accent2="#00D4FF" />
 
-      <div className="relative h-full flex items-center">
+      <div className="relative z-10 h-full flex items-center">
         {/* Left: QR */}
         <div className="flex-shrink-0 flex flex-col items-center justify-center px-12 h-full" style={{ borderRight: '1px solid rgba(255,255,255,0.08)' }}>
           <div

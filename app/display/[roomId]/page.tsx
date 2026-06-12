@@ -1,7 +1,7 @@
 // FILE: app/display/[roomId]/page.tsx — Display screen (shell)
-// VERSION: B16d-v2+perf-v1 — ?debug=1 overlay (fetch ms/rows, throttle queue, evt/s, ch status); no behaviour change when off
-// LAST MODIFIED: 12 Jun 2026
-// HISTORY: B1 created | B3 phase sync + timer | B4 submitted count | B5 event_result + results UI | B6 leaderboard | B7 final phase | B8 research quiz | B8R refactor | B9 FightDisplay | B12-UX dashboard layout | B13-BATCH3 ChanceCardDisplay + throttle | B15-v1 projector font+color polish | B15-v2 CSS zoom + header redesign + lobby redesign + QR popup + market_open dramatic | B16a-BATCH0 refactor shell (6 phase components) | B16a-BATCH1 sound: SoundGate + useDisplaySound wiring | B16b-BATCH1 invest live wall props | B16c leaderboard+results spectator SFX | B16d final 4-step + research_reveal sfx | perf-v1 debug overlay
+// VERSION: B16d-v2+perf-v1+B19-v5 — leaderboard rankup sync + event reveal SFX + seenFinal !loading guard (refresh re-animates); auto-replay restored (real fix in FinalPodium); ?debug=1 overlay unchanged
+// LAST MODIFIED: 13 Jun 2026
+// HISTORY: B1 created | B3 phase sync + timer | B4 submitted count | B5 event_result + results UI | B6 leaderboard | B7 final phase | B8 research quiz | B8R refactor | B9 FightDisplay | B12-UX dashboard layout | B13-BATCH3 ChanceCardDisplay + throttle | B15-v1 projector font+color polish | B15-v2 CSS zoom + header redesign + lobby redesign + QR popup + market_open dramatic | B16a-BATCH0 refactor shell (6 phase components) | B16a-BATCH1 sound: SoundGate + useDisplaySound wiring | B16b-BATCH1 invest live wall props | B16c leaderboard+results spectator SFX | B16d final 4-step + research_reveal sfx | perf-v1 debug overlay | B19 rankup SFX sync to leaderboard hold + event reveal SFX + seenFinal load guard
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
@@ -61,14 +61,14 @@ export default function DisplayScreen() {
   const seenFinal = useRef<Set<string>>(new Set());
   const forcedReplayRef = useRef<string | null>(null); // B16d-v2: MC สั่ง replay step ปัจจุบัน
   const phaseRef = useRef<string>('lobby');            // phase ปัจจุบัน (ให้ realtime handler อ่านได้)
-  const [replayTick, setReplayTick] = useState(0);     // bump → remount FinalDisplay เพื่อเล่น animation ใหม่
+  const [replayTick, setReplayTick] = useState(0);     // bump → remount FinalDisplay เพื่อเล่น animation ใหม่ (MC replay)
   useEffect(() => {
     const ph = room?.current_phase;
-    if (ph && ph.startsWith('final')) {
+    if (!loading && ph && ph.startsWith('final')) {   // B19: mark seen only once actually displayed (not during initial load) → refresh re-animates
       seenFinal.current.add(ph);
       forcedReplayRef.current = null; // เข้า step ใหม่ → เคลียร์ replay flag
     }
-  }, [room?.current_phase]);
+  }, [room?.current_phase, loading]);
 
   // B15-v2: CSS zoom — client-side only, update on resize
   useEffect(() => {
@@ -110,7 +110,8 @@ export default function DisplayScreen() {
   useEffect(() => {
     const roomChannel = supabase.channel(`display-room-${roomId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` }, (payload) => {
-        // B16d-v2: MC ตั้ง phase final เดิมซ้ำ = สั่ง "เล่น animation ใหม่" → re-animate
+        // B16d-v2: MC re-set same final phase ('set' action) = สั่งเล่น animation ใหม่ → re-animate
+        // Safe now that FinalPodium no longer remounts on re-render (the mid-reveal restart was a nested-component bug, not this).
         const np = (payload.new as any)?.current_phase;
         if (np && typeof np === 'string' && np.startsWith('final') && np === phaseRef.current) {
           forcedReplayRef.current = np;
@@ -157,13 +158,14 @@ export default function DisplayScreen() {
     playBgmForPhase(ph);
     // themed cue replaces the generic transition on screens that own their SFX
     const isFinalStep = ph.startsWith('final');
-    const themed = ph === 'leaderboard' || ph === 'results' || isFinalStep;
+    const themed = ph === 'leaderboard' || ph === 'results' || ph === 'event' || isFinalStep;
     if (!isFirst && !themed) playSfx('sfx_transition');
     if (ph === 'market_open') playSfx('sfx_market_bell');
     if (ph === 'research_reveal') playSfx('sfx_reveal');        // B16d: reveal swell synced to stagger
+    if (ph === 'event') playSfx('sfx_reveal');                  // B19: dramatic event reveal swell (synced to staggered fade)
     if (ph === 'leaderboard') {
       playSfx('sfx_drumroll');                                  // roll while rows race
-      lbTimer.current = setTimeout(() => playSfx('sfx_rankup'), 1100); // ding as ranks settle / dark horse pops
+      lbTimer.current = setTimeout(() => playSfx('sfx_rankup'), 1700); // B19: ding as ranks lock in (after 900ms hold + 0.9s race)
     }
     if (ph === 'results') playSfx('sfx_reveal');                // swell synced to heatmap wave
     // B16d: final_podium / final_awards / final_ranking → SFX จัดการในตัว component (sync กับ animation)

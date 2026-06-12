@@ -1,10 +1,11 @@
 // FILE: components/display/EventDisplay.tsx — Display Event + Event Result
-// VERSION: B15-v2 — Event Reveal dramatic (radial glow + full screen) + news bar ใหญ่ขึ้น
-// LAST MODIFIED: 27 Mar 2026
-// HISTORY: B5 created (inline) | B8R extracted | B12-UX compact layout | B15-v1 projector polish | B15-v2 dramatic event reveal + big news bar
+// VERSION: B19-v4 — Event reveal: icon grows-and-holds big (no shrink-back); AnimatedBackdrop(red) + staggered fade; Golden Deal color inline
+// LAST MODIFIED: 13 Jun 2026
+// HISTORY: B5 created (inline) | B8R extracted | B12-UX compact layout | B15-v1 projector polish | B15-v2 dramatic event reveal + big news bar | B19-BATCH4 backdrop + reveal animation + golden deal color fix | B19 icon grow-and-hold bigger
 'use client';
 
 import { COMPANIES, EVENTS, RETURN_TABLE } from '@/lib/constants';
+import AnimatedBackdrop from '@/components/display/AnimatedBackdrop';
 
 interface EventDisplayProps {
   round: number;
@@ -19,19 +20,23 @@ export default function EventDisplay({ round, phase, players }: EventDisplayProp
     const ev = EVENTS[round - 1];
     return (
       <div className="w-full h-full flex items-center justify-center relative overflow-hidden">
-        {/* Radial glow background */}
-        <div className="absolute rounded-full pointer-events-none" style={{ width: '600px', height: '600px', background: 'rgba(255,107,107,0.06)', top: '50%', left: '50%', transform: 'translate(-50%,-50%)' }} />
-        <div className="absolute rounded-full pointer-events-none" style={{ width: '350px', height: '350px', background: 'rgba(255,107,107,0.08)', top: '50%', left: '50%', transform: 'translate(-50%,-50%)' }} />
+        <AnimatedBackdrop accent="#FF6B6B" accent2="#FF6B6B" />
+        <style>{`
+          @keyframes evFade { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+          @keyframes evPop { 0% { opacity: 0; transform: scale(0.7); } 100% { opacity: 1; transform: scale(1); } }
+          .ev-anim { opacity: 0; animation: evFade 0.6s ease-out forwards; }
+          .ev-pop { opacity: 0; animation: evPop 0.55s ease-out forwards; }
+        `}</style>
 
         <div className="text-center z-10 px-12 max-w-3xl w-full">
           {ev.image ? (
-            <img src={ev.image} alt={ev.title} className="w-full rounded-2xl mb-6 max-h-52 object-cover mx-auto" style={{ maxWidth: '480px' }} />
+            <img src={ev.image} alt={ev.title} className="ev-pop w-full rounded-2xl mb-6 max-h-64 object-cover mx-auto" style={{ maxWidth: '520px', animationDelay: '0.25s' }} />
           ) : (
-            <div className="text-9xl mb-6">{ev.emoji}</div>
+            <div className="ev-pop mb-6" style={{ fontSize: '10rem', lineHeight: 1, animationDelay: '0.25s' }}>{ev.emoji}</div>
           )}
-          <h3 className="text-5xl font-black mb-5" style={{ color: '#FF6B6B' }}>{ev.title}</h3>
-          <p className="text-2xl leading-relaxed" style={{ color: 'rgba(255,255,255,0.85)' }}>{ev.description}</p>
-          <div className="mt-8 inline-block px-6 py-2 rounded-full text-base font-semibold" style={{ background: 'rgba(255,107,107,0.15)', border: '1px solid rgba(255,107,107,0.35)', color: '#FF6B6B' }}>
+          <h3 className="ev-anim text-5xl font-black mb-5" style={{ color: '#FF6B6B', animationDelay: '0.6s' }}>{ev.title}</h3>
+          <p className="ev-anim text-2xl leading-relaxed" style={{ color: 'rgba(255,255,255,0.85)', animationDelay: '0.9s' }}>{ev.description}</p>
+          <div className="ev-anim mt-8 inline-block px-6 py-2 rounded-full text-base font-semibold" style={{ background: 'rgba(255,107,107,0.15)', border: '1px solid rgba(255,107,107,0.35)', color: '#FF6B6B', animationDelay: '1.2s' }}>
             รอดูผลกระทบ →
           </div>
         </div>
@@ -82,7 +87,7 @@ export default function EventDisplay({ round, phase, players }: EventDisplayProp
       <div className="w-full h-full flex items-center justify-center px-8">
         <div className="text-center">
           <div className="text-8xl mb-6">⭐</div>
-          <h3 className="text-5xl font-black text-[#FFD700] mb-4">Golden Deal!</h3>
+          <h3 className="text-5xl font-black mb-4" style={{ color: '#FFD700' }}>Golden Deal!</h3>
           <p className="text-2xl" style={{ color: 'rgba(255,255,255,0.75)' }}>โอกาสพิเศษประจำปีนี้</p>
         </div>
       </div>

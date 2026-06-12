@@ -1,7 +1,7 @@
 // FILE: lib/game-engine.ts — State Machine + Room Code Generator
-// VERSION: B16d-v1 — getNextPhase guards all final_* steps (MC controls final via action 'set')
-// LAST MODIFIED: 11 Jun 2026
-// HISTORY: B1 created | B3 state machine | B4 fix phase flow | B5 event_result | B8 research_reveal + news_feed | B9 attack_result | B10 disable golden deal | B12-UX year_intro + market_open + step groups | B13-BATCH0 new phase flow | B16d guard final_* steps
+// VERSION: B19-v1 — รอบสุดท้ายข้าม leaderboard (results → final → podium) กันสปอยล์แชมป์ก่อนขึ้น podium
+// LAST MODIFIED: 13 Jun 2026
+// HISTORY: B1 created | B3 state machine | B4 fix phase flow | B5 event_result | B8 research_reveal + news_feed | B9 attack_result | B10 disable golden deal | B12-UX year_intro + market_open + step groups | B13-BATCH0 new phase flow | B16d guard final_* steps | B19 final round skips leaderboard
 
 import { ROOM_CODE_CONFIG, GOLDEN_DEAL_ROUNDS, TOTAL_ROUNDS, STEP_GROUPS } from './constants';
 
@@ -23,8 +23,8 @@ export function generateRoomCode(): string {
 
 // Phase order — ✅ B13: ทุกรอบเหมือนกัน (ไม่มี rebalance/news_feed/attack อีก)
 //
-// ทุกรอบ: year_intro → research → research_reveal → invest → chance_card → market_open → event → event_result → results → leaderboard
-// รอบ 6: ... → results → leaderboard → final
+// รอบ 1–5: year_intro → research → research_reveal → invest → chance_card → market_open → event → event_result → results → leaderboard
+// รอบ 6 (รอบสุดท้าย): ... → results → final   ← ✅ B19: ไม่มี leaderboard (ไปลุ้นผลที่ podium เลย กันสปอยล์)
 export function getPhaseOrder(round: number): string[] {
   // ✅ B13: ทุกรอบใช้ invest (เริ่มจาก 0% เสมอ — ไม่มี rebalance อีก)
   const phases = [
@@ -43,11 +43,12 @@ export function getPhaseOrder(round: number): string[] {
     phases.push('golden_deal');
   }
 
-  phases.push('results', 'leaderboard');
-
-  // รอบสุดท้ายไปจบที่ final
+  // ✅ B19: รอบสุดท้ายตัด leaderboard ออก — results → final → (MC คุม podium/awards/ranking)
+  // เพื่อไม่ให้เห็นว่าใครชนะตั้งแต่ leaderboard ก่อนขึ้น podium
   if (round >= TOTAL_ROUNDS) {
-    phases.push('final');
+    phases.push('results', 'final');
+  } else {
+    phases.push('results', 'leaderboard');
   }
 
   return phases;
@@ -89,7 +90,7 @@ export function getNextPhase(
     };
   }
 
-  // ถ้าอยู่ที่ leaderboard (phase สุดท้ายของรอบ) → ขึ้นรอบใหม่ที่ year_intro
+  // ถ้าอยู่ที่ leaderboard (phase สุดท้ายของรอบ 1–5) → ขึ้นรอบใหม่ที่ year_intro
   if (currentPhase === 'leaderboard') {
     return {
       phase: 'year_intro',

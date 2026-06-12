@@ -1,10 +1,10 @@
 # Market Wars — File Registry
 
 **Location:** วางที่ root ของ repo (`/FILE_REGISTRY.md`) — version control โดย git
-**Last Updated:** B18 Done (Single-winner quiz + speed name-wall) — 12 Jun 2026
+**Last Updated:** B19 Done (Animated backdrop + reveal polish + final-round skip leaderboard) — 13 Jun 2026
 **Repo:** https://github.com/marketwars-game/market-wars
 **Default branch:** `main`
-**Latest stable tag:** `B18-stable` (newest) · `Season1-stable` = `B15-stable`
+**Latest stable tag:** `B19-stable` (newest) · `Season1-stable` = `B15-stable`
 
 ---
 
@@ -93,6 +93,7 @@ https://raw.githubusercontent.com/marketwars-game/market-wars/Season1-stable/<pa
 | EventDisplay | Event reveal + Result + Golden Deal | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/EventDisplay.tsx |
 | ChanceCardDisplay | สรุปการ์ดโชคชะตา (→ LiveNameBoard) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/ChanceCardDisplay.tsx |
 | LeaderboardDisplay | Podium + ranking | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/LeaderboardDisplay.tsx |
+| AnimatedBackdrop | ✅ B19 — shared backdrop (Network particle canvas + scrolling grid + glow + vignette); props `accent/accent2/vignette/density`; ใช้ใน Lobby/YearIntro/MarketOpen/Event | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/AnimatedBackdrop.tsx |
 | FinalDisplay | สรุปจบเกม + awards | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/FinalDisplay.tsx |
 | QuizSpeedWall | ✅ B18 — speed name-wall (ตอบถูกครบ 2 ข้อ เรียงเร็วสุด, cascade) บน research_reveal | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/QuizSpeedWall.tsx |
 

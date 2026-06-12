@@ -1,7 +1,7 @@
 // FILE: components/display/LeaderboardDisplay.tsx — Display Leaderboard (spectator)
-// VERSION: B18-v1 — rank via compareForRank (money → quiz → speed); 50/50 racing
-// LAST MODIFIED: 11 Jun 2026
-// HISTORY: B6 created | B8R extracted | B12-UX layout | v2-v4 podium fixes | v5 fix movement calc | B15 projector polish | B16c spectator: show max players, racing reorder, dark-horse highlight | B18 compareForRank
+// VERSION: B19-v2 — hold prev positions HOLD_MS before racing; right column minmax(0,1fr) fix name overflow; narrower top-8 column
+// LAST MODIFIED: 13 Jun 2026
+// HISTORY: B6 created | B8R extracted | B12-UX layout | v2-v4 podium fixes | v5 fix movement calc | B15 projector polish | B16c spectator: show max players, racing reorder, dark-horse highlight | B18 compareForRank | B19 hold-then-race + overflow fix + column rebalance
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -13,6 +13,7 @@ interface LeaderboardDisplayProps {
 }
 
 const ROWH = 54;          // px height per top-8 row slot (base; parent applies CSS zoom)
+const HOLD_MS = 900;      // B19: freeze at previous-round positions this long before racing (synced w/ sfx_rankup @1700ms in display/page)
 const REST_CAP = 72;      // max cells in the right column before "+N more"
 const MEDALS = ['🥇', '🥈', '🥉'];
 const MEDAL_COLORS = ['#FFD700', '#E0E0E0', '#CD9B6A'];
@@ -20,10 +21,10 @@ const MEDAL_COLORS = ['#FFD700', '#E0E0E0', '#CD9B6A'];
 export default function LeaderboardDisplay({ players, round }: LeaderboardDisplayProps) {
   const [settled, setSettled] = useState(false);
 
-  // entrance racing: render at previous-round positions, then slide to current on next frame
+  // B19: render at previous-round positions, HOLD them visible for HOLD_MS, then slide to current ranking
   useEffect(() => {
-    const raf = requestAnimationFrame(() => setSettled(true));
-    return () => cancelAnimationFrame(raf);
+    const t = setTimeout(() => setSettled(true), HOLD_MS);
+    return () => clearTimeout(t);
   }, []);
 
   // current ranking (money desc)
@@ -84,7 +85,7 @@ export default function LeaderboardDisplay({ players, round }: LeaderboardDispla
         .lb-dh { animation: lbPulse 1s ease-out 0.9s forwards; }
       `}</style>
 
-      <div className="grid gap-6 flex-1 overflow-hidden" style={{ gridTemplateColumns: '1.1fr 1fr' }}>
+      <div className="grid gap-6 flex-1 overflow-hidden" style={{ gridTemplateColumns: 'minmax(0, 0.85fr) minmax(0, 1.15fr)' }}>
 
         {/* ===== LEFT — Top 8 racing ===== */}
         <div className="flex flex-col overflow-hidden">
@@ -136,7 +137,7 @@ export default function LeaderboardDisplay({ players, round }: LeaderboardDispla
           <div style={{ fontSize: 13, letterSpacing: 1, color: 'rgba(255,255,255,0.5)', marginBottom: 8 }}>
             อันดับ #9+ · {rest.length === 0 ? '—' : `แสดง ${restShown.length}/${rest.length} · Everyone`}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, alignContent: 'start', flex: 1, overflow: 'hidden' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 4, alignContent: 'start', flex: 1, overflow: 'hidden' }}>
             {restShown.map((p, i) => {
               const rank = i + 9;
               const m = movementOf(p, i + 8);

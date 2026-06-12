@@ -1,7 +1,7 @@
 // FILE: components/display/FinalPodium.tsx — Final step ② Podium reveal (3→2→1)
-// VERSION: B18-v1 — rank via compareForRank (money → quiz → speed); reveal 3-2-1 + confetti + SFX
-// LAST MODIFIED: 11 Jun 2026
-// HISTORY: B16d created — split from FinalDisplay; reveal 3→2→1 + champion glow + confetti + SFX; settled on revisit | B18 compareForRank
+// VERSION: B19-v3 — slower per-name reveal (PODIUM_REVEAL constants, ~3.5–4s gaps so MC announces each); drumroll→name per place
+// LAST MODIFIED: 13 Jun 2026
+// HISTORY: B16d created — split from FinalDisplay; reveal 3→2→1 + champion glow + confetti + SFX; settled on revisit | B18 compareForRank | B19 staged reveal + Card→renderCard (no remount) + tunable timeline
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -17,21 +17,34 @@ interface FinalPodiumProps {
   playSfx?: (k: SfxKey) => void;
 }
 
+// B19: podium reveal timeline (seconds) — TUNE HERE. SFX, confetti, crown all derive from these.
+// bigger gaps = MC has more time to announce each place one-by-one.
+const PODIUM_REVEAL = { third: 2.5, second: 6.0, first: 10.0 };
+const PODIUM_DRUMROLL_LEAD = 1.0; // drumroll this many seconds before each name appears
+
 export default function FinalPodium({ players, animate, playSfx }: FinalPodiumProps) {
   // snapshot ตอน mount — กัน prop เปลี่ยนกลาง animation (player data update) มาตัด SFX/ภาพทิ้ง
   const [doAnim] = useState(animate);
+  const [confetti, setConfetti] = useState(false);
   const sorted = [...players].sort(compareForRank);
   const top3 = sorted.slice(0, 3);
   const awards = calculateAwards(players);
 
-  // SFX choreography (only on first reveal)
+  // SFX + confetti choreography (only on first reveal) — drumroll → name, one at a time, for MC to announce
   useEffect(() => {
-    if (!doAnim || !playSfx) return;
+    if (!doAnim) return;
+    const ms = (s: number) => Math.max(0, Math.round(s * 1000));
+    const lead = PODIUM_DRUMROLL_LEAD;
     const t: ReturnType<typeof setTimeout>[] = [];
-    playSfx('sfx_drumroll');
-    t.push(setTimeout(() => playSfx('sfx_cash'), 200));   // 3rd
-    t.push(setTimeout(() => playSfx('sfx_cash'), 900));   // 2nd
-    t.push(setTimeout(() => playSfx('sfx_fanfare'), 1600)); // 1st
+    if (playSfx) {
+      t.push(setTimeout(() => playSfx('sfx_drumroll'), ms(PODIUM_REVEAL.third - lead)));
+      t.push(setTimeout(() => playSfx('sfx_cash'), ms(PODIUM_REVEAL.third)));      // 3rd
+      t.push(setTimeout(() => playSfx('sfx_drumroll'), ms(PODIUM_REVEAL.second - lead)));
+      t.push(setTimeout(() => playSfx('sfx_cash'), ms(PODIUM_REVEAL.second)));     // 2nd
+      t.push(setTimeout(() => playSfx('sfx_drumroll'), ms(PODIUM_REVEAL.first - lead)));
+      t.push(setTimeout(() => playSfx('sfx_fanfare'), ms(PODIUM_REVEAL.first)));   // champion
+    }
+    t.push(setTimeout(() => setConfetti(true), ms(PODIUM_REVEAL.first)));          // confetti on champion reveal
     return () => t.forEach(clearTimeout);
   }, [doAnim, playSfx]);
 
@@ -45,26 +58,29 @@ export default function FinalPodium({ players, animate, playSfx }: FinalPodiumPr
   };
   const getReturnColor = (m: number) => (m || 0) >= STARTING_MONEY ? '#22c55e' : '#ef4444';
 
-  // delays for 3→2→1 (champion last)
-  const delayFor = (rankIndex: number) => (rankIndex === 2 ? 0.2 : rankIndex === 1 ? 0.9 : 1.6);
+  // B19: stage (podium bars) rises early, then reveal people one-by-one 3→2→1 (timeline in PODIUM_REVEAL)
+  const barDelay = (rankIndex: number) => (rankIndex === 2 ? 0.3 : rankIndex === 1 ? 0.45 : 0.6);
+  const revealDelay = (rankIndex: number) => (rankIndex === 2 ? PODIUM_REVEAL.third : rankIndex === 1 ? PODIUM_REVEAL.second : PODIUM_REVEAL.first);
   const personAnim = (rankIndex: number) => doAnim
-    ? { animation: 'mwRise 0.55s cubic-bezier(.2,1.3,.4,1) both', animationDelay: `${delayFor(rankIndex)}s` }
+    ? { animation: 'mwRise 0.55s cubic-bezier(.2,1.3,.4,1) both', animationDelay: `${revealDelay(rankIndex)}s` }
     : {};
   const baseAnim = (rankIndex: number) => doAnim
-    ? { animation: 'mwGrow 0.5s cubic-bezier(.2,1.1,.3,1) both', animationDelay: `${delayFor(rankIndex)}s`, transformOrigin: 'bottom' as const }
+    ? { animation: 'mwGrow 0.5s cubic-bezier(.2,1.1,.3,1) both', animationDelay: `${barDelay(rankIndex)}s`, transformOrigin: 'bottom' as const }
     : {};
 
   const wonTwo = (id: string) => getPlayerAwards(id, awards).length > 0;
 
-  const Card = ({ p, rankIndex }: { p: any; rankIndex: number }) => {
+  // B19: plain render fn (NOT a nested component) — using <Card/> remounted all cards on every
+  // re-render (new function identity each render), restarting the reveal. Calling renderCard() inlines JSX.
+  const renderCard = (p: any, rankIndex: number) => {
     if (!p) return null;
     const isChamp = rankIndex === 0;
     const h = isChamp ? 240 : rankIndex === 1 ? 195 : 165;
     const w = isChamp ? 235 : 215;
     return (
-      <div className="text-center flex flex-col items-center justify-end">
+      <div key={rankIndex} className="text-center flex flex-col items-center justify-end">
         <div style={personAnim(rankIndex)} className="flex flex-col items-center">
-          {isChamp && <div className="text-6xl mb-1" style={doAnim ? { animation: 'mwGlow 1.6s ease-in-out infinite', animationDelay: '2.2s' } : {}}>👑</div>}
+          {isChamp && <div className="text-6xl mb-1" style={doAnim ? { animation: 'mwGlow 1.6s ease-in-out infinite', animationDelay: `${PODIUM_REVEAL.first + 0.6}s` } : {}}>👑</div>}
           <p className={isChamp ? 'text-5xl mb-2' : 'text-4xl mb-2'}>{medals[rankIndex]}</p>
           <p className={`${isChamp ? 'text-3xl' : 'text-xl'} font-bold truncate max-w-[220px]`} style={{ color: nameColors[rankIndex] }}>{p.name}</p>
           <p className={`${isChamp ? 'text-2xl' : 'text-lg'} mt-1`} style={{ color: 'rgba(255,255,255,0.85)' }}>฿{(parseFloat(p.money) || 0).toLocaleString()}</p>
@@ -85,7 +101,7 @@ export default function FinalPodium({ players, animate, playSfx }: FinalPodiumPr
         @keyframes mwGrow { from { transform:scaleY(0) } to { transform:scaleY(1) } }
         @keyframes mwGlow { 0%,100%{ filter:drop-shadow(0 0 6px #FFD700) } 50%{ filter:drop-shadow(0 0 22px #FFD700) } }
       `}</style>
-      <ConfettiCanvas fire={doAnim} scale={1} />
+      <ConfettiCanvas fire={confetti} scale={1} />
 
       <div className="text-center mb-6" style={doAnim ? { animation: 'mwRise .5s ease-out both' } : {}}>
         <h1 className="text-5xl font-black" style={{ color: '#FCD34D' }}>🏆 แชมป์ Market Wars</h1>
@@ -93,9 +109,9 @@ export default function FinalPodium({ players, animate, playSfx }: FinalPodiumPr
       </div>
 
       <div className="flex items-end gap-6">
-        <Card p={top3[1]} rankIndex={1} />
-        <Card p={top3[0]} rankIndex={0} />
-        <Card p={top3[2]} rankIndex={2} />
+        {renderCard(top3[1], 1)}
+        {renderCard(top3[0], 0)}
+        {renderCard(top3[2], 2)}
       </div>
     </div>
   );
