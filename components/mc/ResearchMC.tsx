@@ -1,7 +1,7 @@
 // FILE: components/mc/ResearchMC.tsx — MC Research Quiz (2 phases)
-// VERSION: B13-BATCH1-v1 — Cut news_feed, add bonus summary
-// LAST MODIFIED: 26 Mar 2026
-// HISTORY: B8 created (inline) | B8R extracted to component | B13-BATCH1 cut news_feed + bonus summary
+// VERSION: B17-BATCH1-v1 — Bilingual data shape: read .th (MC stays Thai-only per scope)
+// LAST MODIFIED: 12 Jun 2026
+// HISTORY: B8 created (inline) | B8R extracted to component | B13-BATCH1 cut news_feed + bonus summary | B17-BATCH1 .th fallback for {th,en} quiz fields
 'use client';
 
 import { getQuizForRound, QUIZ_BONUS } from '@/lib/constants';
@@ -76,8 +76,8 @@ export default function ResearchMC({ roomId, round, phase, players, quizSubmitte
         <p className="text-sm font-bold mb-2" style={{ color: '#A855F7' }}>📝 Quiz Reveal — เฉลย + Bonus</p>
         {questions.map((q, qi) => (
           <div key={qi} className="mb-2 rounded p-2" style={{ background: 'rgba(255,255,255,0.03)' }}>
-            <p className="text-xs text-white font-bold mb-1">ข้อ {qi + 1}: {q.question}</p>
-            <p className="text-xs" style={{ color: '#00FFB2' }}>คำตอบ: {String.fromCharCode(65 + q.correct)}. {q.choices[q.correct]}</p>
+            <p className="text-xs text-white font-bold mb-1">ข้อ {qi + 1}: {q.question.th}</p>
+            <p className="text-xs" style={{ color: '#00FFB2' }}>คำตอบ: {String.fromCharCode(65 + q.correct)}. {q.choices[q.correct].th}</p>
           </div>
         ))}
         {/* ✅ B13: Bonus summary */}

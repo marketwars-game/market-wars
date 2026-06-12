@@ -1,12 +1,13 @@
 // FILE: components/player/ChanceCard.tsx — Chance Card mini-game
-// VERSION: B13-BATCH2-v1 — New component replacing MarketFight
-// LAST MODIFIED: 26 Mar 2026
-// HISTORY: B13 created (replacing B9 MarketFight)
+// VERSION: B17-BATCH1-v1 — Bilingual: wrap card.text in <Bi> (th/en) on revealed card
+// LAST MODIFIED: 12 Jun 2026
+// HISTORY: B13 created (replacing B9 MarketFight) | B17-BATCH1 bilingual card.text via <Bi>
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { getChanceCard } from '@/lib/constants';
+import Bi from '@/components/common/Bi';
 
 interface ChanceCardProps {
   playerId: string;
@@ -160,7 +161,7 @@ export default function ChanceCard({ playerId, roomId, round, player }: ChanceCa
         }}
       >
         <div className="text-5xl mb-3">{card.emoji}</div>
-        <p className="text-sm text-white font-medium mb-3 leading-relaxed px-2">{card.text}</p>
+        <Bi t={card.text} className="text-sm text-white font-medium mb-3 leading-relaxed px-2" style={{ textAlign: 'center' }} />
         <div
           className="text-2xl font-extrabold"
           style={{ color: displayPositive ? '#00FFB2' : '#EF4444' }}

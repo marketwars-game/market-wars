@@ -1,12 +1,13 @@
 // FILE: components/display/ResearchDisplay.tsx — Display Research Quiz (2 phases)
-// VERSION: B16d-v1 — research_reveal drama: staggered correct-answer reveal + bonus count-up
-// LAST MODIFIED: 11 Jun 2026
-// HISTORY: B8 created (inline) | B8R extracted | B12-UX horizontal | B13-BATCH1 cut news_feed + bonus stats | B15 projector polish | B16b live name feed | B16d reveal drama
+// VERSION: B17-BATCH1-v1 — Bilingual: wrap question + choices in <Bi> (th/en); B16d reveal drama preserved
+// LAST MODIFIED: 12 Jun 2026
+// HISTORY: B8 created (inline) | B8R extracted | B12-UX horizontal | B13-BATCH1 cut news_feed + bonus stats | B15 projector polish | B16b live name feed | B16d reveal drama | B17-BATCH1 bilingual question/choices via <Bi>
 'use client';
 
 import { useEffect, useState } from 'react';
 import { getQuizForRound, QUIZ_BONUS } from '@/lib/constants';
 import LiveNameFeed from '@/components/display/LiveNameFeed';
+import Bi from '@/components/common/Bi';
 
 interface ResearchDisplayProps {
   roomId: string;
@@ -51,11 +52,11 @@ export default function ResearchDisplay({ roomId, round, phase, players }: Resea
           {questions.map((q, qi) => (
             <div key={qi} className="mb-5 last:mb-0 rounded-xl p-5 text-left" style={{ background: '#161b22', border: '1px solid rgba(168,85,247,0.2)' }}>
               <p className="text-sm text-[#A855F7] mb-2 tracking-wider font-semibold">QUESTION {qi + 1} / 2</p>
-              <p className="text-xl text-white font-bold mb-4">{q.question}</p>
+              <Bi t={q.question} className="text-xl text-white font-bold mb-4" />
               <div className="grid grid-cols-2 gap-2.5">
                 {q.choices.map((choice, ci) => (
                   <div key={ci} className="rounded-lg px-4 py-3 text-base" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.75)' }}>
-                    {String.fromCharCode(65 + ci)}. {choice}
+                    <Bi t={choice} prefix={`${String.fromCharCode(65 + ci)}. `} enStyle={{ opacity: 1, fontSize: '13px' }} />
                   </div>
                 ))}
               </div>
@@ -89,7 +90,7 @@ export default function ResearchDisplay({ roomId, round, phase, players }: Resea
             return (
               <div key={qi} className="mb-5 last:mb-0 rounded-xl p-5 text-left" style={{ background: '#161b22', border: '1px solid rgba(168,85,247,0.2)' }}>
                 <p className="text-sm text-[#A855F7] mb-2 tracking-wider font-semibold">QUESTION {qi + 1}</p>
-                <p className="text-xl text-white font-bold mb-4">{q.question}</p>
+                <Bi t={q.question} className="text-xl text-white font-bold mb-4" />
                 <div className="grid grid-cols-2 gap-2.5">
                   {q.choices.map((choice, ci) => {
                     const isCorrect = ci === q.correct;
@@ -101,7 +102,7 @@ export default function ResearchDisplay({ roomId, round, phase, players }: Resea
                         color: lit ? '#00FFB2' : 'rgba(255,255,255,0.45)',
                         animation: lit ? 'mwGreenPop 0.4s ease-out both' : 'none',
                       }}>
-                        {String.fromCharCode(65 + ci)}. {choice} {lit && '✓'}
+                        <Bi t={choice} prefix={`${String.fromCharCode(65 + ci)}. `} suffix={lit ? ' ✓' : ''} enStyle={{ opacity: 1, fontSize: '13px' }} />
                       </div>
                     );
                   })}

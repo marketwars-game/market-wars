@@ -1,10 +1,11 @@
 // FILE: components/player/ResearchQuiz.tsx — Player Research Quiz (2 phases)
-// VERSION: B13-BATCH1-v1 — Cut news_feed, add quiz bonus display
-// LAST MODIFIED: 26 Mar 2026
-// HISTORY: B8 created (inline) | B8R extracted to component | B13-BATCH1 cut news_feed + quiz bonus
+// VERSION: B17-BATCH1-v1 — Bilingual: wrap question + choices in <Bi> (th/en), both phases
+// LAST MODIFIED: 12 Jun 2026
+// HISTORY: B8 created (inline) | B8R extracted to component | B13-BATCH1 cut news_feed + quiz bonus | B17-BATCH1 bilingual question/choices via <Bi>
 'use client';
 
 import { getQuizForRound, QUIZ_BONUS } from '@/lib/constants';
+import Bi from '@/components/common/Bi';
 
 interface ResearchQuizProps {
   roomId: string;
@@ -30,11 +31,11 @@ export default function ResearchQuiz({ roomId, round, phase, quizAnswers, quizSu
         </div>
         {questions.map((q, qi) => (
           <div key={qi} className="mb-4">
-            <p className="text-white font-bold text-sm mb-2">ข้อ {qi + 1}: {q.question}</p>
+            <Bi t={q.question} prefix={`ข้อ ${qi + 1}: `} className="text-white font-bold text-sm mb-2" />
             <div className="space-y-1.5">
               {q.choices.map((choice, ci) => {
                 const isSel = quizAnswers[qi] === ci;
-                return (<button key={ci} onClick={() => onSelect(qi, ci)} disabled={quizSubmitted} className="w-full text-left rounded-lg p-2.5 transition-all" style={{ border: `1px solid ${isSel ? 'rgba(168,85,247,0.5)' : 'rgba(255,255,255,0.1)'}`, background: isSel ? 'rgba(168,85,247,0.12)' : 'rgba(255,255,255,0.02)', color: isSel ? '#A855F7' : 'rgba(255,255,255,0.7)', fontSize: '13px' }}>{String.fromCharCode(65 + ci)}. {choice}</button>);
+                return (<button key={ci} onClick={() => onSelect(qi, ci)} disabled={quizSubmitted} className="w-full text-left rounded-lg p-2.5 transition-all" style={{ border: `1px solid ${isSel ? 'rgba(168,85,247,0.5)' : 'rgba(255,255,255,0.1)'}`, background: isSel ? 'rgba(168,85,247,0.12)' : 'rgba(255,255,255,0.02)', color: isSel ? '#A855F7' : 'rgba(255,255,255,0.7)', fontSize: '13px' }}><Bi t={choice} prefix={`${String.fromCharCode(65 + ci)}. `} enStyle={{ opacity: 1, fontSize: '11px' }} /></button>);
               })}
             </div>
           </div>
@@ -81,13 +82,13 @@ export default function ResearchQuiz({ roomId, round, phase, quizAnswers, quizSu
           const myAns = quizAnswers[qi];
           return (
             <div key={qi} className="mb-3 rounded-lg p-3" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-              <p className="text-sm font-bold text-white mb-2">ข้อ {qi + 1}: {q.question}</p>
+              <Bi t={q.question} prefix={`ข้อ ${qi + 1}: `} className="text-sm font-bold text-white mb-2" />
               <div className="space-y-1">{q.choices.map((choice, ci) => {
                 const isMy = myAns === ci; const isCorr = ci === q.correct;
                 let bg = 'transparent'; let bdr = 'transparent'; let clr = 'rgba(255,255,255,0.4)';
                 if (isCorr) { bg = 'rgba(0,255,178,0.1)'; bdr = 'rgba(0,255,178,0.3)'; clr = '#00FFB2'; }
                 else if (isMy) { bg = 'rgba(239,68,68,0.1)'; bdr = 'rgba(239,68,68,0.3)'; clr = '#EF4444'; }
-                return (<div key={ci} className="rounded px-2.5 py-1.5 text-xs" style={{ background: bg, border: `1px solid ${bdr}`, color: clr }}>{String.fromCharCode(65 + ci)}. {choice}{isCorr && ' ✓'}{isMy && !isCorr && ' ✗'}</div>);
+                return (<div key={ci} className="rounded px-2.5 py-1.5 text-xs" style={{ background: bg, border: `1px solid ${bdr}`, color: clr }}><Bi t={choice} prefix={`${String.fromCharCode(65 + ci)}. `} suffix={isCorr ? ' ✓' : (isMy && !isCorr ? ' ✗' : '')} enStyle={{ opacity: 1, fontSize: '11px' }} /></div>);
               })}</div>
             </div>
           );

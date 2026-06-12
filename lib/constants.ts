@@ -1,12 +1,19 @@
 // FILE: lib/constants.ts — Game Configuration (Single Source of Truth)
-// VERSION: B14-v2 — Content & Balance: Sector names, Return table v5c, Quiz from Session 2, Events rewrite, Quiz bonus 200/100/0
-// LAST MODIFIED: 27 Mar 2026
-// HISTORY: B1 created | B3 phase timers + display | B4 companies + events | B5 return table + golden deals | B8 quiz + news (v2: 3-phase) | B9 duel config + attack phase update | B10 disable golden deal | B12-UX year_intro + market_open + step groups | B12-BAL rebalance returns + events + news + duel | B13-BATCH0 cut news/rebalance/attack, add quiz bonus + chance cards | B14 sector names + return table v4 + quiz Session 2 + events rewrite + quiz bonus 200/100/0
+// VERSION: B17-BATCH0-v1 — Bilingual pass: add LocalizedText type; QUIZ_POOL question/choices + CHANCE_CARDS text -> {th, en}
+// LAST MODIFIED: 12 Jun 2026
+// HISTORY: B1 created | B3 phase timers + display | B4 companies + events | B5 return table + golden deals | B8 quiz + news (v2: 3-phase) | B9 duel config + attack phase update | B10 disable golden deal | B12-UX year_intro + market_open + step groups | B12-BAL rebalance returns + events + news + duel | B13-BATCH0 cut news/rebalance/attack, add quiz bonus + chance cards | B14 sector names + return table v4 + quiz Session 2 + events rewrite + quiz bonus 200/100/0 | B17-BATCH0 LocalizedText type + QUIZ_POOL/CHANCE_CARDS bilingual (th/en)
 
 // ==============================================
 // Market Wars — Game Configuration
 // Single Source of Truth — ทุก game data อยู่ที่นี่
 // ==============================================
+
+// ==============================================
+// ✅ B17: Bilingual type — ข้อความที่เด็ก/ผู้ปกครองอ่าน แสดง 2 ภาษาพร้อมกัน
+// ใช้กับ field ที่ผ่านตา player/projector เท่านั้น (ไม่ใช่ MC chrome)
+// แก้คำแปลได้ตรงนี้เลย — render ด้วย <Bi t={...} /> (components/common/Bi.tsx)
+// ==============================================
+export type LocalizedText = { th: string; en: string };
 
 // --- Game Settings ---
 export const MAX_PLAYERS = 60;
@@ -29,36 +36,37 @@ export const QUIZ_BONUS = {
 // สุ่ม client-side จาก seed (room_id + round + player_id)
 // ทุกคนได้ 1 ใบ/รอบ → write DB 1 ครั้ง/คน
 // Pool: 20 ใบ (10 บวก / 10 ลบ) — expected value ≈ +฿15
+// ✅ B17: text → {th, en} (แสดงบนการ์ดที่เด็กเปิด)
 // ==============================================
 export const CHANCE_CARDS: {
   id: number;
-  text: string;
+  text: LocalizedText;
   emoji: string;
   amount: number; // + = ได้เงิน, - = เสียเงิน
 }[] = [
   // === การ์ดบวก (10 ใบ) — เหตุการณ์ดีๆ ในชีวิต ===
-  { id: 1,  text: 'ญาติให้เงินขวัญถุงวันเกิด!', emoji: '🎁', amount: 200 },
-  { id: 2,  text: 'ชนะแข่งขันตอบคำถามที่โรงเรียน!', emoji: '🏆', amount: 300 },
-  { id: 3,  text: 'ถูกรางวัลจับฉลากงานโรงเรียน!', emoji: '🎉', amount: 250 },
-  { id: 4,  text: 'ทำงานพิเศษช่วงปิดเทอม ได้เงินเก็บ!', emoji: '⭐', amount: 150 },
-  { id: 5,  text: 'เงินออมในกระปุกครบเป้า!', emoji: '🐷', amount: 100 },
-  { id: 6,  text: 'เก็บเงินได้ที่โรงอาหาร! โชคดี!', emoji: '💎', amount: 100 },
-  { id: 7,  text: 'ได้ทุนการศึกษาด้านการเงิน!', emoji: '📊', amount: 150 },
-  { id: 8,  text: 'พ่อแม่ให้โบนัสเพราะเกรดดีขึ้น!', emoji: '🌟', amount: 200 },
-  { id: 9,  text: 'ขายของมือสองออนไลน์ได้กำไร!', emoji: '💰', amount: 300 },
-  { id: 10, text: 'ได้รางวัลนักออมดีเด่นประจำปี!', emoji: '🎯', amount: 500 },
+  { id: 1,  text: { th: 'ญาติให้เงินขวัญถุงวันเกิด!', en: 'A relative gives you birthday money!' }, emoji: '🎁', amount: 200 },
+  { id: 2,  text: { th: 'ชนะแข่งขันตอบคำถามที่โรงเรียน!', en: 'You win a school quiz contest!' }, emoji: '🏆', amount: 300 },
+  { id: 3,  text: { th: 'ถูกรางวัลจับฉลากงานโรงเรียน!', en: 'You win the school fair raffle!' }, emoji: '🎉', amount: 250 },
+  { id: 4,  text: { th: 'ทำงานพิเศษช่วงปิดเทอม ได้เงินเก็บ!', en: 'A holiday side job earns you some savings!' }, emoji: '⭐', amount: 150 },
+  { id: 5,  text: { th: 'เงินออมในกระปุกครบเป้า!', en: 'Your piggy bank hits its goal!' }, emoji: '🐷', amount: 100 },
+  { id: 6,  text: { th: 'เก็บเงินได้ที่โรงอาหาร! โชคดี!', en: 'You find money in the cafeteria! Lucky!' }, emoji: '💎', amount: 100 },
+  { id: 7,  text: { th: 'ได้ทุนการศึกษาด้านการเงิน!', en: 'You earn a finance scholarship!' }, emoji: '📊', amount: 150 },
+  { id: 8,  text: { th: 'พ่อแม่ให้โบนัสเพราะเกรดดีขึ้น!', en: 'Your parents reward your better grades!' }, emoji: '🌟', amount: 200 },
+  { id: 9,  text: { th: 'ขายของมือสองออนไลน์ได้กำไร!', en: 'You sell second-hand goods online for a profit!' }, emoji: '💰', amount: 300 },
+  { id: 10, text: { th: 'ได้รางวัลนักออมดีเด่นประจำปี!', en: 'You win Saver of the Year!' }, emoji: '🎯', amount: 500 },
 
   // === การ์ดลบ (10 ใบ) — ค่าใช้จ่ายที่เกิดขึ้นในชีวิต ===
-  { id: 11, text: 'มือถือตกพื้นจอแตก ต้องซ่อม!', emoji: '📱', amount: -200 },
-  { id: 12, text: 'ช้อปปิ้งเกินงบ ใช้เงินเกินแผน!', emoji: '🛒', amount: -100 },
-  { id: 13, text: 'ไม่สบาย ต้องจ่ายค่ายาเอง', emoji: '🏥', amount: -150 },
-  { id: 14, text: 'ค่าเน็ตกับค่าไฟเดือนนี้แพงมาก!', emoji: '⚡', amount: -100 },
-  { id: 15, text: 'รถเสีย ต้องนั่งแท็กซี่ไปเรียน 1 เดือน!', emoji: '🚌', amount: -200 },
-  { id: 16, text: 'สั่งอาหารออนไลน์ทุกวัน เงินหมดไม่รู้ตัว!', emoji: '🍔', amount: -150 },
-  { id: 17, text: 'ซื้อเกมแล้วไม่สนุก คืนเงินไม่ได้!', emoji: '🎮', amount: -100 },
-  { id: 18, text: 'โดนหลอกโอนเงินออนไลน์!', emoji: '🔓', amount: -500 },
-  { id: 19, text: 'รองเท้าพัง ต้องซื้อคู่ใหม่!', emoji: '👟', amount: -250 },
-  { id: 20, text: 'ทำของเพื่อนเสีย ต้องจ่ายค่าชดเชย', emoji: '📋', amount: -300 },
+  { id: 11, text: { th: 'มือถือตกพื้นจอแตก ต้องซ่อม!', en: 'You drop your phone — cracked screen, pay to fix it!' }, emoji: '📱', amount: -200 },
+  { id: 12, text: { th: 'ช้อปปิ้งเกินงบ ใช้เงินเกินแผน!', en: 'You overshop and blow your budget!' }, emoji: '🛒', amount: -100 },
+  { id: 13, text: { th: 'ไม่สบาย ต้องจ่ายค่ายาเอง', en: 'You get sick and pay for medicine yourself.' }, emoji: '🏥', amount: -150 },
+  { id: 14, text: { th: 'ค่าเน็ตกับค่าไฟเดือนนี้แพงมาก!', en: "This month's internet and electric bills are huge!" }, emoji: '⚡', amount: -100 },
+  { id: 15, text: { th: 'รถเสีย ต้องนั่งแท็กซี่ไปเรียน 1 เดือน!', en: 'Your ride breaks down — a month of taxis to school!' }, emoji: '🚌', amount: -200 },
+  { id: 16, text: { th: 'สั่งอาหารออนไลน์ทุกวัน เงินหมดไม่รู้ตัว!', en: 'Daily food delivery quietly drains your wallet!' }, emoji: '🍔', amount: -150 },
+  { id: 17, text: { th: 'ซื้อเกมแล้วไม่สนุก คืนเงินไม่ได้!', en: "You buy a game you don't enjoy — no refund!" }, emoji: '🎮', amount: -100 },
+  { id: 18, text: { th: 'โดนหลอกโอนเงินออนไลน์!', en: 'You get scammed into an online transfer!' }, emoji: '🔓', amount: -500 },
+  { id: 19, text: { th: 'รองเท้าพัง ต้องซื้อคู่ใหม่!', en: 'Your shoes fall apart — buy a new pair!' }, emoji: '👟', amount: -250 },
+  { id: 20, text: { th: 'ทำของเพื่อนเสีย ต้องจ่ายค่าชดเชย', en: "You break a friend's things and pay them back." }, emoji: '📋', amount: -300 },
 ];
 
 // --- ฟังก์ชั่นสุ่ม Chance Card จาก seed (room_id + round + player_id → ไม่ซ้ำกัน) ---
@@ -444,98 +452,164 @@ export const MC_TIPS: Record<number, string> = {
 // ==============================================
 // ✅ B14: Research Quiz — คำถามจาก Session 2 Kahoot
 // เรียงตามรอบ ไม่สุ่ม — ร้อยเรียงกับ Event ของแต่ละรอบ
+// ✅ B17: question + choices → {th, en} (แสดง 2 ภาษาบนจอเด็ก + จอใหญ่)
 // ==============================================
 
 // --- Quiz Pool (13 ข้อ จาก Session 2 Kahoot — Young Investor) ---
 export const QUIZ_POOL: {
   id: number;
-  question: string;
-  choices: string[];
+  question: LocalizedText;
+  choices: LocalizedText[];
   correct: number; // 0-based index
 }[] = [
   // === R1: เงินเฟ้อ — ทำไมต้องลงทุน ===
   {
     id: 1,
-    question: 'เงินเฟ้อคืออะไร?',
-    choices: ['เงินบวม', 'ของแพงขึ้น เงินเท่าเดิมซื้อได้น้อยลง', 'ดอกเบี้ยสูง', 'เงินเยอะขึ้น'],
+    question: { th: 'เงินเฟ้อคืออะไร?', en: 'What is inflation?' },
+    choices: [
+      { th: 'เงินบวม', en: 'Money gets bloated' },
+      { th: 'ของแพงขึ้น เงินเท่าเดิมซื้อได้น้อยลง', en: 'Prices go up; the same money buys less' },
+      { th: 'ดอกเบี้ยสูง', en: 'High interest rates' },
+      { th: 'เงินเยอะขึ้น', en: 'Having more money' },
+    ],
     correct: 1,
   },
   {
     id: 2,
-    question: 'ชานมไข่มุกเมื่อ 15 ปีก่อนแก้วละ 30 บาท ตอนนี้ 70 บาท เพราะอะไร?',
-    choices: ['ชานมอร่อยขึ้น', 'เงินเฟ้อ', 'ร้านโลภ', 'เส้นใหญ่ขึ้น'],
+    question: { th: 'ชานมไข่มุกเมื่อ 15 ปีก่อนแก้วละ 30 บาท ตอนนี้ 70 บาท เพราะอะไร?', en: 'Bubble tea was 30 baht a cup 15 years ago, now 70 baht. Why?' },
+    choices: [
+      { th: 'ชานมอร่อยขึ้น', en: 'The tea tastes better now' },
+      { th: 'เงินเฟ้อ', en: 'Inflation' },
+      { th: 'ร้านโลภ', en: 'The shop got greedy' },
+      { th: 'เส้นใหญ่ขึ้น', en: 'Bigger boba pearls' },
+    ],
     correct: 1,
   },
   // === R2: รู้จักหุ้น + ความเสี่ยง ===
   {
     id: 3,
-    question: 'ซื้อหุ้น Apple 1 หุ้น แปลว่าอะไร?',
-    choices: ['ได้ iPhone ฟรี', 'เป็นเจ้าของส่วนหนึ่งของบริษัท Apple', 'ได้ทำงานที่ Apple', 'ได้ส่วนลดซื้อ Mac'],
+    question: { th: 'ซื้อหุ้น Apple 1 หุ้น แปลว่าอะไร?', en: 'Buying 1 share of Apple means what?' },
+    choices: [
+      { th: 'ได้ iPhone ฟรี', en: 'You get a free iPhone' },
+      { th: 'เป็นเจ้าของส่วนหนึ่งของบริษัท Apple', en: 'You own a small piece of Apple' },
+      { th: 'ได้ทำงานที่ Apple', en: 'You get a job at Apple' },
+      { th: 'ได้ส่วนลดซื้อ Mac', en: 'You get a discount on a Mac' },
+    ],
     correct: 1,
   },
   {
     id: 4,
-    question: 'ข้อไหนเสี่ยงน้อยที่สุด?',
-    choices: ['หุ้น Tesla', 'Bitcoin', 'ฝากออมทรัพย์', 'หุ้น Roblox'],
+    question: { th: 'ข้อไหนเสี่ยงน้อยที่สุด?', en: 'Which one has the lowest risk?' },
+    choices: [
+      { th: 'หุ้น Tesla', en: 'Tesla stock' },
+      { th: 'Bitcoin', en: 'Bitcoin' },
+      { th: 'ฝากออมทรัพย์', en: 'A savings account' },
+      { th: 'หุ้น Roblox', en: 'Roblox stock' },
+    ],
     correct: 2,
   },
   // === R3: รู้จักการลงทุน 3 แบบ ===
   {
     id: 5,
-    question: 'กองทุนรวมเปรียบเทียบเหมือนอะไร?',
-    choices: ['ซื้อขนมชิ้นเดียว', 'ชุดรวมมิตร มีคนเก่งๆ ช่วยเลือกให้', 'ล็อตเตอรี่', 'ฝากเงินธนาคาร'],
+    question: { th: 'กองทุนรวมเปรียบเทียบเหมือนอะไร?', en: 'A mutual fund is most like what?' },
+    choices: [
+      { th: 'ซื้อขนมชิ้นเดียว', en: 'Buying a single snack' },
+      { th: 'ชุดรวมมิตร มีคนเก่งๆ ช่วยเลือกให้', en: 'A combo set — experts pick the mix for you' },
+      { th: 'ล็อตเตอรี่', en: 'A lottery ticket' },
+      { th: 'ฝากเงินธนาคาร', en: 'A bank deposit' },
+    ],
     correct: 1,
   },
   {
     id: 6,
-    question: 'ฝากเงิน = ม้าหมุน, กองทุน = ชิงช้าสวรรค์, แล้วหุ้น = ?',
-    choices: ['ม้าหมุนอีกรอบ', 'รถไฟเหาะ', 'ร้านขายของ', 'ที่นั่งพัก'],
+    question: { th: 'ฝากเงิน = ม้าหมุน, กองทุน = ชิงช้าสวรรค์, แล้วหุ้น = ?', en: 'Savings = merry-go-round, fund = Ferris wheel, so stocks = ?' },
+    choices: [
+      { th: 'ม้าหมุนอีกรอบ', en: 'Another merry-go-round' },
+      { th: 'รถไฟเหาะ', en: 'A roller coaster' },
+      { th: 'ร้านขายของ', en: 'A gift shop' },
+      { th: 'ที่นั่งพัก', en: 'A resting bench' },
+    ],
     correct: 1,
   },
   // === R4: กระจายความเสี่ยง ===
   {
     id: 7,
-    question: '"อย่าใส่ไข่ทุกฟองในตะกร้าใบเดียว" หมายถึงอะไร?',
-    choices: ['ระวังไข่แตก', 'กระจายการลงทุน อย่าลงตัวเดียว', 'ซื้อไข่หลายร้าน', 'อย่ากินไข่เยอะ'],
+    question: { th: '"อย่าใส่ไข่ทุกฟองในตะกร้าใบเดียว" หมายถึงอะไร?', en: "What does \"don't put all your eggs in one basket\" mean?" },
+    choices: [
+      { th: 'ระวังไข่แตก', en: 'Be careful not to break the eggs' },
+      { th: 'กระจายการลงทุน อย่าลงตัวเดียว', en: "Spread your investments; don't bet on just one" },
+      { th: 'ซื้อไข่หลายร้าน', en: 'Buy eggs from many shops' },
+      { th: 'อย่ากินไข่เยอะ', en: "Don't eat too many eggs" },
+    ],
     correct: 1,
   },
   {
     id: 8,
-    question: 'มี 1,000 บาท portfolio ไหนดีที่สุด?',
-    choices: ['หุ้น 100%', 'ฝากเงิน 100%', 'กระจาย: ฝาก+กองทุน+หุ้น', 'ไม่ลงทุนเลย'],
+    question: { th: 'มี 1,000 บาท portfolio ไหนดีที่สุด?', en: 'With 1,000 baht, which portfolio is best?' },
+    choices: [
+      { th: 'หุ้น 100%', en: '100% stocks' },
+      { th: 'ฝากเงิน 100%', en: '100% savings' },
+      { th: 'กระจาย: ฝาก+กองทุน+หุ้น', en: 'Spread it: savings + fund + stocks' },
+      { th: 'ไม่ลงทุนเลย', en: "Don't invest at all" },
+    ],
     correct: 2,
   },
   // === R5: ดอกเบี้ยทบต้น + เริ่มเร็ว ===
   {
     id: 9,
-    question: 'ดอกเบี้ยทบต้น พิเศษยังไง?',
-    choices: ['ได้ดอกเบี้ยจากดอกเบี้ยด้วย', 'ดอกเบี้ยเท่าเดิมทุกปี', 'ได้เงินคืนทันที', 'ไม่ต้องเสียภาษี'],
+    question: { th: 'ดอกเบี้ยทบต้น พิเศษยังไง?', en: 'What makes compound interest special?' },
+    choices: [
+      { th: 'ได้ดอกเบี้ยจากดอกเบี้ยด้วย', en: 'You earn interest on your interest too' },
+      { th: 'ดอกเบี้ยเท่าเดิมทุกปี', en: 'The same interest every year' },
+      { th: 'ได้เงินคืนทันที', en: 'You get your money back instantly' },
+      { th: 'ไม่ต้องเสียภาษี', en: 'You pay no tax' },
+    ],
     correct: 0,
   },
   {
     id: 10,
-    question: 'น้องไดม์เริ่มลงทุนอายุ 10 พี่เจเริ่มอายุ 20 ใครมีเงินมากกว่าตอนอายุ 30?',
-    choices: ['พี่เจ เพราะโตกว่า', 'เท่ากัน', 'น้องไดม์ เพราะเริ่มเร็วกว่า', 'ไม่รู้'],
+    question: { th: 'น้องไดม์เริ่มลงทุนอายุ 10 พี่เจเริ่มอายุ 20 ใครมีเงินมากกว่าตอนอายุ 30?', en: 'Dime starts investing at 10, Jay at 20. Who has more money at 30?' },
+    choices: [
+      { th: 'พี่เจ เพราะโตกว่า', en: "Jay, because they're older" },
+      { th: 'เท่ากัน', en: 'They end up equal' },
+      { th: 'น้องไดม์ เพราะเริ่มเร็วกว่า', en: 'Dime, because they started earlier' },
+      { th: 'ไม่รู้', en: 'No way to tell' },
+    ],
     correct: 2,
   },
   // === R6: ระวังภัย + ราคาหุ้นขึ้นลง ===
   {
     id: 11,
-    question: 'มีคนชวนลงทุน บอก "การันตีกำไร 100%" ควรทำอย่างไร?',
-    choices: ['รีบลงทุนเลย', 'ชวนเพื่อนมาด้วย', 'ไม่เชื่อ ถ้าดีเกินจริงมักไม่จริง', 'ขอดูรายละเอียด'],
+    question: { th: 'มีคนชวนลงทุน บอก "การันตีกำไร 100%" ควรทำอย่างไร?', en: 'Someone offers an investment "guaranteed 100% profit." What should you do?' },
+    choices: [
+      { th: 'รีบลงทุนเลย', en: 'Invest right away' },
+      { th: 'ชวนเพื่อนมาด้วย', en: 'Bring your friends in too' },
+      { th: 'ไม่เชื่อ ถ้าดีเกินจริงมักไม่จริง', en: "Don't believe it — if it's too good to be true, it usually is" },
+      { th: 'ขอดูรายละเอียด', en: 'Ask to see the details' },
+    ],
     correct: 2,
   },
   {
     id: 12,
-    question: 'หุ้น Netflix ราคาลง 70% เพราะสูญเสียสมาชิก ข้อไหนถูก?',
-    choices: ['ราคาจะไม่มีวันกลับมา', 'ราคาหุ้นขึ้นลงตามผลประกอบการ', 'ต้องรีบขายทิ้ง', 'Netflix จะล้มละลาย'],
+    question: { th: 'หุ้น Netflix ราคาลง 70% เพราะสูญเสียสมาชิก ข้อไหนถูก?', en: 'Netflix stock fell 70% after losing subscribers. Which is correct?' },
+    choices: [
+      { th: 'ราคาจะไม่มีวันกลับมา', en: 'The price will never recover' },
+      { th: 'ราคาหุ้นขึ้นลงตามผลประกอบการ', en: 'Stock prices rise and fall with company performance' },
+      { th: 'ต้องรีบขายทิ้ง', en: 'You should sell it off immediately' },
+      { th: 'Netflix จะล้มละลาย', en: 'Netflix will go bankrupt' },
+    ],
     correct: 1,
   },
   // === สำรอง (ไม่ถูกใช้ในรอบปกติ — เก็บไว้ใน pool) ===
   {
     id: 13,
-    question: 'ถ้ามี 1,000 บาท ลงทุนได้ 10% ต่อปี ปีที่ 2 จะได้ดอกเบี้ยเท่าไหร่?',
-    choices: ['100 บาทเท่าเดิม', '110 บาท (ดอกเบี้ยทบต้น)', '200 บาท', '50 บาท'],
+    question: { th: 'ถ้ามี 1,000 บาท ลงทุนได้ 10% ต่อปี ปีที่ 2 จะได้ดอกเบี้ยเท่าไหร่?', en: 'With 1,000 baht earning 10% a year, how much interest in year 2?' },
+    choices: [
+      { th: '100 บาทเท่าเดิม', en: '100 baht, same as before' },
+      { th: '110 บาท (ดอกเบี้ยทบต้น)', en: '110 baht (compound interest)' },
+      { th: '200 บาท', en: '200 baht' },
+      { th: '50 บาท', en: '50 baht' },
+    ],
     correct: 1,
   },
 ];
