@@ -1,5 +1,7 @@
-// FILE: app/api/game/calculate/route.ts
-// ✅ B5: Calculate returns API
+// FILE: app/api/game/calculate/route.ts — Calculate round returns API
+// VERSION: perf-v2 — parallel player writes (Promise.all) เพื่อตัด results burst; per-player error isolation
+// LAST MODIFIED: 12 Jun 2026
+// HISTORY: B5 created (portfolio × RETURN_TABLE → money + round_returns) | perf-v2 sequential update loop → Promise.all
 // คำนวณผลตอบแทนจาก portfolio × RETURN_TABLE แล้วอัปเดต money + round_returns
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
@@ -102,19 +104,31 @@ export async function POST(req: NextRequest) {
     }
 
     // --- Batch update players ---
-    for (const update of updates) {
-      const { error: updateError } = await supabase
-        .from('players')
-        .update({
-          money: update.money,
-          round_returns: update.round_returns,
-        })
-        .eq('id', update.id);
-
-      if (updateError) {
-        console.error(`Failed to update player ${update.id}:`, updateError);
-      }
-    }
+    // perf-v2: เขียนแบบ parallel (Promise.all) แทน sequential loop
+    //   - ตัด results burst: 75 คน × ~9ms serial (~675ms) → ขนานกันเหลือหลักสิบ ms
+    //   - error isolation: ห่อ try/catch ต่อคน → คนเดียว fail ไม่ทำให้ทั้ง batch พัง (Promise.all ไม่ reject)
+    const updateResults = await Promise.all(
+      updates.map(async (update) => {
+        try {
+          const { error: updateError } = await supabase
+            .from('players')
+            .update({
+              money: update.money,
+              round_returns: update.round_returns,
+            })
+            .eq('id', update.id);
+          if (updateError) {
+            console.error(`Failed to update player ${update.id}:`, updateError);
+            return false;
+          }
+          return true;
+        } catch (e) {
+          console.error(`Update threw for player ${update.id}:`, e);
+          return false;
+        }
+      })
+    );
+    const failedUpdates = updateResults.filter((ok) => !ok).length;
 
     // --- สรุปผล ---
     const profits = resultsSummary.map((r) => r.profit);
@@ -128,6 +142,7 @@ export async function POST(req: NextRequest) {
       round,
       players_calculated: updates.length,
       players_skipped: players.length - updates.length,
+      players_failed: failedUpdates,
       summary: {
         avg_profit: avgProfit,
         max_profit: maxProfit,
