@@ -1,10 +1,10 @@
 # Market Wars — File Registry
 
 **Location:** วางที่ root ของ repo (`/FILE_REGISTRY.md`) — version control โดย git
-**Last Updated:** B16b Done — 11 Jun 2026
+**Last Updated:** perf-v1/v2 Done — 12 Jun 2026
 **Repo:** https://github.com/marketwars-game/market-wars
 **Default branch:** `main`
-**Latest stable tag:** `B16d-stable` (ปิด arc B16 — Final+Quiz-Reveal Drama) · ก่อนหน้า `B16c-stable`/`B16b-stable` · Season 1 = `Season1-stable` = `B15-stable`
+**Latest stable tag:** `perf-v2-stable` (calculate Promise.all) · `perf-v1-stable` (load-test hardening + ?debug=1) · `B16d-stable` (ปิด arc B16) · Season 1 = `Season1-stable` = `B15-stable`
 
 ---
 
@@ -44,10 +44,10 @@ https://raw.githubusercontent.com/marketwars-game/market-wars/Season1-stable/<pa
 |------|--------|---------|
 | Root Layout | Next.js root layout — wrapper หลักของทุกหน้า | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/layout.tsx |
 | Landing / Join | หน้าแรก เลือก join / create | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/page.tsx |
-| Player Game | จอเด็กเล่น (มือถือ) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/play/[roomId]/page.tsx |
+| Player Game | จอเด็กเล่น (มือถือ) — perf-v1: leaderboard fetch trim+jitter + ?debug=1 badge | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/play/[roomId]/page.tsx |
 | MC Entry | หน้า MC เลือกห้อง / สร้างห้อง | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/mc/page.tsx |
-| MC Control | จอ MC ควบคุมเกมในห้อง | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/mc/[roomId]/page.tsx |
-| Display (Projector) | จอแสดงสาธารณะ | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/display/[roomId]/page.tsx |
+| MC Control | จอ MC ควบคุมเกมในห้อง — perf-v1: ?debug=1 overlay | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/mc/[roomId]/page.tsx |
+| Display (Projector) | จอแสดงสาธารณะ — perf-v1: ?debug=1 overlay | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/display/[roomId]/page.tsx |
 
 ### API Routes
 
@@ -59,7 +59,7 @@ https://raw.githubusercontent.com/marketwars-game/market-wars/Season1-stable/<pa
 | Player Portfolio | Save allocation | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/api/players/portfolio/route.ts |
 | Player Quiz | Save quiz score | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/api/players/quiz/route.ts |
 | Game Phase | Start/Next/End + auto-calc + Promise.all | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/api/game/phase/route.ts |
-| Game Calculate | Standalone calculate (fallback) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/api/game/calculate/route.ts |
+| Game Calculate | Standalone calculate (fallback) — perf-v2: parallel writes (Promise.all) + per-player error isolation | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/api/game/calculate/route.ts |
 | Health Check | Health endpoint | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/api/health/route.ts |
 
 ---
@@ -130,6 +130,15 @@ https://raw.githubusercontent.com/marketwars-game/market-wars/Season1-stable/<pa
 | constants | COMPANIES, RETURN_TABLE v5c, EVENTS, QUIZ_POOL, CHANCE_CARDS, STEP_GROUPS | https://raw.githubusercontent.com/marketwars-game/market-wars/main/lib/constants.ts |
 | awards | calculateAwards, Quiz Master multi-winner | https://raw.githubusercontent.com/marketwars-game/market-wars/main/lib/awards.ts |
 | sound | Registry 18 assets (5 BGM + 13 SFX) + PHASE_BGM map (B16a) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/lib/sound.ts |
+
+---
+
+## Debug / Instrumentation (perf-v1)
+
+| ไฟล์ | หน้าที่ | Raw URL |
+|------|--------|---------|
+| lib/debug | `readDebugFlag` (?debug=1) + `dnow` timing + `useDebug` hook + `RateMeter` (perf-v1) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/lib/debug.ts |
+| DebugPanel | Overlay มุมจอ — render เฉพาะ ?debug=1, pointer-events none (perf-v1) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/debug/DebugPanel.tsx |
 
 ---
 
