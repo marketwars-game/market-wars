@@ -1,7 +1,7 @@
 // FILE: components/display/FinalRanking.tsx — Final step ④ Full ranking grid (photo-op)
-// VERSION: B16d-v1 — everyone A→Z by money, fit-all degrade columns, top3 medals, wave reveal
+// VERSION: B16d-v2 — responsive columns (cap at player count, lower tiers) + name left-aligned with more room
 // LAST MODIFIED: 11 Jun 2026
-// HISTORY: B16d created — split from FinalDisplay; show all players for parents/photos
+// HISTORY: B16d created — split from FinalDisplay; show all players for parents/photos | B16d-v2 fix narrow cells when few players (responsive cols + tighter layout)
 'use client';
 
 import { useState } from 'react';
@@ -16,7 +16,11 @@ export default function FinalRanking({ players, animate }: FinalRankingProps) {
   const [doAnim] = useState(animate); // snapshot ตอน mount
   const sorted = [...players].sort((a, b) => (parseFloat(b.money) || 0) - (parseFloat(a.money) || 0));
   const n = sorted.length;
-  const cols = n <= 48 ? 6 : n <= 80 ? 8 : 10;
+  // B16d-fix: คอลัมน์ปรับตามจำนวนคน + ไม่เกินจำนวนคน (คนน้อย = ช่องกว้าง ชื่อไม่ตัด)
+  const cols = Math.min(
+    n <= 10 ? 3 : n <= 24 ? 4 : n <= 48 ? 6 : n <= 80 ? 8 : 10,
+    Math.max(1, n)
+  );
   const medals = ['🥇', '🥈', '🥉'];
   const rankColors = ['#FFD700', '#C0C0C0', '#CD7F32'];
   const total = 900; // wave total ms
@@ -43,18 +47,18 @@ export default function FinalRanking({ players, animate }: FinalRankingProps) {
           const money = parseFloat(p.money) || 0;
           const profit = money >= STARTING_MONEY;
           return (
-            <div key={p.id} className="rounded-lg px-3 py-2.5 flex items-center gap-2"
+            <div key={p.id} className="rounded-lg px-2.5 py-2.5 flex items-center gap-1.5"
               style={{
                 background: cellBg(i),
                 border: `1px solid ${cellBorder(i)}`,
                 animation: doAnim ? 'mwCellIn 0.35s ease-out both' : 'none',
                 animationDelay: doAnim ? `${(i * (total / Math.max(1, n))).toFixed(0)}ms` : '0ms',
               }}>
-              <span className="font-bold text-base w-10 text-right" style={{ color: i < 3 ? rankColors[i] : 'rgba(255,255,255,0.65)' }}>
+              <span className="font-bold text-base flex-shrink-0 text-center" style={{ width: i < 3 ? '1.5rem' : '1.9rem', color: i < 3 ? rankColors[i] : 'rgba(255,255,255,0.65)' }}>
                 {i < 3 ? medals[i] : `#${i + 1}`}
               </span>
-              <span className="flex-1 font-bold text-lg truncate" style={{ color: i < 3 ? rankColors[i] : '#fff' }}>{p.name}</span>
-              <span className="font-bold text-base whitespace-nowrap" style={{ color: profit ? '#22c55e' : '#ef4444' }}>฿{money.toLocaleString()}</span>
+              <span className="flex-1 min-w-0 font-bold text-lg truncate" style={{ color: i < 3 ? rankColors[i] : '#fff' }}>{p.name}</span>
+              <span className="font-bold text-base whitespace-nowrap flex-shrink-0" style={{ color: profit ? '#22c55e' : '#ef4444' }}>฿{money.toLocaleString()}</span>
             </div>
           );
         })}

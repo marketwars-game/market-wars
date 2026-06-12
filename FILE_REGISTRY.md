@@ -4,7 +4,7 @@
 **Last Updated:** B16b Done — 11 Jun 2026
 **Repo:** https://github.com/marketwars-game/market-wars
 **Default branch:** `main`
-**Latest stable tag:** `B16b-stable` (Season 1 = `Season1-stable` = `B15-stable`)
+**Latest stable tag:** `B16d-stable` (ปิด arc B16 — Final+Quiz-Reveal Drama) · ก่อนหน้า `B16c-stable`/`B16b-stable` · Season 1 = `Season1-stable` = `B15-stable`
 
 ---
 
@@ -85,7 +85,11 @@ https://raw.githubusercontent.com/marketwars-game/market-wars/Season1-stable/<pa
 | EventDisplay | Event reveal + Result + Golden Deal | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/EventDisplay.tsx |
 | ChanceCardDisplay | Live luck wall ทุกคน เขียว/แดง + เงิน (B16b → LiveNameBoard) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/ChanceCardDisplay.tsx |
 | LeaderboardDisplay | Podium + ranking | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/LeaderboardDisplay.tsx |
-| FinalDisplay | สรุปจบเกม + awards | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/FinalDisplay.tsx |
+| FinalDisplay | สรุปจบเกม — router 4 step (B16d) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/FinalDisplay.tsx |
+| FinalPodium | Final ② เฉลย podium 3→2→1 (B16d) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/FinalPodium.tsx |
+| FinalAwards | Final ③ Top Researcher + Smart Diversifier twist (B16d) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/FinalAwards.tsx |
+| FinalRanking | Final ④ อันดับทุกคน + photo-op (B16d) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/FinalRanking.tsx |
+| ConfettiCanvas | Confetti overlay reuse (B16d) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/ConfettiCanvas.tsx |
 | DisplayHeader | แถบบน: phase progress + ปี (B16a) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/DisplayHeader.tsx |
 | LobbyDisplay | Lobby: QR + players (qrOpen local) (B16a) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/LobbyDisplay.tsx |
 | YearIntroDisplay | Splash ต้นปี (B16a) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/YearIntroDisplay.tsx |

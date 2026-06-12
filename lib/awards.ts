@@ -1,5 +1,5 @@
 // FILE: lib/awards.ts — Awards calculation logic for Final Summary
-// VERSION: B16d-v1 — Smart Diversifier → decision-based (≥3 sectors & ≤70% every round) + egg/basket metaphor + bilingual labels
+// VERSION: B16d-v2 — Smart Diversifier strict: must diversify ALL played rounds, else no winner (no safety net)
 // LAST MODIFIED: 11 Jun 2026
 // HISTORY: B11 created | B13-BATCH2 chance card replaces duel | B15 Quiz Master multi-winner | B16d Smart Diversifier decision-based
 
@@ -88,9 +88,9 @@ function calcQuizMaster(players: any[]): Award {
 // ผู้ชนะ: ในกลุ่มที่ผ่าน → เงินสูงสุด (เสมอเป๊ะ → ได้ร่วมกัน)
 // ยอมให้ทับแชมป์ได้ (คำนวณแยกอิสระ)
 //
-// Safety net (กันหน้า award ว่างวันงาน): ถ้าไม่มีใครผ่าน "ครบทุกรอบ"
-//   → เลือกคนที่ผ่าน "มากรอบที่สุด" (ยังเป็น decision-based, ไม่เลือกคน all-in)
-//   แล้วค่อยตัดสินด้วยเงินสูงสุด
+// Strict (Option B): ต้องกระจาย "ครบทุกปีที่เล่นจริง" เท่านั้น —
+//   ถ้าไม่มีใครครบ → ไม่มีผู้ชนะ (การ์ดรางวัลซ่อนเองเพราะ winnerId = null)
+//   ไม่มี safety net "กระจายปีเดียวก็ได้รางวัล" (กันรางวัลขัดบทเรียน)
 // ==============================================
 
 const MIN_SECTORS = 3;
@@ -154,20 +154,10 @@ function calcDiversifier(players: any[]): Award {
     };
   });
 
-  // 1) คนที่กระจายครบทุกรอบ
-  let pool = candidates.filter((c) => c.diversifiedAll);
-  let usedFallback = false;
+  // ต้องกระจายครบ "ทุกปีที่เล่นจริง" เท่านั้น (Option B — strict)
+  const pool = candidates.filter((c) => c.diversifiedAll);
 
-  // 2) safety net — ถ้าไม่มีใครครบ ใช้คนที่ผ่านมากรอบสุด (>0)
-  if (pool.length === 0) {
-    const maxQual = Math.max(...candidates.map((c) => c.qualRounds), 0);
-    if (maxQual > 0) {
-      pool = candidates.filter((c) => c.qualRounds === maxQual);
-      usedFallback = true;
-    }
-  }
-
-  // 3) ไม่มีใครกระจายเลย → ไม่มีผู้ชนะ
+  // ไม่มีใครครบ → ไม่มีผู้ชนะ (การ์ดรางวัลซ่อนเองเพราะ winnerId = null)
   if (pool.length === 0) {
     return {
       id: 'smart_diversifier',
@@ -189,10 +179,6 @@ function calcDiversifier(players: any[]): Award {
   const winners = pool.filter((c) => c.money === topMoney);
   const lead = winners[0];
 
-  const stat = lead.diversifiedAll
-    ? `กระจาย ≥${MIN_SECTORS} กลุ่ม ครบทั้ง ${playedRounds} ปี`
-    : `กระจาย ≥${MIN_SECTORS} กลุ่ม ${lead.qualRounds}/${playedRounds} ปี`;
-
   return {
     id: 'smart_diversifier',
     name: 'นักลงทุนกระจายความเสี่ยง',
@@ -202,7 +188,7 @@ function calcDiversifier(players: any[]): Award {
     lessonEn: "Don't put all your eggs in one basket",
     winnerId: lead.id,
     winnerName: winners.length === 1 ? lead.name : winners.map((w) => w.name).join(', '),
-    stat,
+    stat: `กระจาย ≥${MIN_SECTORS} กลุ่ม ครบทั้ง ${playedRounds} ปี`,
     winnerIds: winners.map((w) => w.id),
     winnerNames: winners.map((w) => w.name),
     portfolioBreakdown: lead.portfolioBreakdown,

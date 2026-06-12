@@ -1,5 +1,5 @@
 // FILE: components/display/FinalPodium.tsx — Final step ② Podium reveal (3→2→1)
-// VERSION: B16d-v1 — suspense handled separately (phase 'final'); this = revealed podium with drama
+// VERSION: B16d-v2 — show + sign on positive %change (B16d-v1: reveal 3-2-1 + confetti + SFX)
 // LAST MODIFIED: 11 Jun 2026
 // HISTORY: B16d created — split from FinalDisplay; reveal 3→2→1 + champion glow + confetti + SFX; settled on revisit
 'use client';
@@ -38,7 +38,10 @@ export default function FinalPodium({ players, animate, playSfx }: FinalPodiumPr
   const podiumColors = ['#FFD700', '#C0C0C0', '#CD7F32'];
   const podiumBg = ['rgba(255,215,0,0.12)', 'rgba(192,192,192,0.1)', 'rgba(205,127,50,0.1)'];
   const nameColors = ['#FCD34D', '#D1D5DB', '#FBBF24'];
-  const getReturnPct = (m: number) => (((m || STARTING_MONEY) - STARTING_MONEY) / STARTING_MONEY * 100).toFixed(1);
+  const getReturnPct = (m: number) => {
+    const v = ((m || STARTING_MONEY) - STARTING_MONEY) / STARTING_MONEY * 100;
+    return `${v >= 0 ? '+' : ''}${v.toFixed(1)}`;
+  };
   const getReturnColor = (m: number) => (m || 0) >= STARTING_MONEY ? '#22c55e' : '#ef4444';
 
   // delays for 3→2→1 (champion last)
