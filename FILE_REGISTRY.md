@@ -1,10 +1,10 @@
 # Market Wars — File Registry
 
 **Location:** วางที่ root ของ repo (`/FILE_REGISTRY.md`) — version control โดย git
-**Last Updated:** B17 Done (Bilingual Pass) — 12 Jun 2026
+**Last Updated:** B18 Done (Single-winner quiz + speed name-wall) — 12 Jun 2026
 **Repo:** https://github.com/marketwars-game/market-wars
 **Default branch:** `main`
-**Latest stable tag:** `B17-stable` (newest) · `Season1-stable` = `B15-stable`
+**Latest stable tag:** `B18-stable` (newest) · `Season1-stable` = `B15-stable`
 
 ---
 
@@ -89,11 +89,12 @@ https://raw.githubusercontent.com/marketwars-game/market-wars/Season1-stable/<pa
 
 | ไฟล์ | หน้าที่ | Raw URL |
 |------|--------|---------|
-| ResearchDisplay | Quiz + Reveal (✅ B17 bilingual question/choices via `<Bi>`; B16d drama เก็บครบ) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/ResearchDisplay.tsx |
+| ResearchDisplay | Quiz + Reveal (✅ B18 reveal = สอนกระชับ + QuizSpeedWall; B17 bilingual) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/ResearchDisplay.tsx |
 | EventDisplay | Event reveal + Result + Golden Deal | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/EventDisplay.tsx |
 | ChanceCardDisplay | สรุปการ์ดโชคชะตา (→ LiveNameBoard) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/ChanceCardDisplay.tsx |
 | LeaderboardDisplay | Podium + ranking | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/LeaderboardDisplay.tsx |
 | FinalDisplay | สรุปจบเกม + awards | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/FinalDisplay.tsx |
+| QuizSpeedWall | ✅ B18 — speed name-wall (ตอบถูกครบ 2 ข้อ เรียงเร็วสุด, cascade) บน research_reveal | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/QuizSpeedWall.tsx |
 
 > 📝 หมายเหตุ: ยังมี display component อื่นที่เพิ่มช่วง B16 (LiveNameBoard, LiveNameFeed, InvestDisplay, DisplayHeader, LobbyDisplay, YearIntroDisplay, MarketOpenDisplay, ResultsDisplay, SoundGate, FinalPodium, FinalAwards, FinalRanking, ConfettiCanvas) — ดู File Structure ใน Tech Spec v2.9
 
@@ -119,6 +120,7 @@ https://raw.githubusercontent.com/marketwars-game/market-wars/Season1-stable/<pa
 | constants | ✅ B17 — `LocalizedText` type · COMPANIES, RETURN_TABLE v5c, EVENTS, QUIZ_POOL `{th,en}`, CHANCE_CARDS `{th,en}`, STEP_GROUPS | https://raw.githubusercontent.com/marketwars-game/market-wars/main/lib/constants.ts |
 | awards | calculateAwards, Quiz Master multi-winner | https://raw.githubusercontent.com/marketwars-game/market-wars/main/lib/awards.ts |
 | sound | registry 18 assets + PHASE_BGM map | https://raw.githubusercontent.com/marketwars-game/market-wars/main/lib/sound.ts |
+| ranking | ✅ B18 — comparator กลาง: `compareForRank` (money→quiz→speed→id) + `compareQuizMaster` + `speedKey` | https://raw.githubusercontent.com/marketwars-game/market-wars/main/lib/ranking.ts |
 
 ---
 
