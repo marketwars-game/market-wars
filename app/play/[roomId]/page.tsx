@@ -1,12 +1,14 @@
 // FILE: app/play/[roomId]/page.tsx — Player game screen
-// VERSION: B16d-v1 — render FinalView for all final_* variants (B15-v1: refresh button)
-// LAST MODIFIED: 11 Jun 2026
-// HISTORY: B2 created | B3 phase sync + timer | B4 InvestmentPanel | B5 event_result + ResultsPanel | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components | B9 MarketFight | B12-UX mini step + year_intro + market_open | B13-BATCH3 ChanceCard + Realtime optimize + cut news/rebalance/attack | B16d final_* variants → FinalView
+// VERSION: B16d-v1+perf-v1 — leaderboard/final fetch: trim cols + jitter; ?debug=1 instrumentation
+// LAST MODIFIED: 12 Jun 2026
+// HISTORY: B2 created | B3 phase sync + timer | B4 InvestmentPanel | B5 event_result + ResultsPanel | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components | B9 MarketFight | B12-UX mini step + year_intro + market_open | B13-BATCH3 ChanceCard + Realtime optimize + cut news/rebalance/attack | B16d final_* variants → FinalView | perf-v1 trim+jitter list fetch + debug badge
 'use client';
 
 import { useEffect, useState, useRef, Suspense } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { readDebugFlag, dnow, RateMeter } from '@/lib/debug';
+import DebugPanel from '@/components/debug/DebugPanel';
 import {
   PHASE_DISPLAY,
   PHASE_TIMERS,
@@ -46,6 +48,15 @@ function PlayerContent() {
   const [quizAnswers, setQuizAnswers] = useState<(number | null)[]>([null, null]);
   const [quizSubmitted, setQuizSubmitted] = useState(false);
 
+  // === perf-v1: ?debug=1 instrumentation (no behaviour change when off) ===
+  const [, setDbgTick] = useState(0);
+  const dbg = useRef({
+    listMs: 0, listRows: 0, gapMs: 0, mountMs: 0,
+    events: 0, roomCh: '-', meCh: '-', phaseRecvAt: 0,
+  });
+  const meRate = useRef(new RateMeter());
+  const bumpDbg = () => { if (readDebugFlag()) setDbgTick((t) => t + 1); };
+
   // === Load saved player from localStorage ===
   useEffect(() => {
     const saved = localStorage.getItem(`mw_player_${roomId}`);
@@ -57,13 +68,16 @@ function PlayerContent() {
     if (showLoader) setRefreshing(true);
     const { data: roomData } = await supabase.from('rooms').select('*').eq('id', roomId).single();
     setRoom(roomData);
+    const t0 = dnow();
     const { data: playerData } = await supabase.from('players').select('*').eq('room_id', roomId).order('joined_at', { ascending: true });
+    dbg.current.mountMs = Math.round(dnow() - t0);
     setPlayers(playerData || []);
     if (playerIdRef.current && playerData) {
       const me = playerData.find((p) => p.id === playerIdRef.current);
       if (me) { setPlayer(me); localStorage.setItem(`mw_player_${roomId}`, JSON.stringify(me)); }
     }
     setLoading(false);
+    bumpDbg();
     if (showLoader) setTimeout(() => setRefreshing(false), 800);
   };
 
@@ -72,8 +86,12 @@ function PlayerContent() {
   // === ✅ B13: Realtime subscriptions — Player subscribe เฉพาะ row ตัวเอง ===
   useEffect(() => {
     const roomChannel = supabase.channel(`player-room-${roomId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` }, (payload) => setRoom(payload.new))
-      .subscribe();
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` }, (payload) => {
+        dbg.current.phaseRecvAt = dnow(); // perf-v1: mark when phase event arrived (for fetch-gap)
+        if (readDebugFlag()) console.log('[player] phase →', (payload.new as any)?.current_phase, 'at', Date.now());
+        setRoom(payload.new);
+      })
+      .subscribe((status) => { dbg.current.roomCh = status; bumpDbg(); });
 
     // ✅ B13: subscribe เฉพาะ player id ของตัวเอง (ลด Realtime events 98%)
     const pid = playerIdRef.current;
@@ -81,11 +99,12 @@ function PlayerContent() {
     if (pid) {
       playerChannel = supabase.channel(`player-me-${pid}`)
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'players', filter: `id=eq.${pid}` }, (payload) => {
+          dbg.current.events += 1; meRate.current.push(); bumpDbg(); // perf-v1
           const updated = payload.new;
           setPlayer(updated);
           localStorage.setItem(`mw_player_${roomId}`, JSON.stringify(updated));
         })
-        .subscribe();
+        .subscribe((status) => { dbg.current.meCh = status; bumpDbg(); });
     }
 
     return () => {
@@ -95,12 +114,28 @@ function PlayerContent() {
   }, [roomId, playerIdRef.current]);
 
   // ✅ B13: Fetch players list เมื่อ phase เปลี่ยนเป็น leaderboard/final (ต้องการ players array)
+  // perf-v1: trim columns (id,name,money,round_returns — ที่ Leaderboard/FinalView ใช้จริง)
+  //          + jitter 0-800ms กระจาย thundering-herd ตอน 60 client ยิงพร้อมกัน
   useEffect(() => {
     const phase = room?.current_phase;
-    if (phase === 'leaderboard' || (phase && phase.startsWith('final')) || phase === 'lobby') {
-      supabase.from('players').select('*').eq('room_id', roomId).order('joined_at', { ascending: true })
-        .then(({ data }) => { if (data) setPlayers(data); });
-    }
+    if (!(phase === 'leaderboard' || (phase && phase.startsWith('final')) || phase === 'lobby')) return;
+    const recvAt = dbg.current.phaseRecvAt || dnow();
+    const jitter = Math.random() * 800;
+    const t = setTimeout(async () => {
+      const t0 = dnow();
+      const { data } = await supabase
+        .from('players')
+        .select('id, name, money, round_returns')
+        .eq('room_id', roomId)
+        .order('joined_at', { ascending: true });
+      if (data) setPlayers(data);
+      dbg.current.listMs = Math.round(dnow() - t0);
+      dbg.current.listRows = data?.length || 0;
+      dbg.current.gapMs = Math.round(dnow() - recvAt);
+      if (readDebugFlag()) console.log(`[player] list fetch ${dbg.current.listMs}ms rows=${dbg.current.listRows} gap=${dbg.current.gapMs}ms (jitter ${Math.round(jitter)}ms)`);
+      bumpDbg();
+    }, jitter);
+    return () => clearTimeout(t);
   }, [room?.current_phase, roomId]);
 
   // === Timer ===
@@ -194,6 +229,21 @@ function PlayerContent() {
   // === Main Game Screen ===
   return (
     <div className="min-h-screen bg-[#0D1117] text-white p-4">
+
+      <DebugPanel
+        title="PLAYER"
+        pos="br"
+        stats={{
+          phase,
+          players: players.length,
+          'list (ms/rows)': `${dbg.current.listMs}/${dbg.current.listRows}`,
+          'gap ms': dbg.current.gapMs,
+          'mount ms': dbg.current.mountMs,
+          'me evts': dbg.current.events,
+          roomCh: dbg.current.roomCh,
+          meCh: dbg.current.meCh,
+        }}
+      />
 
       {/* Player header — name + year badge + money */}
       <div className="flex items-center justify-between mb-1">

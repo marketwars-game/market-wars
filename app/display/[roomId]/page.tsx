@@ -1,7 +1,7 @@
 // FILE: app/display/[roomId]/page.tsx — Display screen (shell)
-// VERSION: B16d-v2 — final step replay (MC re-set same final phase → re-animate) on top of B16d-v1 4-step router
-// LAST MODIFIED: 11 Jun 2026
-// HISTORY: B1 created | B3 phase sync + timer | B4 submitted count | B5 event_result + results UI | B6 leaderboard | B7 final phase | B8 research quiz | B8R refactor | B9 FightDisplay | B12-UX dashboard layout | B13-BATCH3 ChanceCardDisplay + throttle | B15-v1 projector font+color polish | B15-v2 CSS zoom + header redesign + lobby redesign + QR popup + market_open dramatic | B16a-BATCH0 refactor shell (6 phase components) | B16a-BATCH1 sound: SoundGate + useDisplaySound wiring | B16b-BATCH1 invest live wall props | B16c leaderboard+results spectator SFX | B16d final 4-step + research_reveal sfx
+// VERSION: B16d-v2+perf-v1 — ?debug=1 overlay (fetch ms/rows, throttle queue, evt/s, ch status); no behaviour change when off
+// LAST MODIFIED: 12 Jun 2026
+// HISTORY: B1 created | B3 phase sync + timer | B4 submitted count | B5 event_result + results UI | B6 leaderboard | B7 final phase | B8 research quiz | B8R refactor | B9 FightDisplay | B12-UX dashboard layout | B13-BATCH3 ChanceCardDisplay + throttle | B15-v1 projector font+color polish | B15-v2 CSS zoom + header redesign + lobby redesign + QR popup + market_open dramatic | B16a-BATCH0 refactor shell (6 phase components) | B16a-BATCH1 sound: SoundGate + useDisplaySound wiring | B16b-BATCH1 invest live wall props | B16c leaderboard+results spectator SFX | B16d final 4-step + research_reveal sfx | perf-v1 debug overlay
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
@@ -9,6 +9,8 @@ import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { PHASE_TIMERS } from '@/lib/constants';
 import { getStepGroupProgress } from '@/lib/game-engine';
+import { readDebugFlag, dnow, RateMeter } from '@/lib/debug';
+import DebugPanel from '@/components/debug/DebugPanel';
 import { useDisplaySound } from '@/hooks/useDisplaySound';
 import type { SfxKey } from '@/lib/sound';
 import ResearchDisplay from '@/components/display/ResearchDisplay';
@@ -35,6 +37,16 @@ export default function DisplayScreen() {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const pendingReload = useRef(false);
   const throttleTimer = useRef<NodeJS.Timeout | null>(null);
+
+  // === perf-v1: ?debug=1 instrumentation ===
+  const [, setDbgTick] = useState(0);
+  const dbg = useRef({ fetchMs: 0, fetchRows: 0, roomCh: '-', plCh: '-', lastEvt: 0 });
+  const plRate = useRef(new RateMeter());
+  useEffect(() => {
+    if (!readDebugFlag()) return;
+    const id = setInterval(() => setDbgTick((t) => t + 1), 300);
+    return () => clearInterval(id);
+  }, []);
 
   // B16a: sound
   const { isUnlocked, unlock, playSfx, playBgmForPhase } = useDisplaySound();
@@ -67,9 +79,13 @@ export default function DisplayScreen() {
   }, []);
 
   const loadRoomData = useCallback(async () => {
+    const t0 = dnow();
     const { data: playerData } = await supabase
       .from('players').select('*').eq('room_id', roomId).order('money', { ascending: false });
     if (playerData) setPlayers(playerData);
+    dbg.current.fetchMs = Math.round(dnow() - t0);
+    dbg.current.fetchRows = playerData?.length || 0;
+    if (readDebugFlag()) console.log(`[display] loadRoomData ${dbg.current.fetchMs}ms rows=${dbg.current.fetchRows}`);
   }, [roomId]);
 
   const throttledReload = useCallback(() => {
@@ -102,10 +118,13 @@ export default function DisplayScreen() {
         }
         setRoom(payload.new);
       })
-      .subscribe();
+      .subscribe((status) => { dbg.current.roomCh = status; });
     const playerChannel = supabase.channel(`display-players-${roomId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `room_id=eq.${roomId}` }, () => throttledReload())
-      .subscribe();
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `room_id=eq.${roomId}` }, () => {
+        plRate.current.push(); dbg.current.lastEvt = Date.now(); // perf-v1
+        throttledReload();
+      })
+      .subscribe((status) => { dbg.current.plCh = status; });
     return () => {
       supabase.removeChannel(roomChannel);
       supabase.removeChannel(playerChannel);
@@ -271,6 +290,20 @@ export default function DisplayScreen() {
     <>
       {content}
       {!isUnlocked && <SoundGate onUnlock={unlock} />}
+      <DebugPanel
+        title="DISPLAY"
+        pos="bl"
+        stats={{
+          phase,
+          players: players.length,
+          'fetch (ms/rows)': `${dbg.current.fetchMs}/${dbg.current.fetchRows}`,
+          'q depth': pendingReload.current ? 1 : 0,
+          'evt/s': plRate.current.rate(),
+          'since evt': dbg.current.lastEvt ? `${Date.now() - dbg.current.lastEvt}ms` : '-',
+          roomCh: dbg.current.roomCh,
+          plCh: dbg.current.plCh,
+        }}
+      />
     </>
   );
 }

@@ -1,12 +1,14 @@
 // FILE: app/mc/[roomId]/page.tsx — MC Control screen
-// VERSION: B16d-v1 — Final 4-step controls (suspense→reveal→①②③+◀▶+replay) via action 'set'
-// LAST MODIFIED: 11 Jun 2026
-// HISTORY: B1 created | B3 phase control + timer | B4 submitted count + bug fix | B5 event_result + results | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components | B9 attack stats | B12-UX full step bar + year_intro + market_open | B13-BATCH3 throttle + cut news/attack/rebalance + chance card | B16d final 4-step controls
+// VERSION: B16d-v1+perf-v1 — ?debug=1 overlay (fetch ms/rows, throttle queue, evt/s, ch status); no behaviour change when off
+// LAST MODIFIED: 12 Jun 2026
+// HISTORY: B1 created | B3 phase control + timer | B4 submitted count + bug fix | B5 event_result + results | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components | B9 attack stats | B12-UX full step bar + year_intro + market_open | B13-BATCH3 throttle + cut news/attack/rebalance + chance card | B16d final 4-step controls | perf-v1 debug overlay
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { readDebugFlag, dnow, RateMeter } from '@/lib/debug';
+import DebugPanel from '@/components/debug/DebugPanel';
 import {
   PHASE_DISPLAY,
   PHASE_TIMERS,
@@ -40,14 +42,28 @@ export default function MCControlRoom() {
   const pendingReload = useRef(false);
   const throttleTimer = useRef<NodeJS.Timeout | null>(null);
 
+  // === perf-v1: ?debug=1 instrumentation ===
+  const [, setDbgTick] = useState(0);
+  const dbg = useRef({ fetchMs: 0, fetchRows: 0, roomCh: '-', plCh: '-', lastEvt: 0 });
+  const plRate = useRef(new RateMeter());
+  useEffect(() => {
+    if (!readDebugFlag()) return;
+    const id = setInterval(() => setDbgTick((t) => t + 1), 300);
+    return () => clearInterval(id);
+  }, []);
+
   // === PIN check ===
   useEffect(() => { const pinOk = localStorage.getItem('mc_pin_verified'); if (!pinOk) { router.push('/mc'); return; } }, [router]);
 
   // === Load players (reusable) ===
   const loadPlayers = useCallback(async () => {
+    const t0 = dnow();
     const { data: playerData } = await supabase
       .from('players').select('*').eq('room_id', roomId).order('joined_at', { ascending: true });
     if (playerData) setPlayers(playerData);
+    dbg.current.fetchMs = Math.round(dnow() - t0);
+    dbg.current.fetchRows = playerData?.length || 0;
+    if (readDebugFlag()) console.log(`[mc] loadPlayers ${dbg.current.fetchMs}ms rows=${dbg.current.fetchRows}`);
   }, [roomId]);
 
   // ✅ B13: Throttled reload — max 1 reload ต่อ 2 วินาที
@@ -82,14 +98,15 @@ export default function MCControlRoom() {
   useEffect(() => {
     const roomChannel = supabase.channel(`mc-room-${roomId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` }, (payload) => { setRoom(payload.new); })
-      .subscribe();
+      .subscribe((status) => { dbg.current.roomCh = status; });
 
     // ✅ B13: Throttled player reload
     const playerChannel = supabase.channel(`mc-players-${roomId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `room_id=eq.${roomId}` }, () => {
+        plRate.current.push(); dbg.current.lastEvt = Date.now(); // perf-v1
         throttledReload();
       })
-      .subscribe();
+      .subscribe((status) => { dbg.current.plCh = status; });
 
     return () => {
       supabase.removeChannel(roomChannel);
@@ -153,6 +170,23 @@ export default function MCControlRoom() {
 
   return (
     <div className="min-h-screen bg-[#0D1117] text-white p-4">
+
+      <DebugPanel
+        title="MC"
+        pos="br"
+        stats={{
+          phase,
+          players: players.length,
+          submitted: `${submittedCount}/${players.length}`,
+          quiz: `${quizSubmittedCount}/${players.length}`,
+          'fetch (ms/rows)': `${dbg.current.fetchMs}/${dbg.current.fetchRows}`,
+          'q depth': pendingReload.current ? 1 : 0,
+          'evt/s': plRate.current.rate(),
+          'since evt': dbg.current.lastEvt ? `${Date.now() - dbg.current.lastEvt}ms` : '-',
+          roomCh: dbg.current.roomCh,
+          plCh: dbg.current.plCh,
+        }}
+      />
 
       {/* Header — MC CONTROL + year badge */}
       <div className="flex items-center justify-between mb-2">
