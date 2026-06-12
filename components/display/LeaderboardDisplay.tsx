@@ -1,10 +1,11 @@
 // FILE: components/display/LeaderboardDisplay.tsx — Display Leaderboard (spectator)
-// VERSION: B16c-v1 — 50/50 racing: Top 8 slide-in (left) + all remaining ranks (right) + dark-horse marker/strip
+// VERSION: B18-v1 — rank via compareForRank (money → quiz → speed); 50/50 racing
 // LAST MODIFIED: 11 Jun 2026
-// HISTORY: B6 created | B8R extracted | B12-UX layout | v2-v4 podium fixes | v5 fix movement calc | B15 projector polish | B16c spectator: show max players, racing reorder, dark-horse highlight
+// HISTORY: B6 created | B8R extracted | B12-UX layout | v2-v4 podium fixes | v5 fix movement calc | B15 projector polish | B16c spectator: show max players, racing reorder, dark-horse highlight | B18 compareForRank
 'use client';
 
 import { useEffect, useState } from 'react';
+import { compareForRank } from '@/lib/ranking';
 
 interface LeaderboardDisplayProps {
   players: any[];
@@ -26,9 +27,7 @@ export default function LeaderboardDisplay({ players, round }: LeaderboardDispla
   }, []);
 
   // current ranking (money desc)
-  const ranked = [...players].sort(
-    (a, b) => (parseFloat(b.money) || 0) - (parseFloat(a.money) || 0)
-  );
+  const ranked = [...players].sort(compareForRank);
 
   // previous-round rank index (by money_before), fallback to current money
   const prevIndex: Record<string, number> = {};

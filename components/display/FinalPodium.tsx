@@ -1,10 +1,11 @@
 // FILE: components/display/FinalPodium.tsx — Final step ② Podium reveal (3→2→1)
-// VERSION: B16d-v2 — show + sign on positive %change (B16d-v1: reveal 3-2-1 + confetti + SFX)
+// VERSION: B18-v1 — rank via compareForRank (money → quiz → speed); reveal 3-2-1 + confetti + SFX
 // LAST MODIFIED: 11 Jun 2026
-// HISTORY: B16d created — split from FinalDisplay; reveal 3→2→1 + champion glow + confetti + SFX; settled on revisit
+// HISTORY: B16d created — split from FinalDisplay; reveal 3→2→1 + champion glow + confetti + SFX; settled on revisit | B18 compareForRank
 'use client';
 
 import { useEffect, useState } from 'react';
+import { compareForRank } from '@/lib/ranking';
 import { STARTING_MONEY } from '@/lib/constants';
 import { calculateAwards, getPlayerAwards } from '@/lib/awards';
 import type { SfxKey } from '@/lib/sound';
@@ -19,7 +20,7 @@ interface FinalPodiumProps {
 export default function FinalPodium({ players, animate, playSfx }: FinalPodiumProps) {
   // snapshot ตอน mount — กัน prop เปลี่ยนกลาง animation (player data update) มาตัด SFX/ภาพทิ้ง
   const [doAnim] = useState(animate);
-  const sorted = [...players].sort((a, b) => (parseFloat(b.money) || 0) - (parseFloat(a.money) || 0));
+  const sorted = [...players].sort(compareForRank);
   const top3 = sorted.slice(0, 3);
   const awards = calculateAwards(players);
 

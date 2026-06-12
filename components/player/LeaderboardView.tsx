@@ -1,8 +1,10 @@
 // FILE: components/player/LeaderboardView.tsx — Player Leaderboard
-// VERSION: B8R-v1 — Extracted from play/[roomId]/page.tsx
+// VERSION: B18-v1 — rank via compareForRank (money → quiz → speed)
 // LAST MODIFIED: 25 Mar 2026
-// HISTORY: B6 created (inline) | B8R extracted to component
+// HISTORY: B6 created (inline) | B8R extracted to component | B18 compareForRank
 'use client';
+
+import { compareForRank } from '@/lib/ranking';
 
 interface LeaderboardViewProps {
   player: any;
@@ -11,7 +13,7 @@ interface LeaderboardViewProps {
 }
 
 export default function LeaderboardView({ player, players, round }: LeaderboardViewProps) {
-  const currentRanked = [...players].sort((a, b) => (parseFloat(b.money) || 0) - (parseFloat(a.money) || 0));
+  const currentRanked = [...players].sort(compareForRank);
   let myRank = 0;
   let myMovement = 0;
   const prevRankMap: Record<string, number> = {};

@@ -1,9 +1,10 @@
 // FILE: lib/awards.ts — Awards calculation logic for Final Summary
-// VERSION: B16d-v2 — Smart Diversifier strict: must diversify ALL played rounds, else no winner (no safety net)
+// VERSION: B18-v1 — Quiz Master single-winner + speed tiebreak (compareQuizMaster); Smart Diversifier unchanged
 // LAST MODIFIED: 11 Jun 2026
-// HISTORY: B11 created | B13-BATCH2 chance card replaces duel | B15 Quiz Master multi-winner | B16d Smart Diversifier decision-based
+// HISTORY: B11 created | B13-BATCH2 chance card replaces duel | B15 Quiz Master multi-winner | B16d Smart Diversifier decision-based | B18 Quiz Master single-winner + speed tiebreak
 
 import { STARTING_MONEY, TOTAL_ROUNDS, COMPANIES } from './constants';
+import { compareQuizMaster, speedKey } from './ranking';
 
 // ==============================================
 // Award Types
@@ -35,45 +36,37 @@ export interface Award {
 function calcQuizMaster(players: any[]): Award {
   const totalQuestions = TOTAL_ROUNDS * 2;
 
-  const candidates = players.map((p) => ({
-    id: p.id,
-    name: p.name,
-    quizScore: parseFloat(p.quiz_score) || 0,
-  }));
-
-  const topScore = Math.max(...candidates.map((c) => c.quizScore), 0);
-
-  if (topScore === 0) {
-    return {
-      id: 'quiz_master',
-      name: 'นักวิจัยยอดเยี่ยม',
-      nameEn: 'Top Researcher',
-      emoji: '🧠',
-      lesson: 'ความรู้ = เงิน — ยิ่งตอบ quiz ถูกมาก ยิ่งได้ bonus เงินมากกว่าคนอื่น',
-      lessonEn: 'Knowledge pays — more correct answers, more bonus money',
-      winnerId: null,
-      winnerName: 'ไม่มีผู้ชนะ',
-      stat: '',
-      winnerIds: [],
-      winnerNames: [],
-    };
-  }
-
-  // ✅ B15: ทุกคนที่ได้ score สูงสุดได้รางวัลร่วมกัน
-  const winners = candidates.filter((c) => c.quizScore === topScore);
-
-  return {
+  const base = {
     id: 'quiz_master',
     name: 'นักวิจัยยอดเยี่ยม',
     nameEn: 'Top Researcher',
     emoji: '🧠',
     lesson: 'ความรู้ = เงิน — ยิ่งตอบ quiz ถูกมาก ยิ่งได้ bonus เงินมากกว่าคนอื่น',
     lessonEn: 'Knowledge pays — more correct answers, more bonus money',
-    winnerId: winners[0].id,
-    winnerName: winners.length === 1 ? winners[0].name : winners.map((w) => w.name).join(', '),
-    stat: `${topScore}/${totalQuestions} ข้อ`,
-    winnerIds: winners.map((w) => w.id),
-    winnerNames: winners.map((w) => w.name),
+  };
+
+  const topScore = Math.max(...players.map((p) => parseFloat(p.quiz_score) || 0), 0);
+
+  if (topScore === 0) {
+    return { ...base, winnerId: null, winnerName: 'ไม่มีผู้ชนะ', stat: '', winnerIds: [], winnerNames: [] };
+  }
+
+  // ✅ B18: single winner — ตอบถูกมากสุด → เสมอ → เร็วสุด (ms น้อย) → เสมอ → id
+  const topTied = players.filter((p) => (parseFloat(p.quiz_score) || 0) === topScore);
+  const winner = [...topTied].sort(compareQuizMaster)[0];
+
+  // "⚡ เร็วสุด" เฉพาะตอนความเร็วเป็นตัวตัดจริง (คะแนนเท่ากัน + winner เร็วกว่าอย่างน้อยหนึ่งคน)
+  const speedWasDecider =
+    topTied.length > 1 &&
+    topTied.some((p) => p.id !== winner.id && speedKey(p.quiz_speed_ms) > speedKey(winner.quiz_speed_ms));
+
+  return {
+    ...base,
+    winnerId: winner.id,
+    winnerName: winner.name,
+    stat: `${topScore}/${totalQuestions} ข้อ${speedWasDecider ? ' · ⚡ เร็วสุด' : ''}`,
+    winnerIds: [winner.id],
+    winnerNames: [winner.name],
   };
 }
 

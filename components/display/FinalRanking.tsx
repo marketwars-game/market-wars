@@ -1,10 +1,11 @@
 // FILE: components/display/FinalRanking.tsx — Final step ④ Full ranking grid (photo-op)
-// VERSION: B16d-v2 — responsive columns (cap at player count, lower tiers) + name left-aligned with more room
+// VERSION: B18-v1 — rank via compareForRank (money → quiz → speed); responsive columns
 // LAST MODIFIED: 11 Jun 2026
-// HISTORY: B16d created — split from FinalDisplay; show all players for parents/photos | B16d-v2 fix narrow cells when few players (responsive cols + tighter layout)
+// HISTORY: B16d created — split from FinalDisplay; show all players for parents/photos | B16d-v2 fix narrow cells when few players (responsive cols + tighter layout) | B18 compareForRank
 'use client';
 
 import { useState } from 'react';
+import { compareForRank } from '@/lib/ranking';
 import { STARTING_MONEY } from '@/lib/constants';
 
 interface FinalRankingProps {
@@ -14,7 +15,7 @@ interface FinalRankingProps {
 
 export default function FinalRanking({ players, animate }: FinalRankingProps) {
   const [doAnim] = useState(animate); // snapshot ตอน mount
-  const sorted = [...players].sort((a, b) => (parseFloat(b.money) || 0) - (parseFloat(a.money) || 0));
+  const sorted = [...players].sort(compareForRank);
   const n = sorted.length;
   // B16d-fix: คอลัมน์ปรับตามจำนวนคน + ไม่เกินจำนวนคน (คนน้อย = ช่องกว้าง ชื่อไม่ตัด)
   const cols = Math.min(

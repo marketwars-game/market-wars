@@ -1,7 +1,7 @@
 // FILE: app/play/[roomId]/page.tsx — Player game screen
-// VERSION: B18-v1 — capture quiz response speed (researchShownAt → elapsed_ms on submit)
+// VERSION: B18-v2 — + add quiz_score/quiz_speed_ms to leaderboard/final fetch (cascade + player awards)
 // LAST MODIFIED: 12 Jun 2026
-// HISTORY: B2 created | B3 phase sync + timer | B4 InvestmentPanel | B5 event_result + ResultsPanel | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components | B9 MarketFight | B12-UX mini step + year_intro + market_open | B13-BATCH3 ChanceCard + Realtime optimize + cut news/rebalance/attack | B16d final_* variants → FinalView | perf-v1 trim+jitter list fetch + debug badge | B18 quiz speed capture
+// HISTORY: B2 created | B3 phase sync + timer | B4 InvestmentPanel | B5 event_result + ResultsPanel | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components | B9 MarketFight | B12-UX mini step + year_intro + market_open | B13-BATCH3 ChanceCard + Realtime optimize + cut news/rebalance/attack | B16d final_* variants → FinalView | perf-v1 trim+jitter list fetch + debug badge | B18 quiz speed capture | B18-v2 select quiz fields for cascade
 'use client';
 
 import { useEffect, useState, useRef, Suspense } from 'react';
@@ -115,7 +115,7 @@ function PlayerContent() {
   }, [roomId, playerIdRef.current]);
 
   // ✅ B13: Fetch players list เมื่อ phase เปลี่ยนเป็น leaderboard/final (ต้องการ players array)
-  // perf-v1: trim columns (id,name,money,round_returns — ที่ Leaderboard/FinalView ใช้จริง)
+  // perf-v1: trim columns + B18 quiz_score/quiz_speed_ms (Leaderboard/FinalView + cascade ใช้)
   //          + jitter 0-800ms กระจาย thundering-herd ตอน 60 client ยิงพร้อมกัน
   useEffect(() => {
     const phase = room?.current_phase;
@@ -126,7 +126,7 @@ function PlayerContent() {
       const t0 = dnow();
       const { data } = await supabase
         .from('players')
-        .select('id, name, money, round_returns')
+        .select('id, name, money, round_returns, quiz_score, quiz_speed_ms')
         .eq('room_id', roomId)
         .order('joined_at', { ascending: true });
       if (data) setPlayers(data);

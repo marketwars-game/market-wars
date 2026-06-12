@@ -1,9 +1,10 @@
 // FILE: components/player/FinalView.tsx — Player Final Phase
-// VERSION: B16d-v1 — fix co-winner list (exclude self); Smart Diversifier badge flows through getPlayerAwards
+// VERSION: B18-v1 — rank via compareForRank; awards via single-winner Quiz Master
 // LAST MODIFIED: 11 Jun 2026
-// HISTORY: B7 created (rank + profit + bars + top5) | B8R extracted to component | B11 stats + badge | B13 chance card stats + ปี labels | B15 co-winner names | B16d fix co-winner filter
+// HISTORY: B7 created (rank + profit + bars + top5) | B8R extracted to component | B11 stats + badge | B13 chance card stats + ปี labels | B15 co-winner names | B16d fix co-winner filter | B18 compareForRank
 
 import { STARTING_MONEY, TOTAL_ROUNDS } from '@/lib/constants';
+import { compareForRank } from '@/lib/ranking';
 import { calculateAwards, getPlayerAwards, calcPlayerStats } from '@/lib/awards';
 
 interface FinalViewProps {
@@ -14,9 +15,7 @@ interface FinalViewProps {
 export default function FinalView({ player, players }: FinalViewProps) {
   if (!player) return null;
 
-  const sorted = [...players].sort(
-    (a, b) => (parseFloat(b.money) || 0) - (parseFloat(a.money) || 0)
-  );
+  const sorted = [...players].sort(compareForRank);
   const rank = sorted.findIndex((p) => p.id === player.id) + 1;
   const money = parseFloat(player.money) || STARTING_MONEY;
   const profit = money - STARTING_MONEY;
