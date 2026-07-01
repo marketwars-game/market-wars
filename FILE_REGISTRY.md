@@ -1,10 +1,10 @@
 # Market Wars — File Registry
 
 **Location:** วางที่ root ของ repo (`/FILE_REGISTRY.md`) — version control โดย git
-**Last Updated:** B19 Done (Animated backdrop + reveal polish + final-round skip leaderboard) — 13 Jun 2026
+**Last Updated:** B20 Done (Final Ranking teaching: inline benchmarks + scale-to-fit + glow) — 13 Jun 2026 · 🎉 Season 2 CLOSED (74 players)
 **Repo:** https://github.com/marketwars-game/market-wars
 **Default branch:** `main`
-**Latest stable tag:** `B19-stable` (newest) · `Season1-stable` = `B15-stable`
+**Latest stable tag:** `B20-stable` (newest) · `Season1-stable` = `B15-stable`
 
 ---
 
