@@ -1,10 +1,10 @@
 # Market Wars — File Registry
 
 **Location:** วางที่ root ของ repo (`/FILE_REGISTRY.md`) — version control โดย git
-**Last Updated:** B21 Done (Display fit-to-screen — FitStage 1280×720 letterbox, retire CSS zoom) — 10 Jul 2026 · Season 3 dev started · (Season 2 CLOSED, 74 players)
+**Last Updated:** B22 + B22b Done (event_result sparkline · small-roster grid fix · player final gating) — 10 Jul 2026 · Season 3 dev · (Season 2 CLOSED, 74 players)
 **Repo:** https://github.com/marketwars-game/market-wars
 **Default branch:** `main`
-**Latest stable tag:** `B21-stable` (newest) · `B20-stable` = Season 2 final · `Season1-stable` = `B15-stable`
+**Latest stable tag:** `B22-stable` (newest) · `B21-stable` · `B20-stable` = Season 2 final · `Season1-stable` = `B15-stable`
 
 ---
 
@@ -44,7 +44,7 @@ https://raw.githubusercontent.com/marketwars-game/market-wars/Season1-stable/<pa
 |------|--------|---------|
 | Root Layout | Next.js root layout — wrapper หลักของทุกหน้า | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/layout.tsx |
 | Landing / Join | หน้าแรก เลือก join / create | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/page.tsx |
-| Player Game | จอเด็กเล่น (มือถือ) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/play/[roomId]/page.tsx |
+| Player Game | จอเด็กเล่น (มือถือ) — ✅ B22b: final gating (`finalRevealed = phase === 'final_ranking'`) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/play/[roomId]/page.tsx |
 | MC Entry | หน้า MC เลือกห้อง / สร้างห้อง | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/mc/page.tsx |
 | MC Control | จอ MC ควบคุมเกมในห้อง | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/mc/[roomId]/page.tsx |
 | Display (Projector) | จอแสดงสาธารณะ (✅ B21 — ห่อทุก phase block ด้วย FitStage; zoom = min(w/1280, h/720)) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/display/[roomId]/page.tsx |
@@ -81,7 +81,8 @@ https://raw.githubusercontent.com/marketwars-game/market-wars/Season1-stable/<pa
 | ResearchQuiz | ตอบ quiz (✅ B17 bilingual question/choices via `<Bi>`) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/player/ResearchQuiz.tsx |
 | ChanceCard | เปิดการ์ดโชคชะตา (✅ B17 bilingual card.text via `<Bi>`) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/player/ChanceCard.tsx |
 | LeaderboardView | อันดับ + ตัวเอง | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/player/LeaderboardView.tsx |
-| FinalView | สรุป + รางวัล (co-winners) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/player/FinalView.tsx |
+| FinalView | สรุป + รางวัล (co-winners) — แสดงเฉพาะ phase `final_ranking` | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/player/FinalView.tsx |
+| FinalHold | ✅ B22b — NEW จอลุ้นบนมือถือ (`final` / `final_podium` / `final_awards`) "👀 ดูจอใหญ่!" ไม่เผยเงิน/อันดับ | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/player/FinalHold.tsx |
 
 ---
 
@@ -90,7 +91,7 @@ https://raw.githubusercontent.com/marketwars-game/market-wars/Season1-stable/<pa
 | ไฟล์ | หน้าที่ | Raw URL |
 |------|--------|---------|
 | ResearchDisplay | Quiz + Reveal (✅ B18 reveal = สอนกระชับ + QuizSpeedWall; B17 bilingual) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/ResearchDisplay.tsx |
-| EventDisplay | Event reveal + Result + Golden Deal | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/EventDisplay.tsx |
+| EventDisplay | Event reveal + Result + Golden Deal (✅ B22 — event_result: sparkline สะสมต่อ sector, แกน Y ร่วม, แกน X ล็อก 0..6, เส้นเขียว/แดงรายปี; flag `CHART_MODE`) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/EventDisplay.tsx |
 | ChanceCardDisplay | สรุปการ์ดโชคชะตา (→ LiveNameBoard) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/ChanceCardDisplay.tsx |
 | LeaderboardDisplay | Podium + ranking | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/LeaderboardDisplay.tsx |
 | AnimatedBackdrop | ✅ B19 — shared backdrop (Network particle canvas + scrolling grid + glow + vignette); props `accent/accent2/vignette/density`; ใช้ใน Lobby/YearIntro/MarketOpen/Event | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/AnimatedBackdrop.tsx |
@@ -100,6 +101,7 @@ https://raw.githubusercontent.com/marketwars-game/market-wars/Season1-stable/<pa
 
 > 📝 หมายเหตุ: ยังมี display component อื่นที่เพิ่มช่วง B16 (LiveNameBoard, LiveNameFeed, InvestDisplay, DisplayHeader, LobbyDisplay, YearIntroDisplay, MarketOpenDisplay, ResultsDisplay, SoundGate, FinalPodium, FinalAwards, FinalRanking, ConfettiCanvas) — ดู File Structure ใน Tech Spec v3.3
 > 📝 B21 note: Lobby/YearIntro/MarketOpen ถอด `zoom` prop แล้ว (fill FitStage box) · Final* ทั้ง 4 (FinalDisplay/FinalPodium/FinalAwards/FinalRanking) เปลี่ยน `h-screen` → `h-full`
+> 📝 B22b note: `LiveNameBoard.tsx` clamp `cols = min(tier.cols, N)` + เพดานช่อง 230×150px (แก้เคสคนน้อย; N ≥ ~30 พฤติกรรมเดิม) · `FinalAwards.tsx` ตัดป้าย "พี่โบว์เฉลย · Dr.Bow reveals"
 
 ---
 
