@@ -1,7 +1,7 @@
 // FILE: app/play/[roomId]/page.tsx — Player game screen
-// VERSION: B18-v2 — + add quiz_score/quiz_speed_ms to leaderboard/final fetch (cascade + player awards)
-// LAST MODIFIED: 12 Jun 2026
-// HISTORY: B2 created | B3 phase sync + timer | B4 InvestmentPanel | B5 event_result + ResultsPanel | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components | B9 MarketFight | B12-UX mini step + year_intro + market_open | B13-BATCH3 ChanceCard + Realtime optimize + cut news/rebalance/attack | B16d final_* variants → FinalView | perf-v1 trim+jitter list fetch + debug badge | B18 quiz speed capture | B18-v2 select quiz fields for cascade
+// VERSION: B22b-v1 — final gating: มือถือค้างจอลุ้น (FinalHold) จนกว่า MC จะกดถึง final_ranking ค่อยเผยอันดับตัวเอง
+// LAST MODIFIED: 10 Jul 2026
+// HISTORY: B2 created | B3 phase sync + timer | B4 InvestmentPanel | B5 event_result + ResultsPanel | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components | B9 MarketFight | B12-UX mini step + year_intro + market_open | B13-BATCH3 ChanceCard + Realtime optimize + cut news/rebalance/attack | B16d final_* variants → FinalView | perf-v1 trim+jitter list fetch + debug badge | B18 quiz speed capture | B18-v2 select quiz fields for cascade | B22b FinalHold gating (reveal at final_ranking only)
 'use client';
 
 import { useEffect, useState, useRef, Suspense } from 'react';
@@ -24,6 +24,7 @@ import ResultsPanel from '@/components/player/ResultsPanel';
 import ResearchQuiz from '@/components/player/ResearchQuiz';
 import LeaderboardView from '@/components/player/LeaderboardView';
 import FinalView from '@/components/player/FinalView';
+import FinalHold from '@/components/player/FinalHold';
 import ChanceCard from '@/components/player/ChanceCard';
 
 function PlayerContent() {
@@ -203,6 +204,9 @@ function PlayerContent() {
 
   const phase = room?.current_phase || 'lobby';
   const isFinal = phase.startsWith('final'); // B16d: final / final_podium / final_awards / final_ranking
+  // ✅ B22b: เผยอันดับ/เงินตัวเองบนมือถือ "หลัง" MC กดถึง final_ranking เท่านั้น
+  // (final / final_podium / final_awards = จอใหญ่กำลังเฉลย → มือถือค้างจอลุ้น)
+  const finalRevealed = phase === 'final_ranking';
   const round = room?.current_round || 1;
   const phaseInfo = PHASE_DISPLAY[phase] || PHASE_DISPLAY.lobby;
   const timerDuration = PHASE_TIMERS[phase] || 0;
@@ -414,8 +418,11 @@ function PlayerContent() {
       {/* === Leaderboard — Component === */}
       {phase === 'leaderboard' && <LeaderboardView player={player} players={players} round={round} />}
 
-      {/* === Final — Component === */}
-      {isFinal && <FinalView player={player} players={players} />}
+      {/* === Final — Component (B22b: hold จนกว่าจะถึง final_ranking) === */}
+      {isFinal && (finalRevealed
+        ? <FinalView player={player} players={players} />
+        : <FinalHold phase={phase as 'final' | 'final_podium' | 'final_awards'} />
+      )}
     </div>
   );
 }

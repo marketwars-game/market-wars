@@ -1,7 +1,7 @@
-// FILE: components/display/FinalAwards.tsx — Final step ③ Special Awards + Dr.Bow twist
-// VERSION: B21 — h-screen → h-full (fill FitStage box)
+// FILE: components/display/FinalAwards.tsx — Final step ③ Special Awards
+// VERSION: B22b-v1 — remove "พี่โบว์เฉลย · Dr.Bow reveals" tag from the Smart Diversifier card
 // LAST MODIFIED: 10 Jul 2026
-// HISTORY: B16d created — split from FinalDisplay; staggered reveal + twist confetti; bilingual TH·EN | B21 FitStage fit-to-screen (h-full)
+// HISTORY: B16d created — split from FinalDisplay; staggered reveal + twist confetti; bilingual TH·EN | B21 FitStage fit-to-screen (h-full) | B22b drop Dr.Bow reveal tag
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -68,7 +68,6 @@ export default function FinalAwards({ players, animate, playSfx }: FinalAwardsPr
       {diversifier && diversifier.winnerId && (
         <div className="relative w-[80%] max-w-4xl rounded-2xl px-8 py-6 flex items-center gap-6"
           style={{ background: '#161b22', border: '1.5px solid #22c55e', boxShadow: '0 0 40px rgba(34,197,94,0.28)', ...cardAnim(1.6) }}>
-          <span className="absolute top-4 right-6 text-base font-bold" style={{ color: '#00FFB2' }}>✨ พี่โบว์เฉลย · Dr.Bow reveals</span>
           <span className="text-6xl">{diversifier.emoji}</span>
           <div className="flex-1">
             <p className="text-3xl font-bold" style={{ color: '#34d399' }}>{diversifier.name}</p>

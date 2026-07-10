@@ -1,7 +1,7 @@
 // FILE: components/display/LiveNameBoard.tsx — Spectator name wall (invest + chance_card)
-// VERSION: B16b-v1 — fit-all roster grid, A-Z sort, degrade tiers, light-in-place
-// LAST MODIFIED: 11 Jun 2026
-// HISTORY: B16b created — shared grid wall for invest (allocation bar) + chance_card (luck amount)
+// VERSION: B22b-v1 — small-roster fix: clamp cols to N + cap cell width/height so few players don't stretch into full-height columns
+// LAST MODIFIED: 10 Jul 2026
+// HISTORY: B16b created — shared grid wall for invest (allocation bar) + chance_card (luck amount) | B22b clamp cols/cell size for small N (no change at N>=~30)
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
@@ -15,6 +15,12 @@ interface LiveNameBoardProps {
 
 const PAGE_SIZE = 96;
 const PAGE_ROTATE_MS = 9000;
+
+// ✅ B22b — เพดานขนาดช่อง: กันเคสคนน้อย (เทส 3-10 คน) ที่ 1fr ยืดช่องเต็มจอ
+// N ระดับงานจริง (40-70) กริดยังกว้าง/สูงกว่าเพดาน → ค่าพวกนี้ไม่มีผล พฤติกรรมเดิมทุกประการ
+const MAX_CELL_W = 230;
+const MAX_CELL_H = 150;
+const GRID_GAP = 5;
 
 function sortByName(players: any[]) {
   return [...players].sort((a, b) =>
@@ -56,8 +62,11 @@ export default function LiveNameBoard({ players, round, variant }: LiveNameBoard
 
   const start = tier.paginate ? (pageIdx % pageCount) * PAGE_SIZE : 0;
   const visible = tier.paginate ? sorted.slice(start, start + PAGE_SIZE) : sorted;
-  const cols = tier.cols;
+  // ✅ B22b: 3 คนต้องได้ 3 คอลัมน์ ไม่ใช่ 6 คอลัมน์ที่ว่าง 3 ช่อง
+  const cols = Math.max(1, Math.min(tier.cols, visible.length || 1));
   const rows = Math.max(1, Math.ceil(visible.length / cols));
+  const gridMaxW = cols * MAX_CELL_W + (cols - 1) * GRID_GAP;
+  const gridMaxH = rows * MAX_CELL_H + (rows - 1) * GRID_GAP;
 
   // "just submitted" pop animation — diff across throttled reloads
   const prevSubmitted = useRef<Set<string>>(new Set());
@@ -191,9 +200,13 @@ export default function LiveNameBoard({ players, round, variant }: LiveNameBoard
       <div
         className="flex-1 min-h-0 grid"
         style={{
-          gap: 5,
+          gap: GRID_GAP,
           gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
           gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
+          maxWidth: gridMaxW,
+          maxHeight: gridMaxH,
+          margin: 'auto',
+          width: '100%',
         }}
       >
         {visible.map((p) => renderCell(p))}
