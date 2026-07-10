@@ -1,10 +1,10 @@
 # Market Wars — File Registry
 
 **Location:** วางที่ root ของ repo (`/FILE_REGISTRY.md`) — version control โดย git
-**Last Updated:** B20 Done (Final Ranking teaching: inline benchmarks + scale-to-fit + glow) — 13 Jun 2026 · 🎉 Season 2 CLOSED (74 players)
+**Last Updated:** B21 Done (Display fit-to-screen — FitStage 1280×720 letterbox, retire CSS zoom) — 10 Jul 2026 · Season 3 dev started · (Season 2 CLOSED, 74 players)
 **Repo:** https://github.com/marketwars-game/market-wars
 **Default branch:** `main`
-**Latest stable tag:** `B20-stable` (newest) · `Season1-stable` = `B15-stable`
+**Latest stable tag:** `B21-stable` (newest) · `B20-stable` = Season 2 final · `Season1-stable` = `B15-stable`
 
 ---
 
@@ -47,7 +47,7 @@ https://raw.githubusercontent.com/marketwars-game/market-wars/Season1-stable/<pa
 | Player Game | จอเด็กเล่น (มือถือ) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/play/[roomId]/page.tsx |
 | MC Entry | หน้า MC เลือกห้อง / สร้างห้อง | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/mc/page.tsx |
 | MC Control | จอ MC ควบคุมเกมในห้อง | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/mc/[roomId]/page.tsx |
-| Display (Projector) | จอแสดงสาธารณะ | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/display/[roomId]/page.tsx |
+| Display (Projector) | จอแสดงสาธารณะ (✅ B21 — ห่อทุก phase block ด้วย FitStage; zoom = min(w/1280, h/720)) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/display/[roomId]/page.tsx |
 
 ### API Routes
 
@@ -96,8 +96,10 @@ https://raw.githubusercontent.com/marketwars-game/market-wars/Season1-stable/<pa
 | AnimatedBackdrop | ✅ B19 — shared backdrop (Network particle canvas + scrolling grid + glow + vignette); props `accent/accent2/vignette/density`; ใช้ใน Lobby/YearIntro/MarketOpen/Event | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/AnimatedBackdrop.tsx |
 | FinalDisplay | สรุปจบเกม + awards | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/FinalDisplay.tsx |
 | QuizSpeedWall | ✅ B18 — speed name-wall (ตอบถูกครบ 2 ข้อ เรียงเร็วสุด, cascade) บน research_reveal | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/QuizSpeedWall.tsx |
+| FitStage | ✅ B21 — fixed 1280×720 canvas scale-to-fit (letterbox กลางจอ); ห่อทุก phase block แทน CSS zoom (`STAGE_W/STAGE_H` export) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/FitStage.tsx |
 
-> 📝 หมายเหตุ: ยังมี display component อื่นที่เพิ่มช่วง B16 (LiveNameBoard, LiveNameFeed, InvestDisplay, DisplayHeader, LobbyDisplay, YearIntroDisplay, MarketOpenDisplay, ResultsDisplay, SoundGate, FinalPodium, FinalAwards, FinalRanking, ConfettiCanvas) — ดู File Structure ใน Tech Spec v2.9
+> 📝 หมายเหตุ: ยังมี display component อื่นที่เพิ่มช่วง B16 (LiveNameBoard, LiveNameFeed, InvestDisplay, DisplayHeader, LobbyDisplay, YearIntroDisplay, MarketOpenDisplay, ResultsDisplay, SoundGate, FinalPodium, FinalAwards, FinalRanking, ConfettiCanvas) — ดู File Structure ใน Tech Spec v3.3
+> 📝 B21 note: Lobby/YearIntro/MarketOpen ถอด `zoom` prop แล้ว (fill FitStage box) · Final* ทั้ง 4 (FinalDisplay/FinalPodium/FinalAwards/FinalRanking) เปลี่ยน `h-screen` → `h-full`
 
 ---
 
