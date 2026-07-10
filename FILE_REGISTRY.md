@@ -4,7 +4,7 @@
 **Last Updated:** B22 + B22b Done (event_result sparkline · small-roster grid fix · player final gating) — 10 Jul 2026 · Season 3 dev · (Season 2 CLOSED, 74 players)
 **Repo:** https://github.com/marketwars-game/market-wars
 **Default branch:** `main`
-**Latest stable tag:** `B22-stable` (newest) · `B21-stable` · `B20-stable` = Season 2 final · `Season1-stable` = `B15-stable`
+**Latest stable tag:** `B22b-stable` (newest — B22 + B22b + registry) · `B22-stable` = sparkline only · `B21-stable` · `B20-stable` = Season 2 final · `Season1-stable` = `B15-stable`
 
 ---
 
