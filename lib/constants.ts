@@ -1,7 +1,7 @@
 // FILE: lib/constants.ts — Game Configuration (Single Source of Truth)
-// VERSION: B17-BATCH0-v1 — Bilingual pass: add LocalizedText type; QUIZ_POOL question/choices + CHANCE_CARDS text -> {th, en}
-// LAST MODIFIED: 12 Jun 2026
-// HISTORY: B1 created | B3 phase timers + display | B4 companies + events | B5 return table + golden deals | B8 quiz + news (v2: 3-phase) | B9 duel config + attack phase update | B10 disable golden deal | B12-UX year_intro + market_open + step groups | B12-BAL rebalance returns + events + news + duel | B13-BATCH0 cut news/rebalance/attack, add quiz bonus + chance cards | B14 sector names + return table v4 + quiz Session 2 + events rewrite + quiz bonus 200/100/0 | B17-BATCH0 LocalizedText type + QUIZ_POOL/CHANCE_CARDS bilingual (th/en)
+// VERSION: B23-v1 — Balance pass (data-driven from S2, 70 players): RETURN_TABLE v5c -> v6 (risk premium + deeper story crashes + piggybank 1%/yr); QUIZ_BONUS 200/100/0 -> 100/50/0; CHANCE_CARDS amounts halved
+// LAST MODIFIED: 10 Jul 2026
+// HISTORY: B1 created | B3 phase timers + display | B4 companies + events | B5 return table + golden deals | B8 quiz + news (v2: 3-phase) | B9 duel config + attack phase update | B10 disable golden deal | B12-UX year_intro + market_open + step groups | B12-BAL rebalance returns + events + news + duel | B13-BATCH0 cut news/rebalance/attack, add quiz bonus + chance cards | B14 sector names + return table v4 + quiz Session 2 + events rewrite + quiz bonus 200/100/0 | B17-BATCH0 LocalizedText type + QUIZ_POOL/CHANCE_CARDS bilingual (th/en) | B23 return table v6 + quiz bonus 100/50/0 + chance cards halved (S2 bonus share 68.5% -> ~34%)
 
 // ==============================================
 // Market Wars — Game Configuration
@@ -22,12 +22,15 @@ export const STARTING_MONEY = 10000;
 export const ALLOCATION_STEP = 10; // ทีละ 10%
 
 // ==============================================
-// ✅ B14: Quiz Bonus — ปรับจาก 300/150/0 → 200/100/0
-// ลดน้ำหนัก quiz ให้ investment สำคัญขึ้น
+// ✅ B23: Quiz Bonus — ปรับจาก 200/100/0 → 100/50/0
+// S2 data (70 คน): quiz bonus = 56% ของกำไรทั้งห้อง (เฉลี่ย ฿1,029/คน
+// vs หุ้น ฿579/คน) — เด็ก median ตอบถูก 11/12 → กลายเป็นเงินแจกถ้วนหน้า
+// ลดครึ่งเพื่อให้สีเขียว/แดงบนจอสุดท้ายมาจากฝีมือลงทุนเป็นหลัก
+// (ความยาก quiz คงเดิม — ตอบถูกเยอะ = ห้องเรียนสำเร็จ ไม่ใช่บั๊ก)
 // ==============================================
 export const QUIZ_BONUS = {
-  CORRECT_2: 200,  // ถูกครบ 2 ข้อ → +฿200
-  CORRECT_1: 100,  // ถูก 1 ข้อ → +฿100
+  CORRECT_2: 100,  // ถูกครบ 2 ข้อ → +฿100
+  CORRECT_1: 50,   // ถูก 1 ข้อ → +฿50
   CORRECT_0: 0,    // ผิดหมด → ฿0
 };
 
@@ -35,8 +38,10 @@ export const QUIZ_BONUS = {
 // ✅ B13: Chance Cards — การ์ดโชคชะตา (แทนเป่ายิงฉุบ)
 // สุ่ม client-side จาก seed (room_id + round + player_id)
 // ทุกคนได้ 1 ใบ/รอบ → write DB 1 ครั้ง/คน
-// Pool: 20 ใบ (10 บวก / 10 ลบ) — expected value ≈ +฿15
+// Pool: 20 ใบ (10 บวก / 10 ลบ)
 // ✅ B17: text → {th, en} (แสดงบนการ์ดที่เด็กเปิด)
+// ✅ B23: ทุกใบหารสอง (±50..250, EV = +฿5) — เดิม ±100..500 ใบเดียว = 5% ของทุน แรงเกิน
+//    S2 data: chance รวม 12.5% ของกำไรทั้งห้อง → ลดให้เป็นสีสัน ไม่ใช่ตัวตัดสิน
 // ==============================================
 export const CHANCE_CARDS: {
   id: number;
@@ -45,28 +50,28 @@ export const CHANCE_CARDS: {
   amount: number; // + = ได้เงิน, - = เสียเงิน
 }[] = [
   // === การ์ดบวก (10 ใบ) — เหตุการณ์ดีๆ ในชีวิต ===
-  { id: 1,  text: { th: 'ญาติให้เงินขวัญถุงวันเกิด!', en: 'A relative gives you birthday money!' }, emoji: '🎁', amount: 200 },
-  { id: 2,  text: { th: 'ชนะแข่งขันตอบคำถามที่โรงเรียน!', en: 'You win a school quiz contest!' }, emoji: '🏆', amount: 300 },
-  { id: 3,  text: { th: 'ถูกรางวัลจับฉลากงานโรงเรียน!', en: 'You win the school fair raffle!' }, emoji: '🎉', amount: 250 },
-  { id: 4,  text: { th: 'ทำงานพิเศษช่วงปิดเทอม ได้เงินเก็บ!', en: 'A holiday side job earns you some savings!' }, emoji: '⭐', amount: 150 },
-  { id: 5,  text: { th: 'เงินออมในกระปุกครบเป้า!', en: 'Your piggy bank hits its goal!' }, emoji: '🐷', amount: 100 },
-  { id: 6,  text: { th: 'เก็บเงินได้ที่โรงอาหาร! โชคดี!', en: 'You find money in the cafeteria! Lucky!' }, emoji: '💎', amount: 100 },
-  { id: 7,  text: { th: 'ได้ทุนการศึกษาด้านการเงิน!', en: 'You earn a finance scholarship!' }, emoji: '📊', amount: 150 },
-  { id: 8,  text: { th: 'พ่อแม่ให้โบนัสเพราะเกรดดีขึ้น!', en: 'Your parents reward your better grades!' }, emoji: '🌟', amount: 200 },
-  { id: 9,  text: { th: 'ขายของมือสองออนไลน์ได้กำไร!', en: 'You sell second-hand goods online for a profit!' }, emoji: '💰', amount: 300 },
-  { id: 10, text: { th: 'ได้รางวัลนักออมดีเด่นประจำปี!', en: 'You win Saver of the Year!' }, emoji: '🎯', amount: 500 },
+  { id: 1,  text: { th: 'ญาติให้เงินขวัญถุงวันเกิด!', en: 'A relative gives you birthday money!' }, emoji: '🎁', amount: 100 },
+  { id: 2,  text: { th: 'ชนะแข่งขันตอบคำถามที่โรงเรียน!', en: 'You win a school quiz contest!' }, emoji: '🏆', amount: 150 },
+  { id: 3,  text: { th: 'ถูกรางวัลจับฉลากงานโรงเรียน!', en: 'You win the school fair raffle!' }, emoji: '🎉', amount: 125 },
+  { id: 4,  text: { th: 'ทำงานพิเศษช่วงปิดเทอม ได้เงินเก็บ!', en: 'A holiday side job earns you some savings!' }, emoji: '⭐', amount: 75 },
+  { id: 5,  text: { th: 'เงินออมในกระปุกครบเป้า!', en: 'Your piggy bank hits its goal!' }, emoji: '🐷', amount: 50 },
+  { id: 6,  text: { th: 'เก็บเงินได้ที่โรงอาหาร! โชคดี!', en: 'You find money in the cafeteria! Lucky!' }, emoji: '💎', amount: 50 },
+  { id: 7,  text: { th: 'ได้ทุนการศึกษาด้านการเงิน!', en: 'You earn a finance scholarship!' }, emoji: '📊', amount: 75 },
+  { id: 8,  text: { th: 'พ่อแม่ให้โบนัสเพราะเกรดดีขึ้น!', en: 'Your parents reward your better grades!' }, emoji: '🌟', amount: 100 },
+  { id: 9,  text: { th: 'ขายของมือสองออนไลน์ได้กำไร!', en: 'You sell second-hand goods online for a profit!' }, emoji: '💰', amount: 150 },
+  { id: 10, text: { th: 'ได้รางวัลนักออมดีเด่นประจำปี!', en: 'You win Saver of the Year!' }, emoji: '🎯', amount: 250 },
 
   // === การ์ดลบ (10 ใบ) — ค่าใช้จ่ายที่เกิดขึ้นในชีวิต ===
-  { id: 11, text: { th: 'มือถือตกพื้นจอแตก ต้องซ่อม!', en: 'You drop your phone — cracked screen, pay to fix it!' }, emoji: '📱', amount: -200 },
-  { id: 12, text: { th: 'ช้อปปิ้งเกินงบ ใช้เงินเกินแผน!', en: 'You overshop and blow your budget!' }, emoji: '🛒', amount: -100 },
-  { id: 13, text: { th: 'ไม่สบาย ต้องจ่ายค่ายาเอง', en: 'You get sick and pay for medicine yourself.' }, emoji: '🏥', amount: -150 },
-  { id: 14, text: { th: 'ค่าเน็ตกับค่าไฟเดือนนี้แพงมาก!', en: "This month's internet and electric bills are huge!" }, emoji: '⚡', amount: -100 },
-  { id: 15, text: { th: 'รถเสีย ต้องนั่งแท็กซี่ไปเรียน 1 เดือน!', en: 'Your ride breaks down — a month of taxis to school!' }, emoji: '🚌', amount: -200 },
-  { id: 16, text: { th: 'สั่งอาหารออนไลน์ทุกวัน เงินหมดไม่รู้ตัว!', en: 'Daily food delivery quietly drains your wallet!' }, emoji: '🍔', amount: -150 },
-  { id: 17, text: { th: 'ซื้อเกมแล้วไม่สนุก คืนเงินไม่ได้!', en: "You buy a game you don't enjoy — no refund!" }, emoji: '🎮', amount: -100 },
-  { id: 18, text: { th: 'โดนหลอกโอนเงินออนไลน์!', en: 'You get scammed into an online transfer!' }, emoji: '🔓', amount: -500 },
-  { id: 19, text: { th: 'รองเท้าพัง ต้องซื้อคู่ใหม่!', en: 'Your shoes fall apart — buy a new pair!' }, emoji: '👟', amount: -250 },
-  { id: 20, text: { th: 'ทำของเพื่อนเสีย ต้องจ่ายค่าชดเชย', en: "You break a friend's things and pay them back." }, emoji: '📋', amount: -300 },
+  { id: 11, text: { th: 'มือถือตกพื้นจอแตก ต้องซ่อม!', en: 'You drop your phone — cracked screen, pay to fix it!' }, emoji: '📱', amount: -100 },
+  { id: 12, text: { th: 'ช้อปปิ้งเกินงบ ใช้เงินเกินแผน!', en: 'You overshop and blow your budget!' }, emoji: '🛒', amount: -50 },
+  { id: 13, text: { th: 'ไม่สบาย ต้องจ่ายค่ายาเอง', en: 'You get sick and pay for medicine yourself.' }, emoji: '🏥', amount: -75 },
+  { id: 14, text: { th: 'ค่าเน็ตกับค่าไฟเดือนนี้แพงมาก!', en: "This month's internet and electric bills are huge!" }, emoji: '⚡', amount: -50 },
+  { id: 15, text: { th: 'รถเสีย ต้องนั่งแท็กซี่ไปเรียน 1 เดือน!', en: 'Your ride breaks down — a month of taxis to school!' }, emoji: '🚌', amount: -100 },
+  { id: 16, text: { th: 'สั่งอาหารออนไลน์ทุกวัน เงินหมดไม่รู้ตัว!', en: 'Daily food delivery quietly drains your wallet!' }, emoji: '🍔', amount: -75 },
+  { id: 17, text: { th: 'ซื้อเกมแล้วไม่สนุก คืนเงินไม่ได้!', en: "You buy a game you don't enjoy — no refund!" }, emoji: '🎮', amount: -50 },
+  { id: 18, text: { th: 'โดนหลอกโอนเงินออนไลน์!', en: 'You get scammed into an online transfer!' }, emoji: '🔓', amount: -250 },
+  { id: 19, text: { th: 'รองเท้าพัง ต้องซื้อคู่ใหม่!', en: 'Your shoes fall apart — buy a new pair!' }, emoji: '👟', amount: -125 },
+  { id: 20, text: { th: 'ทำของเพื่อนเสีย ต้องจ่ายค่าชดเชย', en: "You break a friend's things and pay them back." }, emoji: '📋', amount: -150 },
 ];
 
 // --- ฟังก์ชั่นสุ่ม Chance Card จาก seed (room_id + round + player_id → ไม่ซ้ำกัน) ---
@@ -373,45 +378,52 @@ export const EVENTS = [
 ];
 
 // ==============================================
-// ✅ B14: Return Table v5c — Rebalanced (tested with 41 real players)
+// ✅ B23: Return Table v6 — Risk Premium Rebalance (data-driven from S2, 70 real players)
 // ==============================================
-// หลักออกแบบ:
-// 1. ทุกรอบ top 2-3 ตัว ห่างกันแค่ 1-2% → เดาถูกตัว #1 ยากมาก
-// 2. All-in ผิด = เจ็บหนัก (-15% ถึง -18%)
-// 3. กระจาย 3+ ตัว (max 40%) ชนะ all-in ทุกตัว
-// 4. PiggyBank บวกเสมอแต่น้อย (safe haven)
-// 5. R6 twist: อาหาร+พลังงาน (สิ่งจำเป็น) ดี, เทค ร่วงหนักสุด (-18%)
-// 6. ไม่มี pattern "สลับ" ชัดเจน → จับ pattern ยาก
-// 7. "วิ่งตามผู้ชนะ" = ขาดทุนหนัก (-30%)
+// ปัญหา v5c (พบจาก benchmark ghosts B20 + sparkline B22):
+//   ผลรวม column เฉลี่ย +0.7%/ปี ≈ ไม่มี risk premium → ฝากเงินเฉยๆ (+13.7%)
+//   ชนะกระจายเท่ากัน (+4.2%) ~3 เท่า = จอสุดท้ายสอนสวนทางดร.โบว์ (structural,
+//   แก้ด้วยการจูนรายตัวไม่ได้ ต้องแก้ที่ผลรวม column)
 //
-// ผลลัพธ์ verified (v5c):
-// - Best all-in: พลังงาน ฿11,490 (+14.9%)
-// - Best diversified (3+ stocks, max 40%): ฿11,587 (+15.9%) ✅ ชนะ!
-// - Equal weight 6 ตัว: ฿10,384 (+3.8%)
-// - "วิ่งตามผู้ชนะ": ฿6,997 (-30.0%) ❌ ขาดทุนหนัก!
-// - All-in เทค: ฿8,492 (-15.1%) — ขาดทุน!
-// - All-in เกม: ฿8,035 (-19.6%) — ขาดทุนหนัก!
+// หลักออกแบบ v6 (เปลี่ยน 3 อย่างจาก v5c — ทิศทาง +/- ทุกช่องเหมือนเดิม 100%
+// → EVENTS/quiz/script ดร.โบว์ ใช้ได้เหมือนเดิม):
+// 1. ตัวชนะทุกปียกขึ้น +2..+4 จุด → ตลาดรวมมี risk premium (+1.6%/ปี)
+// 2. PiggyBank 2%/ปี → 1%/ปี (ปีสุดท้าย 2%) — สมจริงกับดอกเบี้ยเงินฝากจริง
+// 3. จุด crash ของ story กดลึกลง "ให้ห้องกรี๊ด" (เทค R2 -17 / R6 -20, เกม R5 -16)
+//    ส่วนตัวแพ้รองที่ไม่ใช่พระเอกของข่าว ผ่อนขึ้น +1..+2
 //
-// Tested with 41 real players:
-// - ที่ 1 = "semi-concentrated" (เน้น 70-80% + ออม safety net) ไม่ใช่ all-in 100%
-// - All-in switcher ตกอันดับ (Lynn: #2→#3, Korn: #4→#7)
-// - Diversified มีที่ยืนใน Top 10 มากขึ้น
+// หลักเดิมที่คงไว้:
+// - ทุกรอบ top 2-3 ตัวห่างกัน 1-3% → เดาถูกตัว #1 ยาก
+// - ไม่มี pattern "สลับ" ชัดเจน / "วิ่งตามผู้ชนะ" = ขาดทุนหนักสุด
+// - PiggyBank บวกเสมอแต่น้อย (safe haven)
+//
+// Benchmarks verified (v6, ทบต้น 6 ปี):
+// - กระจายเท่ากัน 6 ตัว: +9.8% ✅ ชนะฝากเงิน (เป้าหลักของ B23)
+// - ฝากเงินเฉยๆ: +7.2% (อันดับ 4 จาก 6 เส้นบน sparkline ปี 6 — เกณฑ์ B22 ผ่าน)
+// - All-in ถูกตัว: พลังงาน +27.3% / อาหาร +24.2% (ยอมให้ดวงดีชนะได้ —
+//   แต่พลังงานเปิดเกม -7,-4 สองปีติด = ต้นทุนทางใจสูง, S2 ไม่มีใครถือครบ 6 ปีเลย)
+// - All-in ผิดตัว: เทค -12.1% / เกม -16.0% (มีปีเดียว -17/-20 ให้กรี๊ด)
+// - "วิ่งตามผู้ชนะ": -33.1% ❌ บ๊วยตาราง
+//
+// Replay กับข้อมูลจริง S2 (70 คน, v6 + quiz 100/50 + chance หารสอง):
+// - สัดส่วน bonus ต่อกำไรทั้งห้อง 68.5% → 33.6% (กำไรมาจากฝีมือลงทุนเป็นหลัก)
+// - แชมป์คนเดิม (semi-concentrated) / คนขาดทุน 8 → 6 คน / Top 10 ไม่พัง
 
 export const RETURN_TABLE: Record<string, number[]> = {
   // [round1, round2, round3, round4, round5, round6]
   //
-  // R1: มือถือรุ่นใหม่ → เทค+6% อาหาร+5% เกม+4% (ใกล้กัน!) พลังงาน-8%
-  // R2: โรคระบาด → เกม+9% อาหาร+8% (ใกล้กัน!) เทค-15% (supply chain)
-  // R3: วัคซีนฟื้นตัว → พลังงาน+10% เทค+9% กองทุน+8% (3ตัวใกล้!) เกม-12%
-  // R4: สงคราม → พลังงาน+11% เกม+3% อาหาร-18% (ต้นทุนขนส่งหนัก!)
-  // R5: AI บูม → เทค+11% อาหาร+10% (ใกล้!) เกม-15% กองทุน-8%
-  // R6: ขึ้นดอกเบี้ย → อาหาร+14% พลังงาน+11% (ใกล้!) เทค-18% (crash!)
-  robosnack:   [  5,    8,   -3,  -18,   10,   14],
-  zoomzoom:    [  6,  -15,    9,   -5,   11,  -18],
-  megafun:     [  4,    9,  -12,    3,  -15,   -8],
-  greenpower:  [ -8,   -5,   10,   11,   -3,   11],
-  piggybank:   [  2,    2,    2,    2,    2,    3],
-  safegold:    [  3,    4,    8,   -5,   -8,    9],
+  // R1: มือถือรุ่นใหม่ → เทค+8% อาหาร+6% เกม+5% (ใกล้กัน!) พลังงาน-7%
+  // R2: โรคระบาด → เกม+12% อาหาร+11% (ใกล้กัน!) เทค-17% (supply chain)
+  // R3: วัคซีนฟื้นตัว → พลังงาน+12% เทค+11% กองทุน+9% (3ตัวใกล้!) เกม-13%
+  // R4: สงคราม → พลังงาน+15% เกม+4% อาหาร-17% (ต้นทุนขนส่งหนัก!)
+  // R5: AI บูม → เทค+15% อาหาร+13% (ใกล้!) เกม-16% กองทุน-6%
+  // R6: ขึ้นดอกเบี้ย → อาหาร+16% พลังงาน+13% (ใกล้!) เทค-20% (crash! 😱)
+  robosnack:   [  6,   11,   -3,  -17,   13,   16],
+  zoomzoom:    [  8,  -17,   11,   -4,   15,  -20],
+  megafun:     [  5,   12,  -13,    4,  -16,   -6],
+  greenpower:  [ -7,   -4,   12,   15,   -2,   13],
+  piggybank:   [  1,    1,    1,    1,    1,    2],
+  safegold:    [  4,    5,    9,   -4,   -6,   10],
 };
 
 // --- Golden Deals ---
