@@ -1,7 +1,7 @@
 // FILE: components/display/FinalPodium.tsx — Final step ② Podium reveal (3→2→1)
-// VERSION: B19-v3 — slower per-name reveal (PODIUM_REVEAL constants, ~3.5–4s gaps so MC announces each); drumroll→name per place
-// LAST MODIFIED: 13 Jun 2026
-// HISTORY: B16d created — split from FinalDisplay; reveal 3→2→1 + champion glow + confetti + SFX; settled on revisit | B18 compareForRank | B19 staged reveal + Card→renderCard (no remount) + tunable timeline
+// VERSION: B21 — h-screen → h-full (fill FitStage box)
+// LAST MODIFIED: 10 Jul 2026
+// HISTORY: B16d created — split from FinalDisplay; reveal 3→2→1 + champion glow + confetti + SFX; settled on revisit | B18 compareForRank | B19 staged reveal + Card→renderCard (no remount) + tunable timeline | B21 FitStage fit-to-screen (h-full)
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -95,7 +95,7 @@ export default function FinalPodium({ players, animate, playSfx }: FinalPodiumPr
   };
 
   return (
-    <div className="relative h-screen flex flex-col items-center justify-center px-8 overflow-hidden">
+    <div className="relative h-full flex flex-col items-center justify-center px-8 overflow-hidden">
       <style>{`
         @keyframes mwRise { from { opacity:0; transform:translateY(60px) } to { opacity:1; transform:translateY(0) } }
         @keyframes mwGrow { from { transform:scaleY(0) } to { transform:scaleY(1) } }

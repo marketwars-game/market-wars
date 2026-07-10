@@ -1,7 +1,7 @@
 // FILE: components/display/FinalAwards.tsx — Final step ③ Special Awards + Dr.Bow twist
-// VERSION: B16d-v1 — Top Researcher pills → Smart Diversifier twist (egg/basket) last
-// LAST MODIFIED: 11 Jun 2026
-// HISTORY: B16d created — split from FinalDisplay; staggered reveal + twist confetti; bilingual TH·EN
+// VERSION: B21 — h-screen → h-full (fill FitStage box)
+// LAST MODIFIED: 10 Jul 2026
+// HISTORY: B16d created — split from FinalDisplay; staggered reveal + twist confetti; bilingual TH·EN | B21 FitStage fit-to-screen (h-full)
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -39,7 +39,7 @@ export default function FinalAwards({ players, animate, playSfx }: FinalAwardsPr
     : {};
 
   return (
-    <div className="relative h-screen flex flex-col items-center justify-start px-10 pt-16 overflow-hidden">
+    <div className="relative h-full flex flex-col items-center justify-start px-10 pt-16 overflow-hidden">
       <style>{`@keyframes mwAwIn { from { opacity:0; transform:translateY(28px) scale(.96) } to { opacity:1; transform:translateY(0) scale(1) } }`}</style>
       <ConfettiCanvas fire={doAnim} nonce={twistFired} scale={0.55} />
 

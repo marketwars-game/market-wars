@@ -1,17 +1,17 @@
 // FILE: components/display/LobbyDisplay.tsx — Display lobby (QR + joined players)
-// VERSION: B19-v2 — AnimatedBackdrop (Network+Grid) replaces static radial glows
-// LAST MODIFIED: 13 Jun 2026
-// HISTORY: B16a-BATCH0 extracted inline lobby from display/page.tsx (qrOpen state moved local) | B19-BATCH2 AnimatedBackdrop
+// VERSION: B21 — drop zoom prop; fill FitStage box (h-screen style={{zoom}} → w-full h-full)
+// LAST MODIFIED: 10 Jul 2026
+// HISTORY: B16a-BATCH0 extracted inline lobby from display/page.tsx (qrOpen state moved local) | B19-BATCH2 AnimatedBackdrop | B21 FitStage fit-to-screen (retire CSS zoom)
 'use client';
 
 import { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import AnimatedBackdrop from '@/components/display/AnimatedBackdrop';
 
-export default function LobbyDisplay({ players, roomId, joinUrl, zoom }: { players: any[]; roomId: string; joinUrl: string; zoom: number }) {
+export default function LobbyDisplay({ players, roomId, joinUrl }: { players: any[]; roomId: string; joinUrl: string }) {
   const [qrOpen, setQrOpen] = useState(false);
   return (
-    <div className="h-screen bg-[#0D1117] text-white overflow-hidden relative" style={{ zoom }}>
+    <div className="w-full h-full bg-[#0D1117] text-white overflow-hidden relative">
       <AnimatedBackdrop accent="#00FFB2" accent2="#00D4FF" />
 
       <div className="relative z-10 h-full flex items-center">

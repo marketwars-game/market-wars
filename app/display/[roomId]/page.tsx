@@ -1,7 +1,7 @@
 // FILE: app/display/[roomId]/page.tsx — Display screen (shell)
-// VERSION: B16d-v2+perf-v1+B19-v5 — leaderboard rankup sync + event reveal SFX + seenFinal !loading guard (refresh re-animates); auto-replay restored (real fix in FinalPodium); ?debug=1 overlay unchanged
-// LAST MODIFIED: 13 Jun 2026
-// HISTORY: B1 created | B3 phase sync + timer | B4 submitted count | B5 event_result + results UI | B6 leaderboard | B7 final phase | B8 research quiz | B8R refactor | B9 FightDisplay | B12-UX dashboard layout | B13-BATCH3 ChanceCardDisplay + throttle | B15-v1 projector font+color polish | B15-v2 CSS zoom + header redesign + lobby redesign + QR popup + market_open dramatic | B16a-BATCH0 refactor shell (6 phase components) | B16a-BATCH1 sound: SoundGate + useDisplaySound wiring | B16b-BATCH1 invest live wall props | B16c leaderboard+results spectator SFX | B16d final 4-step + research_reveal sfx | perf-v1 debug overlay | B19 rankup SFX sync to leaderboard hold + event reveal SFX + seenFinal load guard
+// VERSION: B16d-v2+perf-v1+B19-v5+B21 — B21: FitStage fit-to-screen (retire CSS zoom; scale = min(w/1280, h/720), wrap every phase block in fixed 1280x720 letterbox canvas); prior: leaderboard rankup sync + event reveal SFX + seenFinal !loading guard
+// LAST MODIFIED: 10 Jul 2026
+// HISTORY: B1 created | B3 phase sync + timer | B4 submitted count | B5 event_result + results UI | B6 leaderboard | B7 final phase | B8 research quiz | B8R refactor | B9 FightDisplay | B12-UX dashboard layout | B13-BATCH3 ChanceCardDisplay + throttle | B15-v1 projector font+color polish | B15-v2 CSS zoom + header redesign + lobby redesign + QR popup + market_open dramatic | B16a-BATCH0 refactor shell (6 phase components) | B16a-BATCH1 sound: SoundGate + useDisplaySound wiring | B16b-BATCH1 invest live wall props | B16c leaderboard+results spectator SFX | B16d final 4-step + research_reveal sfx | perf-v1 debug overlay | B19 rankup SFX sync to leaderboard hold + event reveal SFX + seenFinal load guard | B21 FitStage fit-to-screen wrap (h/720 scale)
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
@@ -25,6 +25,7 @@ import MarketOpenDisplay from '@/components/display/MarketOpenDisplay';
 import InvestDisplay from '@/components/display/InvestDisplay';
 import ResultsDisplay from '@/components/display/ResultsDisplay';
 import SoundGate from '@/components/display/SoundGate';
+import FitStage from '@/components/display/FitStage';
 
 export default function DisplayScreen() {
   const params = useParams();
@@ -72,7 +73,7 @@ export default function DisplayScreen() {
 
   // B15-v2: CSS zoom — client-side only, update on resize
   useEffect(() => {
-    const updateZoom = () => setZoom(Math.min(window.innerWidth / 1280, 1.5));
+    const updateZoom = () => setZoom(Math.min(window.innerWidth / 1280, window.innerHeight / 720));
     updateZoom();
     window.addEventListener('resize', updateZoom);
     return () => window.removeEventListener('resize', updateZoom);
@@ -236,20 +237,23 @@ export default function DisplayScreen() {
 
   let content;
   if (phase === 'lobby') {
-    content = <LobbyDisplay players={players} roomId={roomId} joinUrl={joinUrl} zoom={zoom} />;
+    content = <FitStage scale={zoom}><LobbyDisplay players={players} roomId={roomId} joinUrl={joinUrl} /></FitStage>;
   } else if (phase === 'final' || phase === 'final_podium' || phase === 'final_awards' || phase === 'final_ranking') {
     content = (
-      <div className="h-screen bg-[#0D1117] text-white" style={{ zoom }}>
-        <FinalDisplay key={`final-${replayTick}`} players={players} phase={phase as any} animate={finalAnimate} playSfx={playSfx} />
-      </div>
+      <FitStage scale={zoom}>
+        <div className="w-full h-full bg-[#0D1117] text-white">
+          <FinalDisplay key={`final-${replayTick}`} players={players} phase={phase as any} animate={finalAnimate} playSfx={playSfx} />
+        </div>
+      </FitStage>
     );
   } else if (phase === 'year_intro') {
-    content = <YearIntroDisplay round={round} zoom={zoom} />;
+    content = <FitStage scale={zoom}><YearIntroDisplay round={round} /></FitStage>;
   } else if (phase === 'market_open') {
-    content = <MarketOpenDisplay round={round} zoom={zoom} />;
+    content = <FitStage scale={zoom}><MarketOpenDisplay round={round} /></FitStage>;
   } else {
     content = (
-      <div className="h-screen bg-[#0D1117] text-white flex flex-col overflow-hidden" style={{ zoom }}>
+      <FitStage scale={zoom}>
+        <div className="w-full h-full bg-[#0D1117] text-white flex flex-col overflow-hidden">
         <DisplayHeader steps={stepProgress} round={round} />
         <div className="flex-1 flex flex-col items-center justify-center overflow-hidden px-6 py-3">
 
@@ -284,7 +288,8 @@ export default function DisplayScreen() {
 
           {phase === 'leaderboard' && <LeaderboardDisplay players={players} round={round} />}
         </div>
-      </div>
+        </div>
+      </FitStage>
     );
   }
 

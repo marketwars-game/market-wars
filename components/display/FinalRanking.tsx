@@ -1,6 +1,6 @@
 // FILE: components/display/FinalRanking.tsx — Final step ④ Full ranking + teaching overview
-// VERSION: B20-v3 — inline benchmark "ghosts" (dynamic from RETURN_TABLE) + scale-to-fit height + Top-3/winner glow
-// LAST MODIFIED: 13 Jun 2026
+// VERSION: B21 — h-screen → h-full (fill FitStage box; scale-to-fit measures px within box, composes with FitStage)
+// LAST MODIFIED: 10 Jul 2026
 // HISTORY: B16d created — split from FinalDisplay; show all players for parents/photos | B16d-v2 responsive cols | B18 compareForRank | B20-v1 teaching redesign (cell green/red tint, header stats bar, strategy classify from portfolio_used, insight ranges, 🏅 diversifier badge, 2-line cards, removed photo wording) | B20-v2 fix insight text color | B20-v3 replace min–max insight with inline benchmark ghosts computed dynamically from RETURN_TABLE+COMPANIES (best/worst all-in, savings, equal-weight; ranked among real players; blue dashed, no rank #); scale-to-fit height so all N players always fit (useEffect measure + transform, independent of display zoom); Top-3 medal-colored glow + winner green glow override
 'use client';
 
@@ -164,7 +164,7 @@ export default function FinalRanking({ players, animate }: FinalRankingProps) {
   let rank = 0; // เลขอันดับ — นับเฉพาะผู้เล่นจริง (ghost ไม่กินเลข)
 
   return (
-    <div className="relative h-screen flex flex-col px-6 pt-12 pb-6 overflow-hidden">
+    <div className="relative h-full flex flex-col px-6 pt-12 pb-6 overflow-hidden">
       <style>{`@keyframes mwCellIn { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:translateY(0) } }`}</style>
 
       {/* header: title + teaching stats บรรทัดเดียว */}

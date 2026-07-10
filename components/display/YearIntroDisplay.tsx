@@ -1,16 +1,16 @@
 // FILE: components/display/YearIntroDisplay.tsx — Display year-intro splash
-// VERSION: B19-v2 — AnimatedBackdrop (Network+Grid) replaces static radial glows; keeps ghost year number
-// LAST MODIFIED: 13 Jun 2026
-// HISTORY: B16a-BATCH0 extracted inline year_intro from display/page.tsx | B19-BATCH2 AnimatedBackdrop
+// VERSION: B21 — drop zoom prop; fill FitStage box (h-screen style={{zoom}} → w-full h-full)
+// LAST MODIFIED: 10 Jul 2026
+// HISTORY: B16a-BATCH0 extracted inline year_intro from display/page.tsx | B19-BATCH2 AnimatedBackdrop | B21 FitStage fit-to-screen (retire CSS zoom)
 'use client';
 
 import { STEP_GROUPS, YEAR_INTRO_TEXT } from '@/lib/constants';
 import AnimatedBackdrop from '@/components/display/AnimatedBackdrop';
 
-export default function YearIntroDisplay({ round, zoom }: { round: number; zoom: number }) {
+export default function YearIntroDisplay({ round }: { round: number }) {
   const introText = YEAR_INTRO_TEXT[round] || { title: `ปีที่ ${round} เริ่มแล้ว!`, subtitle: 'เตรียมตัวให้พร้อม' };
   return (
-    <div className="h-screen bg-[#0D1117] text-white flex flex-col items-center justify-center relative overflow-hidden" style={{ zoom }}>
+    <div className="w-full h-full bg-[#0D1117] text-white flex flex-col items-center justify-center relative overflow-hidden">
       <AnimatedBackdrop accent="#00FFB2" accent2="#00D4FF" />
       <div className="absolute font-black leading-none select-none pointer-events-none" style={{ fontSize: '320px', color: 'rgba(0,255,178,0.05)', top: '50%', left: '50%', transform: 'translate(-50%,-55%)' }}>{round}</div>
       <div className="text-center z-10">

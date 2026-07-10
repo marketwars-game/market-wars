@@ -1,15 +1,15 @@
 // FILE: components/display/MarketOpenDisplay.tsx — Display market-open splash
-// VERSION: B19-v3 — AnimatedBackdrop (gold) + chart draw-in + icon grow-and-hold (no shrink) + staggered content fade
-// LAST MODIFIED: 13 Jun 2026
-// HISTORY: B16a-BATCH0 extracted inline market_open from display/page.tsx | B19-BATCH3 backdrop + entrance animation | B19 icon grow-and-hold bigger
+// VERSION: B21 — drop zoom prop; fill FitStage box (h-screen style={{zoom}} → w-full h-full)
+// LAST MODIFIED: 10 Jul 2026
+// HISTORY: B16a-BATCH0 extracted inline market_open from display/page.tsx | B19-BATCH3 backdrop + entrance animation | B19 icon grow-and-hold bigger | B21 FitStage fit-to-screen (retire CSS zoom)
 'use client';
 
 import { TOTAL_ROUNDS } from '@/lib/constants';
 import AnimatedBackdrop from '@/components/display/AnimatedBackdrop';
 
-export default function MarketOpenDisplay({ round, zoom }: { round: number; zoom: number }) {
+export default function MarketOpenDisplay({ round }: { round: number }) {
   return (
-    <div className="h-screen bg-[#0D1117] text-white flex flex-col items-center justify-center relative overflow-hidden" style={{ zoom }}>
+    <div className="w-full h-full bg-[#0D1117] text-white flex flex-col items-center justify-center relative overflow-hidden">
       <style>{`
         @keyframes moDraw { to { stroke-dashoffset: 0; } }
         @keyframes moArea { to { opacity: 0.16; } }

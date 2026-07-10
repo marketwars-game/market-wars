@@ -1,7 +1,7 @@
 // FILE: components/display/FinalDisplay.tsx — Display Final Phase ROUTER (4 steps)
-// VERSION: B16d-v1 — split single screen → suspense / podium / awards / ranking (MC-controlled steps)
-// LAST MODIFIED: 11 Jun 2026
-// HISTORY: B7 created | B8R extracted | B11 awards | B12-UX horizontal | B13 redesign | B15 projector polish | B16d 4-step router (FinalPodium/FinalAwards/FinalRanking)
+// VERSION: B21 — FinalSuspense h-screen → h-full (fill FitStage box)
+// LAST MODIFIED: 10 Jul 2026
+// HISTORY: B7 created | B8R extracted | B11 awards | B12-UX horizontal | B13 redesign | B15 projector polish | B16d 4-step router (FinalPodium/FinalAwards/FinalRanking) | B21 FitStage fit-to-screen (h-full)
 'use client';
 
 import type { SfxKey } from '@/lib/sound';
@@ -21,7 +21,7 @@ interface FinalDisplayProps {
 // === Step ① suspense — "ใครคือแชมป์?" ค้างไว้ รอ MC กดเฉลย ===
 function FinalSuspense() {
   return (
-    <div className="relative h-screen flex flex-col items-center justify-center px-8 overflow-hidden">
+    <div className="relative h-full flex flex-col items-center justify-center px-8 overflow-hidden">
       <style>{`
         @keyframes mwPulse { 0%,100%{ transform:scale(1); opacity:.9 } 50%{ transform:scale(1.06); opacity:1 } }
         @keyframes mwBlink { 0%,100%{ opacity:.25 } 50%{ opacity:1 } }
