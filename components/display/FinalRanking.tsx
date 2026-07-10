@@ -1,7 +1,7 @@
 // FILE: components/display/FinalRanking.tsx — Final step ④ Full ranking + teaching overview
-// VERSION: B23-v1 — cut best/worst all-in benchmark ghosts (best ghost crowded out the real #1 under v6 returns); keep ฝากเงินเฉยๆ + กระจายเท่ากัน (the two lines that teach B23's message)
+// VERSION: B23-v2 — ghost = "เด็กสมมติ" ได้โบนัสเฉลี่ยห้อง (roomAvgFlows จาก round_returns) ใช้ sort ตำแหน่ง; การ์ด ghost แสดงแค่ไอคอน+ชื่อ ไม่มี % (กันเลขฐานไม่ตรงกับเด็กข้างๆ)
 // LAST MODIFIED: 10 Jul 2026
-// HISTORY: B16d created — split from FinalDisplay; show all players for parents/photos | B16d-v2 responsive cols | B18 compareForRank | B20-v1 teaching redesign (cell green/red tint, header stats bar, strategy classify from portfolio_used, insight ranges, 🏅 diversifier badge, 2-line cards, removed photo wording) | B20-v2 fix insight text color | B20-v3 replace min–max insight with inline benchmark ghosts computed dynamically from RETURN_TABLE+COMPANIES (best/worst all-in, savings, equal-weight; ranked among real players; blue dashed, no rank #); scale-to-fit height so all N players always fit (useEffect measure + transform, independent of display zoom); Top-3 medal-colored glow + winner green glow override | B21 h-screen → h-full (fill FitStage box) | B23 drop best/worst all-in ghosts, keep savings + equal-weight
+// HISTORY: B16d created — split from FinalDisplay; show all players for parents/photos | B16d-v2 responsive cols | B18 compareForRank | B20-v1 teaching redesign (cell green/red tint, header stats bar, strategy classify from portfolio_used, insight ranges, 🏅 diversifier badge, 2-line cards, removed photo wording) | B20-v2 fix insight text color | B20-v3 replace min–max insight with inline benchmark ghosts computed dynamically from RETURN_TABLE+COMPANIES (best/worst all-in, savings, equal-weight; ranked among real players; blue dashed, no rank #); scale-to-fit height so all N players always fit (useEffect measure + transform, independent of display zoom); Top-3 medal-colored glow + winner green glow override | B21 h-screen → h-full (fill FitStage box) | B23-v1 drop best/worst all-in ghosts, keep savings + equal-weight | B23-v2 ghost gets room-average bonus flows for fair position + name-only card
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -47,16 +47,44 @@ function classifyStrategy(player: any): Strat {
 // ---- Benchmarks — คำนวณ dynamic จาก RETURN_TABLE + COMPANIES (ตลาดล้วน ไม่รวมการ์ด/ควิซ) ----
 interface Bench { id: string; label: string; icon: string; money: number; }
 
-function compound(arr: number[]): number {
-  let m = STARTING_MONEY;
-  for (const r of arr) m *= (1 + (Number(r) || 0) / 100);
-  return m;
-}
 function companyMeta(id: string) {
   const c = (COMPANIES as any[]).find((x) => x.id === id);
   return { name: c?.name ?? id, icon: c?.icon ?? '📊' };
 }
-function computeBenchmarks(): Bench[] {
+// ✅ B23-v2: flow เฉลี่ยห้องต่อรอบ (quiz bonus + chance card) จาก round_returns
+// flow(r) = money_before(r) − money_after(r−1) — สูตร verified กับข้อมูลจริง S2 (ตรงถึงหลักบาท)
+function roomAvgFlows(players: any[], rounds: number): number[] {
+  const sums = new Array(rounds).fill(0);
+  const counts = new Array(rounds).fill(0);
+  for (const p of players || []) {
+    const rr = p?.round_returns || {};
+    for (let r = 1; r <= rounds; r++) {
+      const cur = rr[String(r)];
+      if (!cur) continue;
+      const mb = parseFloat(cur.money_before);
+      if (isNaN(mb)) continue;
+      let prevAfter = STARTING_MONEY;
+      if (r > 1) {
+        const prev = rr[String(r - 1)];
+        if (!prev) continue;
+        prevAfter = parseFloat(prev.money_after);
+        if (isNaN(prevAfter)) continue;
+      }
+      sums[r - 1] += mb - prevAfter;
+      counts[r - 1]++;
+    }
+  }
+  return sums.map((s, i) => (counts[i] ? s / counts[i] : 0)); // ห้องไม่มีข้อมูล → flow 0 = compound ตลาดล้วน (fallback)
+}
+function compoundWithFlows(arr: number[], flows: number[]): number {
+  let m = STARTING_MONEY;
+  for (let r = 0; r < arr.length; r++) {
+    m += flows[r] || 0;
+    m *= (1 + (Number(arr[r]) || 0) / 100);
+  }
+  return m;
+}
+function computeBenchmarks(players: any[]): Bench[] {
   const table = (RETURN_TABLE || {}) as Record<string, number[]>;
   const ids = Object.keys(table);
   if (!ids.length) return [];
@@ -67,18 +95,22 @@ function computeBenchmarks(): Bench[] {
   for (let r = 0; r < rounds; r++) {
     eqRounds.push(ids.reduce((s, id) => s + (Number(table[id][r]) || 0), 0) / ids.length);
   }
-  const equalMoney = compound(eqRounds);
 
-  // ✅ B23: ตัด ghost "ทุ่มX (ท็อป)" + "ทุ่มX (แย่)" ออก — ghost ท็อป (v6: ☀️ ฿12,730)
+  // ✅ B23-v2: ghost = "เด็กสมมติ" ได้ quiz/chance เท่าค่าเฉลี่ยห้อง → เทียบตำแหน่งกับเด็กจริงแฟร์
+  // (เดิม compound ตลาดล้วน → แพ้เด็กเกือบทั้งห้องเพราะไม่มีโบนัส = สอนไม่ได้)
+  // เงินนี้ใช้ sort ตำแหน่งอย่างเดียว — การ์ด ghost ไม่แสดงตัวเลขใดๆ (Decision B23)
+  const flows = roomAvgFlows(players, rounds);
+
+  // ✅ B23: ตัด ghost "ทุ่มX (ท็อป)" + "ทุ่มX (แย่)" ออก — ghost ท็อป
   // ไปเบียดหัวตารางแย่งซีนที่ 1 ตัวจริง · เหลือ 2 เส้นที่สอนตรง message: กระจาย > ฝากเงิน
   const out: Bench[] = [];
 
   if (table['piggybank']) {
     const pm = companyMeta('piggybank');
-    out.push({ id: 'bm_savings', label: 'ฝากเงินเฉยๆ', icon: pm.icon, money: compound(table['piggybank']) });
+    out.push({ id: 'bm_savings', label: 'ฝากเงินเฉยๆ', icon: pm.icon, money: compoundWithFlows(table['piggybank'], flows) });
   }
 
-  out.push({ id: 'bm_equal', label: 'กระจายเท่ากัน', icon: '🧺', money: equalMoney });
+  out.push({ id: 'bm_equal', label: 'กระจายเท่ากัน', icon: '🧺', money: compoundWithFlows(eqRounds, flows) });
 
   return out;
 }
@@ -114,7 +146,7 @@ export default function FinalRanking({ players, animate }: FinalRankingProps) {
     } catch { winnerIds = []; }
 
     // merge players + benchmark ghosts, sort by money desc (players pre-sorted → stable within ties)
-    const benches = computeBenchmarks();
+    const benches = computeBenchmarks(sortedPlayers);
     const combined: any[] = [
       ...sortedPlayers.map((p) => ({ kind: 'p', money: parseFloat(p.money) || 0, p })),
       ...benches.map((b) => ({ kind: 'b', money: b.money, b })),
@@ -177,22 +209,15 @@ export default function FinalRanking({ players, animate }: FinalRankingProps) {
           style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, transform: `scale(${scale})`, transformOrigin: 'top center' }}>
           {combined.map((item, idx) => {
             // ---- benchmark ghost ----
+            // ✅ B23-v2: แสดงแค่ไอคอน+ชื่อ — ไม่มี % (เงิน ghost รวมโบนัสเฉลี่ยห้อง ใช้ sort ตำแหน่งเท่านั้น
+            // ถ้าโชว์ % จะฐานไม่ตรงกับ % ของเด็กข้างๆ → ตารางดูเรียงผิด) ตำแหน่งเล่าเรื่องเอง ดร.โบว์อธิบายปาก
             if (item.kind === 'b') {
               const b: Bench = item.b;
-              const bRet = (b.money - STARTING_MONEY) / STARTING_MONEY * 100;
               return (
-                <div key={b.id} className="rounded-lg px-3 py-2 flex flex-col justify-center gap-0.5"
+                <div key={b.id} className="rounded-lg px-3 py-2 flex items-center gap-2 min-w-0"
                   style={{ border: '2px dashed #7DD3FC', background: 'rgba(125,211,252,0.08)' }}>
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="flex-shrink-0" style={{ fontSize: '1rem' }}>{b.icon}</span>
-                    <span className="flex-1 min-w-0 font-bold truncate" style={{ fontSize: '1.05rem', color: '#BAE6FD' }}>{b.label}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#7DD3FC', letterSpacing: '0.3px' }}>ถ้าเล่นแบบนี้</span>
-                    <span className="font-bold" style={{ fontSize: '0.95rem', color: bRet >= 0 ? '#22c55e' : '#ef4444' }}>
-                      {bRet >= 0 ? '▲' : '▼'} {fmtPct(bRet)}
-                    </span>
-                  </div>
+                  <span className="flex-shrink-0" style={{ fontSize: '1rem' }}>{b.icon}</span>
+                  <span className="flex-1 min-w-0 font-bold truncate" style={{ fontSize: '1.05rem', color: '#BAE6FD' }}>{b.label}</span>
                 </div>
               );
             }
