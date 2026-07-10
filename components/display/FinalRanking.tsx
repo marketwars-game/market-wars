@@ -1,7 +1,7 @@
 // FILE: components/display/FinalRanking.tsx — Final step ④ Full ranking + teaching overview
-// VERSION: B21 — h-screen → h-full (fill FitStage box; scale-to-fit measures px within box, composes with FitStage)
+// VERSION: B23-v1 — cut best/worst all-in benchmark ghosts (best ghost crowded out the real #1 under v6 returns); keep ฝากเงินเฉยๆ + กระจายเท่ากัน (the two lines that teach B23's message)
 // LAST MODIFIED: 10 Jul 2026
-// HISTORY: B16d created — split from FinalDisplay; show all players for parents/photos | B16d-v2 responsive cols | B18 compareForRank | B20-v1 teaching redesign (cell green/red tint, header stats bar, strategy classify from portfolio_used, insight ranges, 🏅 diversifier badge, 2-line cards, removed photo wording) | B20-v2 fix insight text color | B20-v3 replace min–max insight with inline benchmark ghosts computed dynamically from RETURN_TABLE+COMPANIES (best/worst all-in, savings, equal-weight; ranked among real players; blue dashed, no rank #); scale-to-fit height so all N players always fit (useEffect measure + transform, independent of display zoom); Top-3 medal-colored glow + winner green glow override
+// HISTORY: B16d created — split from FinalDisplay; show all players for parents/photos | B16d-v2 responsive cols | B18 compareForRank | B20-v1 teaching redesign (cell green/red tint, header stats bar, strategy classify from portfolio_used, insight ranges, 🏅 diversifier badge, 2-line cards, removed photo wording) | B20-v2 fix insight text color | B20-v3 replace min–max insight with inline benchmark ghosts computed dynamically from RETURN_TABLE+COMPANIES (best/worst all-in, savings, equal-weight; ranked among real players; blue dashed, no rank #); scale-to-fit height so all N players always fit (useEffect measure + transform, independent of display zoom); Top-3 medal-colored glow + winner green glow override | B21 h-screen → h-full (fill FitStage box) | B23 drop best/worst all-in ghosts, keep savings + equal-weight
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -63,30 +63,22 @@ function computeBenchmarks(): Bench[] {
   const rounds = table[ids[0]]?.length ?? 0;
   if (!rounds) return [];
 
-  const allin = ids.map((id) => ({ id, money: compound(table[id]) }));
-  const best = allin.reduce((a, b) => (b.money > a.money ? b : a));
-  const worst = allin.reduce((a, b) => (b.money < a.money ? b : a));
-
   const eqRounds: number[] = [];
   for (let r = 0; r < rounds; r++) {
     eqRounds.push(ids.reduce((s, id) => s + (Number(table[id][r]) || 0), 0) / ids.length);
   }
   const equalMoney = compound(eqRounds);
 
+  // ✅ B23: ตัด ghost "ทุ่มX (ท็อป)" + "ทุ่มX (แย่)" ออก — ghost ท็อป (v6: ☀️ ฿12,730)
+  // ไปเบียดหัวตารางแย่งซีนที่ 1 ตัวจริง · เหลือ 2 เส้นที่สอนตรง message: กระจาย > ฝากเงิน
   const out: Bench[] = [];
-  const bm = companyMeta(best.id);
-  out.push({ id: 'bm_best', label: `ทุ่ม${bm.name} (ท็อป)`, icon: bm.icon, money: best.money });
 
-  // ฝากเงินเฉยๆ = ออมทรัพย์ (ถ้ามี sector piggybank และไม่ซ้ำกับ best/worst)
-  if (table['piggybank'] && best.id !== 'piggybank' && worst.id !== 'piggybank') {
+  if (table['piggybank']) {
     const pm = companyMeta('piggybank');
     out.push({ id: 'bm_savings', label: 'ฝากเงินเฉยๆ', icon: pm.icon, money: compound(table['piggybank']) });
   }
 
   out.push({ id: 'bm_equal', label: 'กระจายเท่ากัน', icon: '🧺', money: equalMoney });
-
-  const wm = companyMeta(worst.id);
-  out.push({ id: 'bm_worst', label: `ทุ่ม${wm.name} (แย่)`, icon: wm.icon, money: worst.money });
 
   return out;
 }
