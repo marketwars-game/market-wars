@@ -1,7 +1,7 @@
 // FILE: app/play/[roomId]/page.tsx — Player game screen
-// VERSION: B22b-v1 — final gating: มือถือค้างจอลุ้น (FinalHold) จนกว่า MC จะกดถึง final_ranking ค่อยเผยอันดับตัวเอง
+// VERSION: B24-v1 — hide player header (name/money/refresh) at final_ranking so share-card screenshot is clean
 // LAST MODIFIED: 10 Jul 2026
-// HISTORY: B2 created | B3 phase sync + timer | B4 InvestmentPanel | B5 event_result + ResultsPanel | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components | B9 MarketFight | B12-UX mini step + year_intro + market_open | B13-BATCH3 ChanceCard + Realtime optimize + cut news/rebalance/attack | B16d final_* variants → FinalView | perf-v1 trim+jitter list fetch + debug badge | B18 quiz speed capture | B18-v2 select quiz fields for cascade | B22b FinalHold gating (reveal at final_ranking only)
+// HISTORY: B2 created | B3 phase sync + timer | B4 InvestmentPanel | B5 event_result + ResultsPanel | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components | B9 MarketFight | B12-UX mini step + year_intro + market_open | B13-BATCH3 ChanceCard + Realtime optimize + cut news/rebalance/attack | B16d final_* variants → FinalView | perf-v1 trim+jitter list fetch + debug badge | B18 quiz speed capture | B18-v2 select quiz fields for cascade | B22b FinalHold gating (reveal at final_ranking only) | B24 hide header at final_ranking (clean share-card)
 'use client';
 
 import { useEffect, useState, useRef, Suspense } from 'react';
@@ -260,7 +260,8 @@ function PlayerContent() {
         }}
       />
 
-      {/* Player header — name + year badge + money */}
+      {/* Player header — name + year badge + money — ✅ B24: ซ่อนตอน final_ranking (การ์ด share มีชื่อ/เงิน/อันดับครบแล้ว) */}
+      {!finalRevealed && (
       <div className="flex items-center justify-between mb-1">
         <span className="text-[#00FFB2] font-bold text-sm">{player.name}</span>
         {phase !== 'lobby' && !isFinal && (
@@ -280,6 +281,7 @@ function PlayerContent() {
           </button>
         </div>
       </div>
+      )}
 
       {/* Mini step indicator — 6 dots + current label */}
       {phase !== 'lobby' && !isFinal && phase !== 'year_intro' && (
