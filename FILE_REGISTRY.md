@@ -1,10 +1,10 @@
 # Market Wars — File Registry
 
 **Location:** วางที่ root ของ repo (`/FILE_REGISTRY.md`) — version control โดย git
-**Last Updated:** B23 Done (Balance pass — RETURN_TABLE v6 · quiz 100/50/0 · chance cards หารสอง · FinalRanking ghost fairness) — 10 Jul 2026 · Season 3 dev · (Season 2 CLOSED, 74 players)
+**Last Updated:** B24 Done (Player final share-card — FinalView redesign · NEW lib/event-info.ts · play page header hide at final_ranking) — 11 Jul 2026 · Season 3 dev · (Season 2 CLOSED, 74 players)
 **Repo:** https://github.com/marketwars-game/market-wars
 **Default branch:** `main`
-**Latest stable tag:** `B23-stable` (newest — balance pass + registry) · `B22b-stable` = B22 + B22b · `B22-stable` = sparkline only · `B21-stable` · `B20-stable` = Season 2 final · `Season1-stable` = `B15-stable`
+**Latest stable tag:** `B24-stable` (newest — Player share-card + registry) · `B23-stable` = balance pass · `B22b-stable` = B22 + B22b · `B22-stable` = sparkline only · `B21-stable` · `B20-stable` = Season 2 final · `Season1-stable` = `B15-stable`
 
 ---
 
@@ -44,7 +44,7 @@ https://raw.githubusercontent.com/marketwars-game/market-wars/Season1-stable/<pa
 |------|--------|---------|
 | Root Layout | Next.js root layout — wrapper หลักของทุกหน้า | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/layout.tsx |
 | Landing / Join | หน้าแรก เลือก join / create | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/page.tsx |
-| Player Game | จอเด็กเล่น (มือถือ) — ✅ B22b: final gating (`finalRevealed = phase === 'final_ranking'`) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/play/[roomId]/page.tsx |
+| Player Game | จอเด็กเล่น (มือถือ) — ✅ B24-v1: ซ่อน header (ชื่อ/เงิน/↻) ตอน `final_ranking` · B22b final gating (`finalRevealed = phase === 'final_ranking'`) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/play/[roomId]/page.tsx |
 | MC Entry | หน้า MC เลือกห้อง / สร้างห้อง | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/mc/page.tsx |
 | MC Control | จอ MC ควบคุมเกมในห้อง | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/mc/[roomId]/page.tsx |
 | Display (Projector) | จอแสดงสาธารณะ (✅ B21 — ห่อทุก phase block ด้วย FitStage; zoom = min(w/1280, h/720)) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/display/[roomId]/page.tsx |
@@ -81,7 +81,7 @@ https://raw.githubusercontent.com/marketwars-game/market-wars/Season1-stable/<pa
 | ResearchQuiz | ตอบ quiz (✅ B17 bilingual question/choices via `<Bi>`) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/player/ResearchQuiz.tsx |
 | ChanceCard | เปิดการ์ดโชคชะตา (✅ B17 bilingual card.text via `<Bi>`) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/player/ChanceCard.tsx |
 | LeaderboardView | อันดับ + ตัวเอง | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/player/LeaderboardView.tsx |
-| FinalView | สรุป + รางวัล (co-winners) — แสดงเฉพาะ phase `final_ranking` | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/player/FinalView.tsx |
+| FinalView | ✅ B24 — **share-card**: branding frame (MARKET WARS wordmark + Dime! Kids Camp · Season 3) · เหรียญ/อันดับ · award badges · **เส้นทางเงิน 6 ปี** (money_after เขียว/แดง/เทารายปี) · chips quiz/chance · footer `EVENT_INFO.venue · date` · AnimatedBackdrop · TOP5 ใต้ fold · แสดงเฉพาะ `final_ranking` | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/player/FinalView.tsx |
 | FinalHold | ✅ B22b — NEW จอลุ้นบนมือถือ (`final` / `final_podium` / `final_awards`) "👀 ดูจอใหญ่!" ไม่เผยเงิน/อันดับ | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/player/FinalHold.tsx |
 
 ---
@@ -94,7 +94,7 @@ https://raw.githubusercontent.com/marketwars-game/market-wars/Season1-stable/<pa
 | EventDisplay | Event reveal + Result + Golden Deal (✅ B22 — event_result: sparkline สะสมต่อ sector, แกน Y ร่วม, แกน X ล็อก 0..6, เส้นเขียว/แดงรายปี; flag `CHART_MODE`) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/EventDisplay.tsx |
 | ChanceCardDisplay | สรุปการ์ดโชคชะตา (→ LiveNameBoard) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/ChanceCardDisplay.tsx |
 | LeaderboardDisplay | Podium + ranking | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/LeaderboardDisplay.tsx |
-| AnimatedBackdrop | ✅ B19 — shared backdrop (Network particle canvas + scrolling grid + glow + vignette); props `accent/accent2/vignette/density`; ใช้ใน Lobby/YearIntro/MarketOpen/Event | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/AnimatedBackdrop.tsx |
+| AnimatedBackdrop | ✅ B19 — shared backdrop (Network particle canvas + scrolling grid + glow + vignette); props `accent/accent2/vignette/density`; ใช้ใน Lobby/YearIntro/MarketOpen/Event · ✅ B24 reuse ใน Player FinalView (density 14) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/AnimatedBackdrop.tsx |
 | FinalDisplay | สรุปจบเกม + awards | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/FinalDisplay.tsx |
 | QuizSpeedWall | ✅ B18 — speed name-wall (ตอบถูกครบ 2 ข้อ เรียงเร็วสุด, cascade) บน research_reveal | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/QuizSpeedWall.tsx |
 | FitStage | ✅ B21 — fixed 1280×720 canvas scale-to-fit (letterbox กลางจอ); ห่อทุก phase block แทน CSS zoom (`STAGE_W/STAGE_H` export) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/FitStage.tsx |
@@ -127,6 +127,7 @@ https://raw.githubusercontent.com/marketwars-game/market-wars/Season1-stable/<pa
 | awards | calculateAwards, Quiz Master multi-winner | https://raw.githubusercontent.com/marketwars-game/market-wars/main/lib/awards.ts |
 | sound | registry 18 assets + PHASE_BGM map | https://raw.githubusercontent.com/marketwars-game/market-wars/main/lib/sound.ts |
 | ranking | ✅ B18 — comparator กลาง: `compareForRank` (money→quiz→speed→id) + `compareQuizMaster` + `speedKey` | https://raw.githubusercontent.com/marketwars-game/market-wars/main/lib/ranking.ts |
+| event-info | ✅ B24 — NEW `EVENT_INFO {program, season, venue, date}` — branding ของการ์ดจบ (FinalView) · แก้ season/สถานที่/วันที่ครั้งหน้าที่ไฟล์นี้ไฟล์เดียว | https://raw.githubusercontent.com/marketwars-game/market-wars/main/lib/event-info.ts |
 
 ---
 
