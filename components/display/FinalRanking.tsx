@@ -1,7 +1,7 @@
 // FILE: components/display/FinalRanking.tsx — Final step ④ Full ranking + teaching overview
-// VERSION: B23-v2 — ghost = "เด็กสมมติ" ได้โบนัสเฉลี่ยห้อง (roomAvgFlows จาก round_returns) ใช้ sort ตำแหน่ง; การ์ด ghost แสดงแค่ไอคอน+ชื่อ ไม่มี % (กันเลขฐานไม่ตรงกับเด็กข้างๆ)
+// VERSION: B23-v3 — fix legend ตกค้างจาก B20: "▢ กรอบฟ้า = ถ้าเล่นแบบนี้ (ตลาดล้วน ไม่รวมการ์ด/ควิซ)" → "ถ้าเล่นแบบนี้จะอยู่ประมาณนี้" (B23-v2 ghost รวมโบนัสเฉลี่ยห้องแล้ว คำเดิมผิดความหมาย)
 // LAST MODIFIED: 10 Jul 2026
-// HISTORY: B16d created — split from FinalDisplay; show all players for parents/photos | B16d-v2 responsive cols | B18 compareForRank | B20-v1 teaching redesign (cell green/red tint, header stats bar, strategy classify from portfolio_used, insight ranges, 🏅 diversifier badge, 2-line cards, removed photo wording) | B20-v2 fix insight text color | B20-v3 replace min–max insight with inline benchmark ghosts computed dynamically from RETURN_TABLE+COMPANIES (best/worst all-in, savings, equal-weight; ranked among real players; blue dashed, no rank #); scale-to-fit height so all N players always fit (useEffect measure + transform, independent of display zoom); Top-3 medal-colored glow + winner green glow override | B21 h-screen → h-full (fill FitStage box) | B23-v1 drop best/worst all-in ghosts, keep savings + equal-weight | B23-v2 ghost gets room-average bonus flows for fair position + name-only card
+// HISTORY: B16d created — split from FinalDisplay; show all players for parents/photos | B16d-v2 responsive cols | B18 compareForRank | B20-v1 teaching redesign (cell green/red tint, header stats bar, strategy classify from portfolio_used, insight ranges, 🏅 diversifier badge, 2-line cards, removed photo wording) | B20-v2 fix insight text color | B20-v3 replace min–max insight with inline benchmark ghosts computed dynamically from RETURN_TABLE+COMPANIES (best/worst all-in, savings, equal-weight; ranked among real players; blue dashed, no rank #); scale-to-fit height so all N players always fit (useEffect measure + transform, independent of display zoom); Top-3 medal-colored glow + winner green glow override | B21 h-screen → h-full (fill FitStage box) | B23-v1 drop best/worst all-in ghosts, keep savings + equal-weight | B23-v2 ghost gets room-average bonus flows for fair position + name-only card | B23-v3 fix stale legend text (ghost includes avg bonus now)
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -44,7 +44,7 @@ function classifyStrategy(player: any): Strat {
   return 'mix';
 }
 
-// ---- Benchmarks — คำนวณ dynamic จาก RETURN_TABLE + COMPANIES (ตลาดล้วน ไม่รวมการ์ด/ควิซ) ----
+// ---- Benchmarks — คำนวณ dynamic จาก RETURN_TABLE + COMPANIES + โบนัสเฉลี่ยห้อง (B23-v2) ----
 interface Bench { id: string; label: string; icon: string; money: number; }
 
 function companyMeta(id: string) {
@@ -265,7 +265,7 @@ export default function FinalRanking({ players, animate }: FinalRankingProps) {
 
       {/* legend */}
       <div className="mt-2 text-center" style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)' }}>
-        🎯 ทุ่มกระจุก · 🧺 กระจาย · 🏅 ชนะรางวัลกระจาย · <span style={{ color: '#7DD3FC' }}>▢ กรอบฟ้า = ถ้าเล่นแบบนี้ (ตลาดล้วน ไม่รวมการ์ด/ควิซ)</span>
+        🎯 ทุ่มกระจุก · 🧺 กระจาย · 🏅 ชนะรางวัลกระจาย · <span style={{ color: '#7DD3FC' }}>▢ กรอบฟ้า = ถ้าเล่นแบบนี้จะอยู่ประมาณนี้</span>
       </div>
     </div>
   );
