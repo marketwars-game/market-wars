@@ -1,10 +1,10 @@
 # Market Wars — File Registry
 
 **Location:** วางที่ root ของ repo (`/FILE_REGISTRY.md`) — version control โดย git
-**Last Updated:** B22 + B22b Done (event_result sparkline · small-roster grid fix · player final gating) — 10 Jul 2026 · Season 3 dev · (Season 2 CLOSED, 74 players)
+**Last Updated:** B23 Done (Balance pass — RETURN_TABLE v6 · quiz 100/50/0 · chance cards หารสอง · FinalRanking ghost fairness) — 10 Jul 2026 · Season 3 dev · (Season 2 CLOSED, 74 players)
 **Repo:** https://github.com/marketwars-game/market-wars
 **Default branch:** `main`
-**Latest stable tag:** `B22b-stable` (newest — B22 + B22b + registry) · `B22-stable` = sparkline only · `B21-stable` · `B20-stable` = Season 2 final · `Season1-stable` = `B15-stable`
+**Latest stable tag:** `B23-stable` (newest — balance pass + registry) · `B22b-stable` = B22 + B22b · `B22-stable` = sparkline only · `B21-stable` · `B20-stable` = Season 2 final · `Season1-stable` = `B15-stable`
 
 ---
 
@@ -101,6 +101,7 @@ https://raw.githubusercontent.com/marketwars-game/market-wars/Season1-stable/<pa
 
 > 📝 หมายเหตุ: ยังมี display component อื่นที่เพิ่มช่วง B16 (LiveNameBoard, LiveNameFeed, InvestDisplay, DisplayHeader, LobbyDisplay, YearIntroDisplay, MarketOpenDisplay, ResultsDisplay, SoundGate, FinalPodium, FinalAwards, FinalRanking, ConfettiCanvas) — ดู File Structure ใน Tech Spec v3.3
 > 📝 B21 note: Lobby/YearIntro/MarketOpen ถอด `zoom` prop แล้ว (fill FitStage box) · Final* ทั้ง 4 (FinalDisplay/FinalPodium/FinalAwards/FinalRanking) เปลี่ยน `h-screen` → `h-full`
+> 📝 B23 note: `FinalRanking.tsx` → **B23-v3** — ตัด ghost ท็อป/แย่ · ghosts รับโบนัสเฉลี่ยห้อง (`roomAvgFlows` จาก round_returns) ใช้ sort ตำแหน่ง · การ์ด ghost แสดงแค่ไอคอน+ชื่อ ไม่มี % · legend "ถ้าเล่นแบบนี้จะอยู่ประมาณนี้" — https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/display/FinalRanking.tsx
 > 📝 B22b note: `LiveNameBoard.tsx` clamp `cols = min(tier.cols, N)` + เพดานช่อง 230×150px (แก้เคสคนน้อย; N ≥ ~30 พฤติกรรมเดิม) · `FinalAwards.tsx` ตัดป้าย "พี่โบว์เฉลย · Dr.Bow reveals"
 
 ---
@@ -122,7 +123,7 @@ https://raw.githubusercontent.com/marketwars-game/market-wars/Season1-stable/<pa
 |------|--------|---------|
 | supabase | Supabase client | https://raw.githubusercontent.com/marketwars-game/market-wars/main/lib/supabase.ts |
 | game-engine | Phase flow, state machine, step progress | https://raw.githubusercontent.com/marketwars-game/market-wars/main/lib/game-engine.ts |
-| constants | ✅ B17 — `LocalizedText` type · COMPANIES, RETURN_TABLE v5c, EVENTS, QUIZ_POOL `{th,en}`, CHANCE_CARDS `{th,en}`, STEP_GROUPS | https://raw.githubusercontent.com/marketwars-game/market-wars/main/lib/constants.ts |
+| constants | ✅ B23-v1 — RETURN_TABLE **v6** (risk premium · 🐷 1%/ปี · crash ลึกลง) · QUIZ_BONUS **100/50/0** · CHANCE_CARDS **หารสอง** (±50..250) · COMPANIES, EVENTS, QUIZ_POOL `{th,en}`, STEP_GROUPS | https://raw.githubusercontent.com/marketwars-game/market-wars/main/lib/constants.ts |
 | awards | calculateAwards, Quiz Master multi-winner | https://raw.githubusercontent.com/marketwars-game/market-wars/main/lib/awards.ts |
 | sound | registry 18 assets + PHASE_BGM map | https://raw.githubusercontent.com/marketwars-game/market-wars/main/lib/sound.ts |
 | ranking | ✅ B18 — comparator กลาง: `compareForRank` (money→quiz→speed→id) + `compareQuizMaster` + `speedKey` | https://raw.githubusercontent.com/marketwars-game/market-wars/main/lib/ranking.ts |
