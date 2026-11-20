@@ -1,10 +1,11 @@
 // FILE: components/display/FinalRanking.tsx — Final step ④ Full ranking + teaching overview
 // VERSION: B26-fit — N > 110: 12 คอลัมน์ + การ์ด compact + ชดเชยความกว้างตอน scale (148 คนอ่านชื่อได้ ไม่ถูกตัดแถวล่าง) · N ≤ 110 เหมือนเดิม | prev: B23-v3 — fix legend ตกค้างจาก B20: "▢ กรอบฟ้า = ถ้าเล่นแบบนี้ (ตลาดล้วน ไม่รวมการ์ด/ควิซ)" → "ถ้าเล่นแบบนี้จะอยู่ประมาณนี้" (B23-v2 ghost รวมโบนัสเฉลี่ยห้องแล้ว คำเดิมผิดความหมาย)
 // LAST MODIFIED: 20 Nov 2026
-// HISTORY: B16d created — split from FinalDisplay; show all players for parents/photos | B16d-v2 responsive cols | B18 compareForRank | B20-v1 teaching redesign (cell green/red tint, header stats bar, strategy classify from portfolio_used, insight ranges, 🏅 diversifier badge, 2-line cards, removed photo wording) | B20-v2 fix insight text color | B20-v3 replace min–max insight with inline benchmark ghosts computed dynamically from RETURN_TABLE+COMPANIES (best/worst all-in, savings, equal-weight; ranked among real players; blue dashed, no rank #); scale-to-fit height so all N players always fit (useEffect measure + transform, independent of display zoom); Top-3 medal-colored glow + winner green glow override | B21 h-screen → h-full (fill FitStage box) | B23-v1 drop best/worst all-in ghosts, keep savings + equal-weight | B23-v2 ghost gets room-average bonus flows for fair position + name-only card | B23-v3 fix stale legend text (ghost includes avg bonus now) | B26 large-roster compact tier (>110) + width-compensated scale
+// HISTORY: [B26 FitName: คงท้าย ".X" ของชื่อเมื่อช่องแคบ] B16d created — split from FinalDisplay; show all players for parents/photos | B16d-v2 responsive cols | B18 compareForRank | B20-v1 teaching redesign (cell green/red tint, header stats bar, strategy classify from portfolio_used, insight ranges, 🏅 diversifier badge, 2-line cards, removed photo wording) | B20-v2 fix insight text color | B20-v3 replace min–max insight with inline benchmark ghosts computed dynamically from RETURN_TABLE+COMPANIES (best/worst all-in, savings, equal-weight; ranked among real players; blue dashed, no rank #); scale-to-fit height so all N players always fit (useEffect measure + transform, independent of display zoom); Top-3 medal-colored glow + winner green glow override | B21 h-screen → h-full (fill FitStage box) | B23-v1 drop best/worst all-in ghosts, keep savings + equal-weight | B23-v2 ghost gets room-average bonus flows for fair position + name-only card | B23-v3 fix stale legend text (ghost includes avg bonus now) | B26 large-roster compact tier (>110) + width-compensated scale
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
+import FitName from '@/components/common/FitName';
 import { compareForRank } from '@/lib/ranking';
 import { calculateAwards } from '@/lib/awards';
 import { STARTING_MONEY, COMPANIES, RETURN_TABLE } from '@/lib/constants';
@@ -253,7 +254,7 @@ export default function FinalRanking({ players, animate }: FinalRankingProps) {
                   <span className="font-bold flex-shrink-0" style={{ fontSize: compact ? (i < 3 ? 13 : 10) : (i < 3 ? '1.15rem' : '0.95rem'), color: i < 3 ? rankColors[i] : 'rgba(255,255,255,0.5)' }}>
                     {i < 3 ? medals[i] : `#${i + 1}`}
                   </span>
-                  <span className={`flex-1 min-w-0 font-bold truncate ${compact ? '' : 'text-lg'}`} style={{ fontSize: compact ? 13 : undefined, color: i < 3 ? rankColors[i] : '#fff' }}>{p.name}</span>
+                  <FitName name={p.name} className={`flex-1 min-w-0 font-bold ${compact ? '' : 'text-lg'}`} style={{ fontSize: compact ? 13 : undefined, color: i < 3 ? rankColors[i] : '#fff' }} />
                   {win && <span className="flex-shrink-0" style={{ fontSize: compact ? 12 : '1.25rem', filter: 'drop-shadow(0 0 4px rgba(0,255,178,0.9))' }}>🏅</span>}
                 </div>
                 <div className={`flex items-center ${compact ? 'gap-1' : 'gap-2'}`} style={compact ? { lineHeight: 1.25 } : undefined}>

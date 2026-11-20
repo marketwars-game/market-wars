@@ -1,10 +1,11 @@
 // FILE: components/display/ResultsDisplay.tsx — Display results phase (per-player P&L heatmap)
 // VERSION: B26-fit — N > 110: 12 คอลัมน์ + ช่อง compact + scale-to-fit (148 คนไม่ถูกตัดแถวล่าง) · N ≤ 110 เหมือนเดิมทุกค่า | prev: B16c-v1 — heatmap grid of every player (this-round gain/loss), A-Z, relative intensity, wave reveal
 // LAST MODIFIED: 20 Nov 2026
-// HISTORY: B16a-BATCH0 extracted inline results block from display/page.tsx | B16c spectator heatmap (replace sector-pills + top-earners view) | B26 large-roster fit (compact tier > 110 + useFitScale safety)
+// HISTORY: [B26 FitName: คงท้าย ".X" ของชื่อเมื่อช่องแคบ] B16a-BATCH0 extracted inline results block from display/page.tsx | B16c spectator heatmap (replace sector-pills + top-earners view) | B26 large-roster fit (compact tier > 110 + useFitScale safety)
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import FitName from '@/components/common/FitName';
 import { useFitScale } from '@/hooks/useFitScale';
 
 interface ResultsDisplayProps {
@@ -94,7 +95,7 @@ export default function ResultsDisplay({ players, round }: ResultsDisplayProps) 
                 transitionDelay: `${i * perCell}ms`,
               }}
             >
-              <span style={{ fontSize: compact ? 13 : 15, lineHeight: compact ? 1.25 : undefined, color: 'rgba(255,255,255,0.9)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{r.name}</span>
+              <FitName name={r.name} style={{ fontSize: compact ? 13 : 15, lineHeight: compact ? 1.25 : undefined, color: 'rgba(255,255,255,0.9)', maxWidth: '100%' }} />
               <span
                 style={{
                   fontSize: compact ? 12 : 14, lineHeight: compact ? 1.2 : undefined, fontWeight: 500, fontVariantNumeric: 'tabular-nums', marginTop: compact ? 0 : 1,

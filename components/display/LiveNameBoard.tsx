@@ -1,10 +1,11 @@
 // FILE: components/display/LiveNameBoard.tsx — Spectator name wall (invest + chance_card)
 // VERSION: B26-onepage — N > 80: หน้าเดียวทุกคน 12 คอลัมน์ ช่อง compact 2 บรรทัด (ชื่อ + แท่ง allocation / ยอด ±) แบบเดียวกับ FinalRanking · เลิกสลับหน้า · N ≤ 80 เหมือนเดิม | prev: B26-pages — N > 80: แบ่งหน้าเท่าๆ กัน (148 → 74+74) และทุกหน้าแสดง detail (แท่ง allocation / ยอด ± การ์ด) · N ≤ 80 เหมือนเดิม
 // LAST MODIFIED: 20 Nov 2026
-// HISTORY: B16b created — shared grid wall for invest (allocation bar) + chance_card (luck amount) | B22b clamp cols/cell size for small N (no change at N>=~30) | B26 balanced pages ≤ 80/page, detail always on → B26-onepage single compact page for N > 80
+// HISTORY: [B26 FitName: คงท้าย ".X" ของชื่อเมื่อช่องแคบ] B16b created — shared grid wall for invest (allocation bar) + chance_card (luck amount) | B22b clamp cols/cell size for small N (no change at N>=~30) | B26 balanced pages ≤ 80/page, detail always on → B26-onepage single compact page for N > 80
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import FitName from '@/components/common/FitName';
 import { COMPANIES } from '@/lib/constants';
 
 interface LiveNameBoardProps {
@@ -164,9 +165,7 @@ export default function LiveNameBoard({ players, round, variant }: LiveNameBoard
           transition: 'transform .25s ease, background .3s ease, border-color .5s ease',
         }}
       >
-        <span style={{ fontSize: nameSize, fontWeight: 500, color: nameColor, maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.15 }}>
-          {p.name}
-        </span>
+        <FitName name={p.name} style={{ fontSize: nameSize, fontWeight: 500, color: nameColor, maxWidth: '100%', lineHeight: 1.15 }} />
         {detailNode}
       </div>
     );
