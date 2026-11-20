@@ -1,5 +1,5 @@
 // FILE: scripts/bots/swarm.mjs — Bot swarm: ผู้เล่นจำลอง N คน join ห้องจริง เพื่อทดสอบ load + หน้าจอ
-// VERSION: B26-v2 — ชื่อไม่ซ้ำ (ตัดชื่อ ไม่ตัดเลข) · เลียนแบบ client ตามเวอร์ชันที่ deploy (ตรวจจาก /api/players/chance) | prev: B26 created
+// VERSION: B26-v3 — ชื่อ bot ตามกติกางาน "ชื่อเล่น.อักษร" (default) + --names mixed | prev: B26-v2 — ชื่อไม่ซ้ำ (ตัดชื่อ ไม่ตัดเลข) · เลียนแบบ client ตามเวอร์ชันที่ deploy (ตรวจจาก /api/players/chance) | prev: B26 created
 // LAST MODIFIED: 20 Nov 2026
 // HISTORY: B26 created — join/quiz/invest/chance/leaderboard ตาม phase + realtime เหมือนหน้า player + รายงาน latency/integrity
 //
@@ -11,6 +11,7 @@
 //       --no-realtime    ไม่เปิด websocket (poll อย่างเดียว) — ใช้แยกปัญหา realtime ออกจาก API
 //       --seed 1         seed ของการสุ่ม (รันซ้ำได้พฤติกรรมเดิม)
 //       --prefix ""      ขึ้นต้นชื่อ bot (เช่น "T-") เพื่อแยกจากเด็กจริง
+//       --names event    รูปแบบชื่อ: event = "Almond.W" ตามกติกางาน (default) · mixed = ไทย/อังกฤษ/ยาว/อีโมจิ
 // ⚠️ ไม่สร้างห้องเอง (POST /api/rooms forceNew จะปิดห้องอื่นทั้งหมด) — สร้างห้องจากหน้า MC ตามปกติ
 // ⚠️ ห้ามรันกับห้องงานจริง
 
@@ -33,6 +34,7 @@ const SPEED = parseFloat(arg('speed', '1'));
 const JOIN_WINDOW = parseFloat(arg('join-window', '45')) * 1000;
 const REALTIME = !arg('no-realtime', false);
 const PREFIX = arg('prefix', '') === true ? '' : String(arg('prefix', ''));
+const NAME_STYLE = arg('names', 'event') === 'mixed' ? 'mixed' : 'event';
 let seed = parseInt(arg('seed', '1'), 10) || 1;
 if (!ROOM || !BASE) { console.error('ต้องระบุ --room และ --url  (ดูหัวไฟล์)'); process.exit(1); }
 
@@ -88,16 +90,28 @@ async function api(path, method, body) {
   return { status: res.status, data, bytes: text.length, error: res.ok ? null : `HTTP ${res.status} ${data?.error || ''}` };
 }
 
-// ---------- names (สั้น/ยาว/ไทย/อังกฤษ/อีโมจิ — กดดัน layout) ----------
+// ---------- names ----------
+// default (--names event): กติกางานจริง "ชื่อเล่น.อักษรแรกชื่อจริง" เช่น Almond.W — ไม่ซ้ำกันทั้งห้อง
+// --names mixed: ชุดเดิม (ไทย/อังกฤษ/ยาว/อีโมจิ + เลขท้าย) ไว้กดดัน layout
+const NICKS = ['Almond', 'Mint', 'Poon', 'Alex', 'Proud', 'Tonkla', 'Bambi', 'Kevin', 'Namcha', 'Leo', 'Pim', 'Oscar', 'Jinny', 'Max', 'Kaimook', 'Ryu', 'Guitar', 'Pleng', 'Captain', 'Stamp', 'Tonkhao', 'Khaohom', 'Punpun', 'Ingfah', 'Porjai', 'Phupha', 'Tawan', 'Namsai', 'Malee', 'Lookpeach', 'Cheetah', 'Thame', 'Pun', 'Phoom', 'Aioun', 'Jaokha', 'Mind', 'Bew', 'Earth', 'Prim', 'Garfield', 'Chopper', 'Titan', 'Fah', 'Ice', 'Nene', 'Maximilian', 'Peach', 'Sky', 'Win', 'Ploy', 'Beam', 'Jedi', 'Nano', 'Kongphop', 'Nongmind'];
+const INITIALS = 'WSPKTCNAJRMBDH';
 const TH = ['น้องมายด์', 'ภูผา', 'ใบข้าว', 'ต้นกล้า', 'ปันปัน', 'อิงฟ้า', 'พอใจ', 'ข้าวหอม', 'ไออุ่น', 'เจ้าขา', 'ภูมิ', 'มะลิ', 'ตะวัน', 'น้ำใส', 'กัปตัน', 'เพลงพิณ', 'ธาม', 'ปุณณ์', 'ชีต้าร์', 'ลูกพีช'];
 const EN = ['Mint', 'Poon', 'Alex', 'Proud', 'Tonkla', 'Bambi', 'Kevin', 'Namcha', 'Leo', 'Pim', 'Oscar', 'Jinny', 'Max', 'Kaimook', 'Ryu'];
 const LONG = ['กัปตันอเมริกาตัวจริง', 'Maximilian-Alexander', 'น้องข้าวปุ้นป.5/2ภูเก็ต', 'PhuketSuperInvestor9', 'เด็กชายภูผา ใจดีมาก'];
+const usedNames = new Set();
 function makeName(i) {
-  const r = rnd();
-  let base = r < 0.06 ? pick(LONG) : r < 0.66 ? pick(TH) : pick(EN);
-  if (rnd() < 0.08) base += pick(['🔥', '⭐', '🦄', '😎']);
-  const tail = ' ' + (i + 1);
-  return (PREFIX + base).slice(0, 20 - tail.length) + tail; // API จำกัด 20 ตัว · ตัดชื่อ ไม่ตัดเลขท้าย (เลขกันชื่อซ้ำ — รอบแรกชื่อยาวซ้ำกันจนใช้แถวเดียวกัน)
+  if (NAME_STYLE === 'mixed') {
+    const r = rnd();
+    let base = r < 0.06 ? pick(LONG) : r < 0.66 ? pick(TH) : pick(EN);
+    if (rnd() < 0.08) base += pick(['🔥', '⭐', '🦄', '😎']);
+    const tail = ' ' + (i + 1);
+    return (PREFIX + base).slice(0, 20 - tail.length) + tail; // API จำกัด 20 ตัว · ตัดชื่อ ไม่ตัดเลขท้าย
+  }
+  for (let t = 0; t < 500; t++) { // ชื่อซ้ำ = API ถือเป็นคนเดิม (bot จะใช้แถวเดียวกัน) → ต้องไม่ซ้ำ
+    const name = (PREFIX + pick(NICKS) + '.' + INITIALS[Math.floor(rnd() * INITIALS.length)]).slice(0, 20);
+    if (!usedNames.has(name)) { usedNames.add(name); return name; }
+  }
+  return (PREFIX + 'Bot' + (i + 1) + '.X').slice(0, 20);
 }
 
 // ---------- bot ----------
