@@ -4,7 +4,7 @@
 **Last Updated:** B25 Done (Phuket Edition branding — lib/event-info.ts + browser tab titles via NEW hooks/usePageTitle.ts) — 20 Nov 2026 · Dime! Kids Camp Phuket Edition 21 Nov 2026 · prev: B24 Done (Player final share-card — FinalView redesign · NEW lib/event-info.ts · play page header hide at final_ranking) — 11 Jul 2026 · Season 3 dev · (Season 2 CLOSED, 74 players)
 **Repo:** https://github.com/marketwars-game/market-wars
 **Default branch:** `main`
-**Latest stable tag:** `B24-stable` (newest — Player share-card + registry · `B25-stable` pending user test) · `B23-stable` = balance pass · `B22b-stable` = B22 + B22b · `B22-stable` = sparkline only · `B21-stable` · `B20-stable` = Season 2 final · `Season1-stable` = `B15-stable`
+**Latest stable tag:** `B25-stable` (newest — Phuket Edition branding + browser tab titles) · `B24-stable` = Player share-card · `B23-stable` = balance pass · `B22b-stable` = B22 + B22b · `B22-stable` = sparkline only · `B21-stable` · `B20-stable` = Season 2 final · `Season1-stable` = `B15-stable`
 
 ---
 
