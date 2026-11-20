@@ -1,4 +1,7 @@
 // app/mc/page.tsx
+// VERSION: B25-title — browser tab title (🎛️ MC · Market Wars)
+// LAST MODIFIED: 20 Nov 2026
+// HISTORY: ... | B25 tab title
 // =============================================
 // MC Landing — PIN Gate + Create Room
 // Flow: ใส่ PIN → ผ่าน → เห็นปุ่ม Create Room (หรือ "กลับเข้าห้องเดิม")
@@ -8,8 +11,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { usePageTitle } from '@/hooks/usePageTitle';
 
 export default function MCPage() {
+  usePageTitle(['🎛️ MC', 'Market Wars']);
   const router = useRouter();
 
   // --- State ---

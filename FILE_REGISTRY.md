@@ -1,7 +1,7 @@
 # Market Wars — File Registry
 
 **Location:** วางที่ root ของ repo (`/FILE_REGISTRY.md`) — version control โดย git
-**Last Updated:** B25 Done (Phuket Edition branding — lib/event-info.ts only) — 20 Nov 2026 · Dime! Kids Camp Phuket Edition 21 Nov 2026 · prev: B24 Done (Player final share-card — FinalView redesign · NEW lib/event-info.ts · play page header hide at final_ranking) — 11 Jul 2026 · Season 3 dev · (Season 2 CLOSED, 74 players)
+**Last Updated:** B25 Done (Phuket Edition branding — lib/event-info.ts + browser tab titles via NEW hooks/usePageTitle.ts) — 20 Nov 2026 · Dime! Kids Camp Phuket Edition 21 Nov 2026 · prev: B24 Done (Player final share-card — FinalView redesign · NEW lib/event-info.ts · play page header hide at final_ranking) — 11 Jul 2026 · Season 3 dev · (Season 2 CLOSED, 74 players)
 **Repo:** https://github.com/marketwars-game/market-wars
 **Default branch:** `main`
 **Latest stable tag:** `B24-stable` (newest — Player share-card + registry · `B25-stable` pending user test) · `B23-stable` = balance pass · `B22b-stable` = B22 + B22b · `B22-stable` = sparkline only · `B21-stable` · `B20-stable` = Season 2 final · `Season1-stable` = `B15-stable`
@@ -43,11 +43,11 @@ https://raw.githubusercontent.com/marketwars-game/market-wars/Season1-stable/<pa
 | ไฟล์ | หน้าที่ | Raw URL |
 |------|--------|---------|
 | Root Layout | Next.js root layout — wrapper หลักของทุกหน้า | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/layout.tsx |
-| Landing / Join | หน้าแรก เลือก join / create | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/page.tsx |
-| Player Game | จอเด็กเล่น (มือถือ) — ✅ B24-v1: ซ่อน header (ชื่อ/เงิน/↻) ตอน `final_ranking` · B22b final gating (`finalRevealed = phase === 'final_ranking'`) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/play/[roomId]/page.tsx |
-| MC Entry | หน้า MC เลือกห้อง / สร้างห้อง | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/mc/page.tsx |
-| MC Control | จอ MC ควบคุมเกมในห้อง | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/mc/[roomId]/page.tsx |
-| Display (Projector) | จอแสดงสาธารณะ (✅ B21 — ห่อทุก phase block ด้วย FitStage; zoom = min(w/1280, h/720)) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/display/[roomId]/page.tsx |
+| Landing / Join | หน้าแรก เลือก join / create — ✅ B25 tab title `📱 Join · Market Wars` | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/page.tsx |
+| Player Game | จอเด็กเล่น (มือถือ) — ✅ B25-title: tab `📱 {ชื่อ} · {room}` (ไม่มี phase) · ✅ B24-v1: ซ่อน header (ชื่อ/เงิน/↻) ตอน `final_ranking` · B22b final gating (`finalRevealed = phase === 'final_ranking'`) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/play/[roomId]/page.tsx |
+| MC Entry | หน้า MC เลือกห้อง / สร้างห้อง — ✅ B25 tab title `🎛️ MC · Market Wars` | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/mc/page.tsx |
+| MC Control | จอ MC ควบคุมเกมในห้อง — ✅ B25-title: tab `🎛️ MC · {room} · {phase}` | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/mc/[roomId]/page.tsx |
+| Display (Projector) | จอแสดงสาธารณะ — ✅ B25-title: tab `📺 Display · {room} · {phase}` · (✅ B21 — ห่อทุก phase block ด้วย FitStage; zoom = min(w/1280, h/720)) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/app/display/[roomId]/page.tsx |
 
 ### API Routes
 
@@ -128,6 +128,15 @@ https://raw.githubusercontent.com/marketwars-game/market-wars/Season1-stable/<pa
 | sound | registry 18 assets + PHASE_BGM map | https://raw.githubusercontent.com/marketwars-game/market-wars/main/lib/sound.ts |
 | ranking | ✅ B18 — comparator กลาง: `compareForRank` (money→quiz→speed→id) + `compareQuizMaster` + `speedKey` | https://raw.githubusercontent.com/marketwars-game/market-wars/main/lib/ranking.ts |
 | event-info | ✅ B25 — Phuket Edition (season='Phuket Edition' · venue='Bhukitta Boutique Hotel' · date='21 Nov 2026') · B24 NEW `EVENT_INFO {program, season, venue, date}` — branding ของการ์ดจบ (FinalView) · แก้ season/สถานที่/วันที่ครั้งหน้าที่ไฟล์นี้ไฟล์เดียว | https://raw.githubusercontent.com/marketwars-game/market-wars/main/lib/event-info.ts |
+
+---
+
+## hooks/
+
+| ไฟล์ | หน้าที่ | Raw URL |
+|------|--------|---------|
+| usePageTitle | ✅ B25 NEW — ตั้ง `document.title` ต่อหน้า (`parts.filter(Boolean).join(' · ')`, unmount คืน title เดิม) · ใช้ใน Join / MC Entry / MC Control / Display / Player | https://raw.githubusercontent.com/marketwars-game/market-wars/main/hooks/usePageTitle.ts |
+| useDisplaySound | เสียงจอ Display (B16a) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/hooks/useDisplaySound.ts |
 
 ---
 

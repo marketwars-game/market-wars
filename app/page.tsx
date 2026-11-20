@@ -1,8 +1,13 @@
+// FILE: app/page.tsx — Join screen
+// VERSION: B25-title — browser tab title (📱 Join · Market Wars)
+// LAST MODIFIED: 20 Nov 2026
+// HISTORY: ... | B25 tab title
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
+import { usePageTitle } from '@/hooks/usePageTitle';
 
 // ============================================================
 // หน้า Join Screen — หน้าแรกที่เด็กเห็น
@@ -12,6 +17,7 @@ import { Suspense } from 'react';
 // ============================================================
 
 function JoinForm() {
+  usePageTitle(['📱 Join', 'Market Wars']);
   const router = useRouter();
   const searchParams = useSearchParams();
 

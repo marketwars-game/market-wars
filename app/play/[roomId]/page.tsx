@@ -1,12 +1,13 @@
 // FILE: app/play/[roomId]/page.tsx — Player game screen
-// VERSION: B24-v1 — hide player header (name/money/refresh) at final_ranking so share-card screenshot is clean
-// LAST MODIFIED: 10 Jul 2026
-// HISTORY: B2 created | B3 phase sync + timer | B4 InvestmentPanel | B5 event_result + ResultsPanel | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components | B9 MarketFight | B12-UX mini step + year_intro + market_open | B13-BATCH3 ChanceCard + Realtime optimize + cut news/rebalance/attack | B16d final_* variants → FinalView | perf-v1 trim+jitter list fetch + debug badge | B18 quiz speed capture | B18-v2 select quiz fields for cascade | B22b FinalHold gating (reveal at final_ranking only) | B24 hide header at final_ranking (clean share-card)
+// VERSION: B25-title — browser tab title via usePageTitle | prev: B24-v1 — hide player header (name/money/refresh) at final_ranking so share-card screenshot is clean
+// LAST MODIFIED: 20 Nov 2026
+// HISTORY: B2 created | B3 phase sync + timer | B4 InvestmentPanel | B5 event_result + ResultsPanel | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components | B9 MarketFight | B12-UX mini step + year_intro + market_open | B13-BATCH3 ChanceCard + Realtime optimize + cut news/rebalance/attack | B16d final_* variants → FinalView | perf-v1 trim+jitter list fetch + debug badge | B18 quiz speed capture | B18-v2 select quiz fields for cascade | B22b FinalHold gating (reveal at final_ranking only) | B24 hide header at final_ranking (clean share-card) | B25 tab title (📱 name · room — no phase)
 'use client';
 
 import { useEffect, useState, useRef, Suspense } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { usePageTitle } from '@/hooks/usePageTitle';
 import { readDebugFlag, dnow, RateMeter } from '@/lib/debug';
 import DebugPanel from '@/components/debug/DebugPanel';
 import {
@@ -32,6 +33,7 @@ function PlayerContent() {
   const roomId = params.roomId as string;
   const [room, setRoom] = useState<any>(null);
   const [player, setPlayer] = useState<any>(null);
+  usePageTitle(['📱 ' + (player?.name || 'Player'), roomId]); // ไม่ใส่ phase: เด็กเห็น title บนแถบ in-app browser
   const [players, setPlayers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [timeLeft, setTimeLeft] = useState(0);

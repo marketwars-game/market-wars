@@ -1,12 +1,13 @@
 // FILE: app/display/[roomId]/page.tsx — Display screen (shell)
-// VERSION: B16d-v2+perf-v1+B19-v5+B21 — B21: FitStage fit-to-screen (retire CSS zoom; scale = min(w/1280, h/720), wrap every phase block in fixed 1280x720 letterbox canvas); prior: leaderboard rankup sync + event reveal SFX + seenFinal !loading guard
-// LAST MODIFIED: 10 Jul 2026
-// HISTORY: B1 created | B3 phase sync + timer | B4 submitted count | B5 event_result + results UI | B6 leaderboard | B7 final phase | B8 research quiz | B8R refactor | B9 FightDisplay | B12-UX dashboard layout | B13-BATCH3 ChanceCardDisplay + throttle | B15-v1 projector font+color polish | B15-v2 CSS zoom + header redesign + lobby redesign + QR popup + market_open dramatic | B16a-BATCH0 refactor shell (6 phase components) | B16a-BATCH1 sound: SoundGate + useDisplaySound wiring | B16b-BATCH1 invest live wall props | B16c leaderboard+results spectator SFX | B16d final 4-step + research_reveal sfx | perf-v1 debug overlay | B19 rankup SFX sync to leaderboard hold + event reveal SFX + seenFinal load guard | B21 FitStage fit-to-screen wrap (h/720 scale)
+// VERSION: B25-title — browser tab title via usePageTitle | prev: B16d-v2+perf-v1+B19-v5+B21 — B21: FitStage fit-to-screen (retire CSS zoom; scale = min(w/1280, h/720), wrap every phase block in fixed 1280x720 letterbox canvas); prior: leaderboard rankup sync + event reveal SFX + seenFinal !loading guard
+// LAST MODIFIED: 20 Nov 2026
+// HISTORY: B1 created | B3 phase sync + timer | B4 submitted count | B5 event_result + results UI | B6 leaderboard | B7 final phase | B8 research quiz | B8R refactor | B9 FightDisplay | B12-UX dashboard layout | B13-BATCH3 ChanceCardDisplay + throttle | B15-v1 projector font+color polish | B15-v2 CSS zoom + header redesign + lobby redesign + QR popup + market_open dramatic | B16a-BATCH0 refactor shell (6 phase components) | B16a-BATCH1 sound: SoundGate + useDisplaySound wiring | B16b-BATCH1 invest live wall props | B16c leaderboard+results spectator SFX | B16d final 4-step + research_reveal sfx | perf-v1 debug overlay | B19 rankup SFX sync to leaderboard hold + event reveal SFX + seenFinal load guard | B21 FitStage fit-to-screen wrap (h/720 scale) | B25 tab title (📺 Display · room · phase)
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { usePageTitle } from '@/hooks/usePageTitle';
 import { PHASE_TIMERS } from '@/lib/constants';
 import { getStepGroupProgress } from '@/lib/game-engine';
 import { readDebugFlag, dnow, RateMeter } from '@/lib/debug';
@@ -31,6 +32,7 @@ export default function DisplayScreen() {
   const params = useParams();
   const roomId = params.roomId as string;
   const [room, setRoom] = useState<any>(null);
+  usePageTitle(['📺 Display', roomId, room?.current_phase]);
   const [players, setPlayers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [timeLeft, setTimeLeft] = useState(0);

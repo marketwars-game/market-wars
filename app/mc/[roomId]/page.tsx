@@ -1,12 +1,13 @@
 // FILE: app/mc/[roomId]/page.tsx — MC Control screen
-// VERSION: B16d-v1+perf-v1 — ?debug=1 overlay (fetch ms/rows, throttle queue, evt/s, ch status); no behaviour change when off
-// LAST MODIFIED: 12 Jun 2026
-// HISTORY: B1 created | B3 phase control + timer | B4 submitted count + bug fix | B5 event_result + results | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components | B9 attack stats | B12-UX full step bar + year_intro + market_open | B13-BATCH3 throttle + cut news/attack/rebalance + chance card | B16d final 4-step controls | perf-v1 debug overlay
+// VERSION: B25-title — browser tab title via usePageTitle | prev: B16d-v1+perf-v1 — ?debug=1 overlay (fetch ms/rows, throttle queue, evt/s, ch status); no behaviour change when off
+// LAST MODIFIED: 20 Nov 2026
+// HISTORY: B1 created | B3 phase control + timer | B4 submitted count + bug fix | B5 event_result + results | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components | B9 attack stats | B12-UX full step bar + year_intro + market_open | B13-BATCH3 throttle + cut news/attack/rebalance + chance card | B16d final 4-step controls | perf-v1 debug overlay | B25 tab title (🎛️ MC · room · phase)
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { usePageTitle } from '@/hooks/usePageTitle';
 import { readDebugFlag, dnow, RateMeter } from '@/lib/debug';
 import DebugPanel from '@/components/debug/DebugPanel';
 import {
@@ -31,6 +32,7 @@ export default function MCControlRoom() {
   const router = useRouter();
   const roomId = params.roomId as string;
   const [room, setRoom] = useState<any>(null);
+  usePageTitle(['🎛️ MC', roomId, room?.current_phase]);
   const [players, setPlayers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
