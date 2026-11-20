@@ -1,10 +1,11 @@
 // FILE: app/page.tsx — Join screen
-// VERSION: B25-title — browser tab title (📱 Join · Market Wars)
+// VERSION: B26-name — placeholder + คำแนะนำ/คำเตือนรูปแบบชื่อ (Almond.W) | prev: B25-title — browser tab title (📱 Join · Market Wars)
 // LAST MODIFIED: 20 Nov 2026
 // HISTORY: ... | B25 tab title
 'use client';
 
 import { useState, useEffect } from 'react';
+import { NAME_EXAMPLE, NAME_HINT, NAME_WARN, looksLikeEventName } from '@/lib/name-rule';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import { usePageTitle } from '@/hooks/usePageTitle';
@@ -190,12 +191,15 @@ function JoinForm() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="ใส่ชื่อเล่น..."
+            placeholder={`เช่น ${NAME_EXAMPLE}`}
             maxLength={20}
             className="w-full bg-[#0D1117] border border-gray-700 rounded-xl px-4 py-3 text-white text-lg placeholder:text-gray-600 focus:outline-none focus:border-[#00D4FF] focus:ring-1 focus:ring-[#00D4FF] transition-colors"
             disabled={isJoining}
             autoFocus={!!searchParams.get('room')} // ถ้ามี room code มาแล้ว auto-focus ที่ชื่อ
           />
+          {/* ✅ B26: กติกาชื่อของงาน — เตือนอย่างเดียว ไม่บล็อก */}
+          <p className="text-gray-500 text-xs mt-1.5">{NAME_HINT}</p>
+          <p className="text-amber-400 text-xs mt-0.5" style={{ minHeight: 16 }}>{name.trim() && !looksLikeEventName(name) ? NAME_WARN : ''}</p>
         </div>
 
         {/* Error Message */}

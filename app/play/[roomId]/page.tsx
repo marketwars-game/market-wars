@@ -1,7 +1,7 @@
 // FILE: app/play/[roomId]/page.tsx — Player game screen
-// VERSION: B26-perf — 148-player hardening: mount ดึงเฉพาะแถวตัวเอง · list fetch เฉพาะ leaderboard/final(prefetch)/final_ranking + jitter 2s · poll rooms 10s + refetch ตอนกลับเข้าแอป · refetch แถวตัวเองหลัง phase เปลี่ยน (realtime fallback) | prev: B25-title — browser tab title via usePageTitle | prev: B24-v1 — hide player header (name/money/refresh) at final_ranking so share-card screenshot is clean
+// VERSION: B26-name — lobby card → LobbyCard (แก้ชื่อตัวเองได้) + คำแนะนำรูปแบบชื่อที่ฟอร์ม join | prev: B26-perf — 148-player hardening: mount ดึงเฉพาะแถวตัวเอง · list fetch เฉพาะ leaderboard/final(prefetch)/final_ranking + jitter 2s · poll rooms 10s + refetch ตอนกลับเข้าแอป · refetch แถวตัวเองหลัง phase เปลี่ยน (realtime fallback) | prev: B25-title — browser tab title via usePageTitle | prev: B24-v1 — hide player header (name/money/refresh) at final_ranking so share-card screenshot is clean
 // LAST MODIFIED: 20 Nov 2026
-// HISTORY: B2 created | B3 phase sync + timer | B4 InvestmentPanel | B5 event_result + ResultsPanel | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components | B9 MarketFight | B12-UX mini step + year_intro + market_open | B13-BATCH3 ChanceCard + Realtime optimize + cut news/rebalance/attack | B16d final_* variants → FinalView | perf-v1 trim+jitter list fetch + debug badge | B18 quiz speed capture | B18-v2 select quiz fields for cascade | B22b FinalHold gating (reveal at final_ranking only) | B24 hide header at final_ranking (clean share-card) | B25 tab title (📱 name · room — no phase) | B26 perf hardening (own-row mount, list trim, poll + own-row fallbacks)
+// HISTORY: B2 created | B3 phase sync + timer | B4 InvestmentPanel | B5 event_result + ResultsPanel | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components | B9 MarketFight | B12-UX mini step + year_intro + market_open | B13-BATCH3 ChanceCard + Realtime optimize + cut news/rebalance/attack | B16d final_* variants → FinalView | perf-v1 trim+jitter list fetch + debug badge | B18 quiz speed capture | B18-v2 select quiz fields for cascade | B22b FinalHold gating (reveal at final_ranking only) | B24 hide header at final_ranking (clean share-card) | B25 tab title (📱 name · room — no phase) | B26 perf hardening (own-row mount, list trim, poll + own-row fallbacks) | B26 LobbyCard + name-rule hint
 'use client';
 
 import { useEffect, useState, useRef, Suspense } from 'react';
@@ -27,6 +27,8 @@ import LeaderboardView from '@/components/player/LeaderboardView';
 import FinalView from '@/components/player/FinalView';
 import FinalHold from '@/components/player/FinalHold';
 import ChanceCard from '@/components/player/ChanceCard';
+import LobbyCard from '@/components/player/LobbyCard';
+import { NAME_EXAMPLE, NAME_HINT, NAME_WARN, looksLikeEventName } from '@/lib/name-rule';
 
 function PlayerContent() {
   const params = useParams();
@@ -292,7 +294,9 @@ function PlayerContent() {
         <h1 className="text-2xl font-bold text-[#00FFB2] mb-1">MARKET WARS</h1>
         <p className="text-gray-400 text-sm mb-6">Room: <span className="text-[#00D4FF] font-mono">{roomId}</span></p>
         <div className="w-full max-w-xs">
-          <input type="text" placeholder="Enter your name" value={name} onChange={(e) => setName(e.target.value)} maxLength={20} className="w-full bg-[#161b22] border border-gray-700 rounded-lg px-4 py-3 text-white text-center text-lg focus:border-[#00FFB2] focus:outline-none mb-3" />
+          <input type="text" placeholder={`เช่น ${NAME_EXAMPLE}`} value={name} onChange={(e) => setName(e.target.value)} maxLength={20} className="w-full bg-[#161b22] border border-gray-700 rounded-lg px-4 py-3 text-white text-center text-lg focus:border-[#00FFB2] focus:outline-none mb-1" />
+          <p className="text-gray-500 text-xs text-center mb-1">{NAME_HINT}</p>
+          <p className="text-amber-400 text-xs text-center mb-3" style={{ minHeight: 16 }}>{name.trim() && !looksLikeEventName(name) ? NAME_WARN : ''}</p>
           <button onClick={() => handleJoin(false)} disabled={joining || !name.trim()} className="w-full py-3 rounded-lg font-bold text-[#0D1117] bg-[#00FFB2] hover:bg-[#00FFB2]/90 disabled:opacity-50">{joining ? 'Joining...' : 'Join Game'}</button>
           {joinError && <p className="text-red-400 text-sm text-center mt-2">{joinError}</p>}
         </div>
@@ -391,13 +395,19 @@ function PlayerContent() {
       )}
 
       {/* === Lobby — ✅ B13: ตัด player list (ดูบน Display แทน) === */}
+      {/* ✅ B26: lobby card แยกเป็น component + แก้ชื่อตัวเองได้ (เฉพาะ lobby) */}
       {phase === 'lobby' && (
-        <div className="bg-[#161b22] rounded-lg p-4 text-center">
-          <p className="text-[#00FFB2] font-bold text-lg mb-2">You&apos;re in! 🎉</p>
-          <p className="text-gray-400 text-sm mb-3">Starting money: ฿{STARTING_MONEY.toLocaleString()}</p>
-          <p className="text-gray-500 text-xs">📺 ดูจอใหญ่เพื่อดูรายชื่อผู้เล่น</p>
-          <p className="text-gray-600 text-xs mt-1">รอ MC เริ่มเกม...</p>
-        </div>
+        <LobbyCard
+          playerId={player.id}
+          roomId={roomId}
+          name={player.name}
+          startingMoney={STARTING_MONEY}
+          onRenamed={(newName) => {
+            const next = { ...player, name: newName };
+            setPlayer(next);
+            localStorage.setItem(`mw_player_${roomId}`, JSON.stringify(next));
+          }}
+        />
       )}
 
       {/* ✅ B13: Year Intro — ปรับขั้นตอน: เป่ายิงฉุบ → เปิดการ์ดโชคชะตา */}
