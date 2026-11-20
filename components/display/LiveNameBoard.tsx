@@ -1,7 +1,7 @@
 // FILE: components/display/LiveNameBoard.tsx — Spectator name wall (invest + chance_card)
-// VERSION: B22b-v1 — small-roster fix: clamp cols to N + cap cell width/height so few players don't stretch into full-height columns
-// LAST MODIFIED: 10 Jul 2026
-// HISTORY: B16b created — shared grid wall for invest (allocation bar) + chance_card (luck amount) | B22b clamp cols/cell size for small N (no change at N>=~30)
+// VERSION: B26-pages — N > 80: แบ่งหน้าเท่าๆ กัน (148 → 74+74) และทุกหน้าแสดง detail (แท่ง allocation / ยอด ± การ์ด) · N ≤ 80 เหมือนเดิม | prev: B22b-v1 — small-roster fix: clamp cols to N + cap cell width/height
+// LAST MODIFIED: 20 Nov 2026
+// HISTORY: B16b created — shared grid wall for invest (allocation bar) + chance_card (luck amount) | B22b clamp cols/cell size for small N (no change at N>=~30) | B26 balanced pages ≤ 80/page, detail always on
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
@@ -13,7 +13,9 @@ interface LiveNameBoardProps {
   variant: 'invest' | 'chance';
 }
 
-const PAGE_SIZE = 96;
+// ✅ B26: เดิม N > 110 → หน้าละ 96 ไม่มี detail (148 คน = 96 + 52 · ไม่เห็นแท่ง allocation / ยอดการ์ด)
+//         ใหม่ N > 80 → แบ่งหน้าเท่าๆ กัน ไม่เกิน 80 คน/หน้า → แต่ละหน้าใช้ layout เดียวกับห้อง ≤ 80 คน (มี detail · พิสูจน์แล้วที่ S2 74 คน)
+const PAGE_MAX = 80;
 const PAGE_ROTATE_MS = 9000;
 
 // ✅ B22b — เพดานขนาดช่อง: กันเคสคนน้อย (เทส 3-10 คน) ที่ 1fr ยืดช่องเต็มจอ
@@ -35,9 +37,9 @@ function isSubmitted(p: any, round: number, variant: 'invest' | 'chance') {
 }
 
 function tierOf(n: number) {
-  if (n <= 80) return { cols: n <= 60 ? 6 : 7, detail: true, paginate: false };
-  if (n <= 110) return { cols: n <= 95 ? 8 : 9, detail: false, paginate: false };
-  return { cols: 8, detail: false, paginate: true };
+  const pages = Math.max(1, Math.ceil(n / PAGE_MAX));
+  const perPage = Math.ceil(n / pages); // 148 → 2 หน้า × 74
+  return { cols: perPage <= 60 ? 6 : 7, detail: true, paginate: pages > 1, pages, perPage };
 }
 
 export default function LiveNameBoard({ players, round, variant }: LiveNameBoardProps) {
@@ -52,7 +54,8 @@ export default function LiveNameBoard({ players, round, variant }: LiveNameBoard
   const lossCount = opened.filter((p) => (parseFloat(p.duel_money_change) || 0) < 0).length;
 
   // pagination (only when very large)
-  const pageCount = tier.paginate ? Math.ceil(N / PAGE_SIZE) : 1;
+  const PAGE_SIZE = tier.perPage;
+  const pageCount = tier.pages;
   const [pageIdx, setPageIdx] = useState(0);
   useEffect(() => {
     if (!tier.paginate || pageCount <= 1) { setPageIdx(0); return; }
@@ -98,8 +101,8 @@ export default function LiveNameBoard({ players, round, variant }: LiveNameBoard
     }
   }, [players, round, variant]);
 
-  const nameSize = tier.detail ? (cols <= 6 ? 22 : 18) : (N <= 110 ? 16 : 14);
-  const amtSize = tier.detail ? (cols <= 6 ? 19 : 16) : 14;
+  const nameSize = cols <= 6 ? 22 : 18;
+  const amtSize = cols <= 6 ? 19 : 16;
   const barH = cols <= 6 ? 11 : 9;
 
   function renderCell(p: any) {
@@ -192,7 +195,7 @@ export default function LiveNameBoard({ players, round, variant }: LiveNameBoard
       {/* paginate notice */}
       {tier.paginate && pageCount > 1 && (
         <div className="flex-shrink-0 text-center rounded-md" style={{ marginBottom: 6, padding: '3px 10px', fontSize: 13, color: '#fcd34d', background: 'rgba(245,158,11,0.12)', border: '0.5px solid rgba(245,158,11,0.3)' }}>
-          {N} คน — สลับหน้า {(pageIdx % pageCount) + 1}/{pageCount} (หน้าละ {PAGE_SIZE})
+          {N} คน — หน้า {(pageIdx % pageCount) + 1}/{pageCount} · เรียงตามชื่อ ก-ฮ, A-Z · สลับทุก {PAGE_ROTATE_MS / 1000} วิ
         </div>
       )}
 

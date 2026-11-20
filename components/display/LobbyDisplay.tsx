@@ -13,7 +13,9 @@ export default function LobbyDisplay({ players, roomId, joinUrl }: { players: an
   const [qrOpen, setQrOpen] = useState(false);
   // ✅ B26: chip ย่อตามจำนวนคน (เดิมขนาดเดียว → 148 คน ~21 แถว ล้นกล่อง) + scale-to-fit กันล้นทุก N
   const n = players.length;
-  const chip = n <= 40 ? { font: 18, pad: '8px 16px', gap: 8 } : n <= 80 ? { font: 15, pad: '4px 11px', gap: 6 } : { font: 13, pad: '2px 8px', gap: 4 };
+  // ✅ B26: คน join ล่าสุดอยู่บนสุด (Display โหลดเรียงตามเงิน = เท่ากันหมดใน lobby → ลำดับไม่แน่นอน)
+  const ordered = [...players].sort((a, b) => String(b.joined_at || '').localeCompare(String(a.joined_at || '')));
+  const chip = n <= 40 ? { font: 18, pad: '8px 16px', gap: 8 } : n <= 80 ? { font: 15, pad: '4px 11px', gap: 6 } : n <= 120 ? { font: 13, pad: '2px 8px', gap: 4 } : { font: 12, pad: '1px 7px', gap: 4 };
   const { boxRef, innerRef, scale } = useFitScale([n]);
   return (
     <div className="w-full h-full bg-[#0D1117] text-white overflow-hidden relative">
@@ -50,10 +52,13 @@ export default function LobbyDisplay({ players, roomId, joinUrl }: { players: an
             <div className="mt-3 h-1 w-16 rounded-full" style={{ background: 'linear-gradient(90deg, #00FFB2, #00D4FF)' }} />
           </div>
           <div className="flex flex-col" style={{ flex: 1, minHeight: 0, marginTop: 20 }}>
-            <p className="text-sm tracking-[3px] mb-3" style={{ color: 'rgba(255,255,255,0.5)' }}>PLAYERS JOINED · <span style={{ color: '#00FFB2', fontWeight: 700 }}>{n}</span></p>
+            <div className="flex items-baseline mb-3" style={{ gap: 14 }}>
+              <span style={{ fontSize: 56, fontWeight: 800, lineHeight: 1, color: '#00FFB2', fontVariantNumeric: 'tabular-nums' }}>{n}</span>
+              <span className="text-sm tracking-[3px]" style={{ color: 'rgba(255,255,255,0.5)' }}>PLAYERS JOINED · ล่าสุดอยู่บน</span>
+            </div>
             <div ref={boxRef} className="overflow-hidden mb-3" style={{ flex: 1, minHeight: 0 }}>
-              <div ref={innerRef} className="flex flex-wrap content-start" style={{ gap: chip.gap, transform: `scale(${scale})`, transformOrigin: 'top left', width: `${100 / scale}%` }}>
-                {players.map((p) => (
+              <div ref={innerRef} className="flex flex-wrap content-start" style={{ gap: chip.gap, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
+                {ordered.map((p) => (
                   <span key={p.id} className="rounded-full font-semibold" style={{ fontSize: chip.font, padding: chip.pad, whiteSpace: 'nowrap', background: 'rgba(0,255,178,0.1)', border: '1px solid rgba(0,255,178,0.3)', color: '#00FFB2' }}>
                     {p.name}
                   </span>
@@ -61,7 +66,6 @@ export default function LobbyDisplay({ players, roomId, joinUrl }: { players: an
                 {n === 0 && <p className="text-lg" style={{ color: 'rgba(255,255,255,0.35)' }}>รอผู้เล่นเข้าร่วม...</p>}
               </div>
             </div>
-            <p className="text-base" style={{ color: 'rgba(255,255,255,0.5)' }}>{n} players joined</p>
           </div>
         </div>
       </div>
