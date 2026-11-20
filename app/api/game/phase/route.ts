@@ -1,5 +1,5 @@
 // FILE: app/api/game/phase/route.ts
-// VERSION: B26-chunk — quiz bonus + results เขียนทีละ chunk 25 แถว (แทน Promise.all ทั้งห้อง) | prev: B16d-v1 — Add "set" action for MC Final step navigation (final / final_podium / final_awards / final_ranking)
+// VERSION: B26-chunk2 — WRITE_CHUNK 25 → 500 (เขียนพร้อมกันทั้งห้องเหมือน B25 · chunk 25 ช้าลงบน Large) | prev: B26-chunk — quiz bonus + results เขียนทีละ chunk 25 แถว | prev: B16d-v1 — Add "set" action for MC Final step navigation (final / final_podium / final_awards / final_ranking)
 // LAST MODIFIED: 20 Nov 2026
 // HISTORY: B3 created | B4 bug fix phase flow | B5 auto-calculate + event_result phase | B9 duel pair/resolve | B12-UX start → year_intro | B13-BATCH1 quiz bonus + remove duel | B15 Promise.all + portfolio_submitted_round | B16d set action (final steps) | B26 chunked writes (148-player load test)
 
@@ -14,9 +14,11 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-// ✅ B26: ยิง update ทีละ chunk (25 แถว) แทน Promise.all ทั้งห้องพร้อมกัน
-// load test 148 คน: burst 148 UPDATE พร้อมกันทำ DB ค้าง (research_reveal สูงสุด 43s) — chunk = จำกัด concurrency + กระจาย realtime burst
-const WRITE_CHUNK = 25;
+// ✅ B26: เขียนผ่าน runChunked — ขนาด chunk ปรับได้ที่ค่าเดียว
+// B26-chunk (25 แถว) ออกแบบแก้ burst บน compute Nano (research_reveal ค้าง 43s) · หลังอัปเป็น Large burst ไม่ใช่ปัญหาแล้ว
+// และ chunk 25 = 6 รอบต่อกัน ทำให้ช้าลง (load test 147 คน: results 2.7s → 6.2s · research_reveal 2.5s → 4.4s)
+// → B26-chunk2: 500 = เขียนพร้อมกันทั้งห้อง (พฤติกรรมเดียวกับ B25 ที่วัดได้ 2.7–3.9s บน Large) · ถ้ากลับไปใช้ compute เล็ก ให้ลดเหลือ 25
+const WRITE_CHUNK = 500;
 async function runChunked(tasks: (() => PromiseLike<unknown>)[]) {
   for (let i = 0; i < tasks.length; i += WRITE_CHUNK) {
     await Promise.all(tasks.slice(i, i + WRITE_CHUNK).map((t) => t()));
