@@ -1,7 +1,7 @@
 // FILE: components/display/LiveNameBoard.tsx — Spectator name wall (invest + chance_card)
-// VERSION: B26-pages — N > 80: แบ่งหน้าเท่าๆ กัน (148 → 74+74) และทุกหน้าแสดง detail (แท่ง allocation / ยอด ± การ์ด) · N ≤ 80 เหมือนเดิม | prev: B22b-v1 — small-roster fix: clamp cols to N + cap cell width/height
+// VERSION: B26-onepage — N > 80: หน้าเดียวทุกคน 12 คอลัมน์ ช่อง compact 2 บรรทัด (ชื่อ + แท่ง allocation / ยอด ±) แบบเดียวกับ FinalRanking · เลิกสลับหน้า · N ≤ 80 เหมือนเดิม | prev: B26-pages — N > 80: แบ่งหน้าเท่าๆ กัน (148 → 74+74) และทุกหน้าแสดง detail (แท่ง allocation / ยอด ± การ์ด) · N ≤ 80 เหมือนเดิม
 // LAST MODIFIED: 20 Nov 2026
-// HISTORY: B16b created — shared grid wall for invest (allocation bar) + chance_card (luck amount) | B22b clamp cols/cell size for small N (no change at N>=~30) | B26 balanced pages ≤ 80/page, detail always on
+// HISTORY: B16b created — shared grid wall for invest (allocation bar) + chance_card (luck amount) | B22b clamp cols/cell size for small N (no change at N>=~30) | B26 balanced pages ≤ 80/page, detail always on → B26-onepage single compact page for N > 80
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
@@ -13,9 +13,9 @@ interface LiveNameBoardProps {
   variant: 'invest' | 'chance';
 }
 
-// ✅ B26: เดิม N > 110 → หน้าละ 96 ไม่มี detail (148 คน = 96 + 52 · ไม่เห็นแท่ง allocation / ยอดการ์ด)
-//         ใหม่ N > 80 → แบ่งหน้าเท่าๆ กัน ไม่เกิน 80 คน/หน้า → แต่ละหน้าใช้ layout เดียวกับห้อง ≤ 80 คน (มี detail · พิสูจน์แล้วที่ S2 74 คน)
-const PAGE_MAX = 80;
+// ✅ B26-onepage: N > 80 → หน้าเดียว (เด็กเห็นชื่อตัวเองตลอด ไม่ต้องรอสลับหน้า) · 12 คอลัมน์ถึง 168 คน เกินนั้น 14 คอลัมน์
+//    (ประวัติ: B16b N > 110 = หน้าละ 96 ไม่มี detail → B26-pages แบ่ง 74+74 มี detail → onepage)
+const COMPACT_OVER = 80;
 const PAGE_ROTATE_MS = 9000;
 
 // ✅ B22b — เพดานขนาดช่อง: กันเคสคนน้อย (เทส 3-10 คน) ที่ 1fr ยืดช่องเต็มจอ
@@ -37,9 +37,8 @@ function isSubmitted(p: any, round: number, variant: 'invest' | 'chance') {
 }
 
 function tierOf(n: number) {
-  const pages = Math.max(1, Math.ceil(n / PAGE_MAX));
-  const perPage = Math.ceil(n / pages); // 148 → 2 หน้า × 74
-  return { cols: perPage <= 60 ? 6 : 7, detail: true, paginate: pages > 1, pages, perPage };
+  if (n <= COMPACT_OVER) return { cols: n <= 60 ? 6 : 7, detail: true, paginate: false, compact: false, pages: 1, perPage: n };
+  return { cols: n <= 168 ? 12 : 14, detail: true, paginate: false, compact: true, pages: 1, perPage: n };
 }
 
 export default function LiveNameBoard({ players, round, variant }: LiveNameBoardProps) {
@@ -101,9 +100,11 @@ export default function LiveNameBoard({ players, round, variant }: LiveNameBoard
     }
   }, [players, round, variant]);
 
-  const nameSize = cols <= 6 ? 22 : 18;
-  const amtSize = cols <= 6 ? 19 : 16;
-  const barH = cols <= 6 ? 11 : 9;
+  // ✅ B26-onepage: compact = ขนาดเดียวกับการ์ดจอ FinalRanking (ชื่อ 14 · บรรทัดสอง 13)
+  const nameSize = tier.compact ? (rows <= 10 ? 16 : 14) : (cols <= 6 ? 22 : 18);
+  const amtSize = tier.compact ? 13 : (cols <= 6 ? 19 : 16);
+  const barH = tier.compact ? 6 : (cols <= 6 ? 11 : 9);
+  const barW = tier.compact ? '88%' : '80%';
 
   function renderCell(p: any) {
     const submitted = isSubmitted(p, round, variant);
@@ -123,7 +124,7 @@ export default function LiveNameBoard({ players, round, variant }: LiveNameBoard
             .map((c) => ({ color: c.color, pct: parseFloat(portfolio[c.id]) || 0 }))
             .filter((s) => s.pct > 0);
           detailNode = (
-            <div className="rounded-full overflow-hidden flex" style={{ width: '80%', height: barH, background: segs.length ? 'rgba(255,255,255,0.08)' : 'rgba(245,158,11,0.25)' }}>
+            <div className="rounded-full overflow-hidden flex" style={{ width: barW, height: barH, background: segs.length ? 'rgba(255,255,255,0.08)' : 'rgba(245,158,11,0.25)' }}>
               {segs.map((s, i) => (
                 <div key={i} style={{ width: `${s.pct}%`, backgroundColor: s.color }} />
               ))}
@@ -131,7 +132,7 @@ export default function LiveNameBoard({ players, round, variant }: LiveNameBoard
           );
         }
       } else if (tier.detail) {
-        detailNode = <div className="rounded-full" style={{ width: '80%', height: barH, background: 'transparent' }} />;
+        detailNode = <div className="rounded-full" style={{ width: barW, height: barH, background: 'transparent' }} />;
       }
     } else {
       // chance
@@ -154,9 +155,9 @@ export default function LiveNameBoard({ players, round, variant }: LiveNameBoard
         key={p.id}
         className="flex flex-col items-center justify-center rounded-md overflow-hidden"
         style={{
-          gap: 3,
+          gap: tier.compact ? 2 : 3,
           minHeight: 0,
-          padding: '3px 6px',
+          padding: tier.compact ? '1px 4px' : '3px 6px',
           background: bg,
           border,
           transform: just ? 'scale(1.12)' : 'scale(1)',
