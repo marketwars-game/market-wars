@@ -5,7 +5,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { NAME_EXAMPLE, NAME_HINT, NAME_WARN, looksLikeEventName } from '@/lib/name-rule';
+import { NAME_EXAMPLE, NAME_HINT, NAME_WARN, looksLikeEventName, formatEventName, nameBlocked } from '@/lib/name-rule';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import { usePageTitle } from '@/hooks/usePageTitle';
@@ -43,7 +43,7 @@ function JoinForm() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        name: name.trim(),
+        name: formatEventName(name, true),
         room_id: roomCode.trim().toUpperCase(),
         force_reconnect: forceReconnect,
       }),
@@ -81,6 +81,10 @@ function JoinForm() {
     }
     if (name.trim().length > 20) {
       setError('ชื่อยาวเกินไป (ไม่เกิน 20 ตัว)');
+      return;
+    }
+    if (nameBlocked(name)) { // B26: กติกาชื่อของงาน
+      setError(NAME_WARN);
       return;
     }
 
@@ -189,7 +193,7 @@ function JoinForm() {
           <input
             type="text"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => setName(formatEventName(e.target.value))}
             onKeyDown={handleKeyDown}
             placeholder={`เช่น ${NAME_EXAMPLE}`}
             maxLength={20}
@@ -199,7 +203,7 @@ function JoinForm() {
           />
           {/* ✅ B26: กติกาชื่อของงาน — เตือนอย่างเดียว ไม่บล็อก */}
           <p className="text-gray-500 text-xs mt-1.5">{NAME_HINT}</p>
-          <p className="text-amber-400 text-xs mt-0.5" style={{ minHeight: 16 }}>{name.trim() && !looksLikeEventName(name) ? NAME_WARN : ''}</p>
+          <p className="text-amber-400 text-xs mt-0.5" style={{ minHeight: 16 }}>{name.trim() && !looksLikeEventName(formatEventName(name, true)) ? NAME_WARN : ''}</p>
         </div>
 
         {/* Error Message */}
@@ -238,7 +242,7 @@ function JoinForm() {
         {/* Join Button */}
         <button
           onClick={handleJoin}
-          disabled={isJoining || !name.trim() || !roomCode.trim()}
+          disabled={isJoining || !name.trim() || !roomCode.trim() || nameBlocked(name)}
           className="w-full py-3 rounded-xl font-bold text-lg transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed bg-gradient-to-r from-[#00FFB2] to-[#00D4FF] text-[#0D1117] hover:opacity-90 active:scale-[0.98]"
         >
           {isJoining ? (

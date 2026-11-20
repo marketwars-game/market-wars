@@ -5,7 +5,7 @@
 'use client';
 
 import { useState } from 'react';
-import { NAME_EXAMPLE, NAME_HINT, NAME_WARN, looksLikeEventName } from '@/lib/name-rule';
+import { NAME_EXAMPLE, NAME_HINT, NAME_WARN, looksLikeEventName, formatEventName, nameBlocked } from '@/lib/name-rule';
 
 interface LobbyCardProps {
   playerId: string;
@@ -22,8 +22,9 @@ export default function LobbyCard({ playerId, roomId, name, startingMoney, onRen
   const [error, setError] = useState('');
 
   const save = async () => {
-    const next = draft.trim();
+    const next = formatEventName(draft, true);
     if (!next) { setError('กรุณาใส่ชื่อ'); return; }
+    if (nameBlocked(next)) { setError(NAME_WARN); return; }
     if (next === name) { setEditing(false); return; }
     setSaving(true); setError('');
     try {
@@ -61,7 +62,7 @@ export default function LobbyCard({ playerId, roomId, name, startingMoney, onRen
           <input
             type="text"
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => setDraft(formatEventName(e.target.value))}
             onKeyDown={(e) => { if (e.key === 'Enter') save(); }}
             maxLength={20}
             placeholder={`เช่น ${NAME_EXAMPLE}`}
@@ -70,11 +71,11 @@ export default function LobbyCard({ playerId, roomId, name, startingMoney, onRen
             className="w-full bg-[#0D1117] border border-gray-700 rounded-lg px-4 py-3 text-white text-center text-lg focus:border-[#00FFB2] focus:outline-none"
           />
           <p className="text-gray-500 text-xs mt-1">{NAME_HINT}</p>
-          {draft.trim() && !looksLikeEventName(draft) && <p className="text-amber-400 text-xs mt-1">{NAME_WARN}</p>}
+          {draft.trim() && !looksLikeEventName(formatEventName(draft, true)) && <p className="text-amber-400 text-xs mt-1">{NAME_WARN}</p>}
           {error && <p className="text-red-400 text-sm mt-1">{error}</p>}
           <div className="flex gap-2 mt-3">
             <button onClick={() => { setEditing(false); setError(''); }} disabled={saving} className="flex-1 py-2 rounded-lg border border-gray-700 text-gray-400">ยกเลิก</button>
-            <button onClick={save} disabled={saving || !draft.trim()} className="flex-1 py-2 rounded-lg font-bold text-[#0D1117] bg-[#00FFB2] disabled:opacity-50">{saving ? 'กำลังบันทึก...' : 'บันทึก'}</button>
+            <button onClick={save} disabled={saving || !draft.trim() || nameBlocked(draft)} className="flex-1 py-2 rounded-lg font-bold text-[#0D1117] bg-[#00FFB2] disabled:opacity-50">{saving ? 'กำลังบันทึก...' : 'บันทึก'}</button>
           </div>
         </div>
       )}

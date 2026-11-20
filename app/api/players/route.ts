@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { formatEventName } from '@/lib/name-rule';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -38,7 +39,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const trimmedName = name.trim();
+    const trimmedName = formatEventName(name, true); // B26: จัดรูปแบบชื่อฝั่ง server ด้วย (Almond.W) — เผื่อ client เก่า/ยิง API ตรง
     const trimmedRoomId = room_id.trim().toUpperCase();
 
     // 4. เช็คว่าห้องมีอยู่จริง

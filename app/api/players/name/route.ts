@@ -5,6 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { formatEventName } from '@/lib/name-rule';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,7 +16,7 @@ const supabase = createClient(
 export async function PATCH(request: Request) {
   try {
     const { player_id, room_id, name } = await request.json();
-    const newName = typeof name === 'string' ? name.trim() : '';
+    const newName = typeof name === 'string' ? formatEventName(name, true) : '';
     if (!player_id || !room_id) return NextResponse.json({ error: 'Missing required fields: player_id, room_id' }, { status: 400 });
     if (!newName) return NextResponse.json({ error: 'กรุณาใส่ชื่อ' }, { status: 400 });
     if (newName.length > 20) return NextResponse.json({ error: 'ชื่อยาวเกินไป (ไม่เกิน 20 ตัว)' }, { status: 400 });

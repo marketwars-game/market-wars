@@ -28,7 +28,7 @@ import FinalView from '@/components/player/FinalView';
 import FinalHold from '@/components/player/FinalHold';
 import ChanceCard from '@/components/player/ChanceCard';
 import LobbyCard from '@/components/player/LobbyCard';
-import { NAME_EXAMPLE, NAME_HINT, NAME_WARN, looksLikeEventName } from '@/lib/name-rule';
+import { NAME_EXAMPLE, NAME_HINT, NAME_WARN, looksLikeEventName, formatEventName, nameBlocked } from '@/lib/name-rule';
 
 function PlayerContent() {
   const params = useParams();
@@ -238,9 +238,10 @@ function PlayerContent() {
 
   // === Join handler ===
   const handleJoin = async (forceReconnect = false) => {
+    if (nameBlocked(name)) { setJoinError(NAME_WARN); return; } // B26: กติกาชื่อของงาน
     setJoining(true); setJoinError('');
     try {
-      const res = await fetch('/api/players', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name.trim(), room_id: roomId, force_reconnect: forceReconnect }) });
+      const res = await fetch('/api/players', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: formatEventName(name, true), room_id: roomId, force_reconnect: forceReconnect }) });
       const data = await res.json();
       if (data.duplicate && !forceReconnect) { setShowDuplicatePopup(true); setJoining(false); return; }
       if (!res.ok) { setJoinError(data.error || 'Failed to join'); setJoining(false); return; }
@@ -294,10 +295,10 @@ function PlayerContent() {
         <h1 className="text-2xl font-bold text-[#00FFB2] mb-1">MARKET WARS</h1>
         <p className="text-gray-400 text-sm mb-6">Room: <span className="text-[#00D4FF] font-mono">{roomId}</span></p>
         <div className="w-full max-w-xs">
-          <input type="text" placeholder={`เช่น ${NAME_EXAMPLE}`} value={name} onChange={(e) => setName(e.target.value)} maxLength={20} className="w-full bg-[#161b22] border border-gray-700 rounded-lg px-4 py-3 text-white text-center text-lg focus:border-[#00FFB2] focus:outline-none mb-1" />
+          <input type="text" placeholder={`เช่น ${NAME_EXAMPLE}`} value={name} onChange={(e) => setName(formatEventName(e.target.value))} maxLength={20} className="w-full bg-[#161b22] border border-gray-700 rounded-lg px-4 py-3 text-white text-center text-lg focus:border-[#00FFB2] focus:outline-none mb-1" />
           <p className="text-gray-500 text-xs text-center mb-1">{NAME_HINT}</p>
-          <p className="text-amber-400 text-xs text-center mb-3" style={{ minHeight: 16 }}>{name.trim() && !looksLikeEventName(name) ? NAME_WARN : ''}</p>
-          <button onClick={() => handleJoin(false)} disabled={joining || !name.trim()} className="w-full py-3 rounded-lg font-bold text-[#0D1117] bg-[#00FFB2] hover:bg-[#00FFB2]/90 disabled:opacity-50">{joining ? 'Joining...' : 'Join Game'}</button>
+          <p className="text-amber-400 text-xs text-center mb-3" style={{ minHeight: 16 }}>{name.trim() && !looksLikeEventName(formatEventName(name, true)) ? NAME_WARN : ''}</p>
+          <button onClick={() => handleJoin(false)} disabled={joining || !name.trim() || nameBlocked(name)} className="w-full py-3 rounded-lg font-bold text-[#0D1117] bg-[#00FFB2] hover:bg-[#00FFB2]/90 disabled:opacity-50">{joining ? 'Joining...' : 'Join Game'}</button>
           {joinError && <p className="text-red-400 text-sm text-center mt-2">{joinError}</p>}
         </div>
         {showDuplicatePopup && (
