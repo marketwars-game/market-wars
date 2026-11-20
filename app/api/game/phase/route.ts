@@ -1,7 +1,7 @@
 // FILE: app/api/game/phase/route.ts
-// VERSION: B16d-v1 — Add "set" action for MC Final step navigation (final / final_podium / final_awards / final_ranking)
-// LAST MODIFIED: 11 Jun 2026
-// HISTORY: B3 created | B4 bug fix phase flow | B5 auto-calculate + event_result phase | B9 duel pair/resolve | B12-UX start → year_intro | B13-BATCH1 quiz bonus + remove duel | B15 Promise.all + portfolio_submitted_round | B16d set action (final steps)
+// VERSION: B26-chunk — quiz bonus + results เขียนทีละ chunk 25 แถว (แทน Promise.all ทั้งห้อง) | prev: B16d-v1 — Add "set" action for MC Final step navigation (final / final_podium / final_awards / final_ranking)
+// LAST MODIFIED: 20 Nov 2026
+// HISTORY: B3 created | B4 bug fix phase flow | B5 auto-calculate + event_result phase | B9 duel pair/resolve | B12-UX start → year_intro | B13-BATCH1 quiz bonus + remove duel | B15 Promise.all + portfolio_submitted_round | B16d set action (final steps) | B26 chunked writes (148-player load test)
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
@@ -13,6 +13,15 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
+
+// ✅ B26: ยิง update ทีละ chunk (25 แถว) แทน Promise.all ทั้งห้องพร้อมกัน
+// load test 148 คน: burst 148 UPDATE พร้อมกันทำ DB ค้าง (research_reveal สูงสุด 43s) — chunk = จำกัด concurrency + กระจาย realtime burst
+const WRITE_CHUNK = 25;
+async function runChunked(tasks: (() => PromiseLike<unknown>)[]) {
+  for (let i = 0; i < tasks.length; i += WRITE_CHUNK) {
+    await Promise.all(tasks.slice(i, i + WRITE_CHUNK).map((t) => t()));
+  }
+}
 
 // ==============================================
 // POST /api/game/phase
@@ -227,12 +236,12 @@ export async function POST(request: Request) {
               if (correctCount >= 2) bonus = QUIZ_BONUS.CORRECT_2;
               else if (correctCount === 1) bonus = QUIZ_BONUS.CORRECT_1;
               const currentMoney = parseFloat(player.money) || 0;
-              return supabase
+              return () => supabase
                 .from('players')
                 .update({ money: currentMoney + bonus })
                 .eq('id', player.id);
             });
-          await Promise.all(bonusUpdates);
+          await runChunked(bonusUpdates);
         }
       }
 
@@ -276,7 +285,7 @@ export async function POST(request: Request) {
 
               const moneyAfter = money + totalReturn;
 
-              return supabase
+              return () => supabase
                 .from('players')
                 .update({
                   money: moneyAfter,
@@ -293,7 +302,7 @@ export async function POST(request: Request) {
                 })
                 .eq('id', player.id);
             });
-          await Promise.all(returnUpdates);
+          await runChunked(returnUpdates);
         }
       }
 

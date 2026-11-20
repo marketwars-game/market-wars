@@ -1,5 +1,5 @@
 // FILE: scripts/bots/swarm.mjs — Bot swarm: ผู้เล่นจำลอง N คน join ห้องจริง เพื่อทดสอบ load + หน้าจอ
-// VERSION: B26 — created
+// VERSION: B26-v2 — ชื่อไม่ซ้ำ (ตัดชื่อ ไม่ตัดเลข) · เลียนแบบ client ตามเวอร์ชันที่ deploy (ตรวจจาก /api/players/chance) | prev: B26 created
 // LAST MODIFIED: 20 Nov 2026
 // HISTORY: B26 created — join/quiz/invest/chance/leaderboard ตาม phase + realtime เหมือนหน้า player + รายงาน latency/integrity
 //
@@ -96,7 +96,8 @@ function makeName(i) {
   const r = rnd();
   let base = r < 0.06 ? pick(LONG) : r < 0.66 ? pick(TH) : pick(EN);
   if (rnd() < 0.08) base += pick(['🔥', '⭐', '🦄', '😎']);
-  return (PREFIX + base + ' ' + (i + 1)).slice(0, 20); // API จำกัด 20 ตัว · เลขท้ายกันชื่อซ้ำ
+  const tail = ' ' + (i + 1);
+  return (PREFIX + base).slice(0, 20 - tail.length) + tail; // API จำกัด 20 ตัว · ตัดชื่อ ไม่ตัดเลขท้าย (เลขกันชื่อซ้ำ — รอบแรกชื่อยาวซ้ำกันจนใช้แถวเดียวกัน)
 }
 
 // ---------- bot ----------
@@ -128,7 +129,9 @@ class Bot {
     this.me = r.data.player;
     // mount fetch เหมือนหน้า player (rooms + players ทั้งห้อง)
     const room = await timed('mount select rooms', async () => this.sb.from('rooms').select('*').eq('id', ROOM).single());
-    await timed('mount select players *', async () => { const q = await this.sb.from('players').select('*').eq('room_id', ROOM).order('joined_at', { ascending: true }); return { error: q.error, bytes: JSON.stringify(q.data || []).length }; });
+    if (B26) await this.freshMe('mount select me');
+    else await timed('mount select players *', async () => { const q = await this.sb.from('players').select('*').eq('room_id', ROOM).order('joined_at', { ascending: true }); return { error: q.error, bytes: JSON.stringify(q.data || []).length }; });
+    if (B26) this.pollTimer = setInterval(() => { if (!shared.stop) timed('poll  select rooms (10s fallback)', async () => this.sb.from('rooms').select('*').eq('id', ROOM).single()); }, 9000 + Math.random() * 2000);
     if (REALTIME) this.subscribe();
     if (room.data) this.onRoom(room.data, 'mount');
     return true;
@@ -146,7 +149,7 @@ class Bot {
     this.me = { ...this.me, ...row };
     const pr = this.pendingResults;
     if (pr && row.round_returns && row.round_returns[String(pr.round)]) {
-      if (via === 'rt') rt.resultsLat.push(now() - pr.t0); else rt.resultsMissed++;
+      rt.resultsLat.push(now() - pr.t0); if (via !== 'rt') rt.resultsMissed++; // missed = ได้ผลผ่าน fallback ไม่ใช่ realtime
       this.pendingResults = null;
     }
   }
@@ -170,6 +173,17 @@ class Bot {
     const exp = (this.expected[round] ||= { quiz: 0, card: 0 });
     const slow = this.profile === 'slow' ? 1.6 : 1;
     const wait = (a, b) => sleep((between(a, b) * 1000 * slow) / SPEED);
+    if (phase === 'results') this.pendingResults = { round, t0: now() };
+    if (B26 && phase !== 'lobby') { // เหมือน client B26: ดึงแถวตัวเองหลัง phase เปลี่ยน (+ลองซ้ำตอน results)
+      (async () => {
+        await sleep(1500 + Math.random() * 1500);
+        for (let t = 0; t < 6; t++) {
+          await this.freshMe('me    refetch after phase');
+          if (phase !== 'results' || !this.pendingResults || this.pendingResults.round !== round) break;
+          await sleep(3000);
+        }
+      })();
+    }
     if (this.profile === 'noshow' && phase !== 'lobby') return; // join แล้วหาย (ไม่ตอบ/ไม่ลงทุน)
 
     if (phase === 'research') {
@@ -187,19 +201,18 @@ class Bot {
       if (shared.phase !== 'chance_card' || shared.round !== round) return;
       const amount = cardAmount(ROOM, round, this.me.id);
       // B26-F: ลอง API ใหม่ก่อน · 404/405 = โค้ดเก่า (เขียน DB ตรงจาก client เหมือน ChanceCard.tsx เดิม)
-      const r = await api('/api/players/chance', 'POST', { player_id: this.me.id, room_id: ROOM, round }).catch((e) => ({ error: e, status: 0 }));
-      if (r.status === 404 || r.status === 405) {
+      const r = B26 ? await timed('chance POST /api/players/chance', () => api('/api/players/chance', 'POST', { player_id: this.me.id, room_id: ROOM, round })) : { status: 404 };
+      if (r.status === 404) {
         if (!REALTIME) await this.freshMe('chance select me (no-rt)');
         const money = parseFloat(this.me.money) || 0; // stale ถ้า realtime โบนัส quiz ยังมาไม่ถึง = บั๊ก P4 ของจริง
         const q = await timed('chance UPDATE players (legacy client write)', async () => this.sb.from('players').update({ money: money + amount, duel_money_change: amount, duel_submitted_round: round }).eq('id', this.me.id));
         if (!q.error) exp.card = amount;
-      } else { rec('chance POST /api/players/chance', 0, r.error); if (!r.error) exp.card = amount; }
-    } else if (phase === 'results') {
-      this.pendingResults = { round, t0: now() };
+      } else if (!r.error) exp.card = amount;
+    } else if (phase === 'results' && !B26) {
       await sleep(6000);
       if (this.pendingResults?.round === round) await this.freshMe('results fallback select me');
-    } else if (phase === 'leaderboard' || phase.startsWith('final')) {
-      await sleep(Math.random() * 800); // jitter เหมือนหน้า player
+    } else if (B26 ? (phase === 'leaderboard' || phase === 'final') : (phase === 'leaderboard' || phase.startsWith('final'))) {
+      await sleep(Math.random() * (B26 ? (phase === 'final' ? 3000 : 2000) : 800)); // jitter เหมือนหน้า player ของเวอร์ชันนั้น
       await timed('list  select players (leaderboard/final)', async () => { const q = await this.sb.from('players').select('id, name, money, round_returns, quiz_score, quiz_speed_ms').eq('room_id', ROOM).order('joined_at', { ascending: true }); return { error: q.error, bytes: JSON.stringify(q.data || []).length }; });
     }
   }
@@ -237,6 +250,12 @@ console.log(`\nMarket Wars bot swarm · ห้อง ${ROOM} (${room0.status}/${
 console.log(`bots ${N} · url ${BASE} · realtime ${REALTIME ? 'on' : 'off'} · mc ${MC_AUTO ? 'auto' : 'manual'} · speed ×${SPEED}`);
 console.log('เริ่มใน 5 วินาที (Ctrl+C เพื่อยกเลิก)…'); await sleep(5000);
 if (room0.status === 'finished') { console.error('ห้องนี้จบแล้ว'); process.exit(1); }
+
+// โค้ดที่ deploy เป็น B26 หรือยัง? (มี /api/players/chance) → bot เลียนแบบ client ให้ตรงเวอร์ชัน
+const probe = await api('/api/players/chance', 'POST', {}).catch(() => ({ status: 0 }));
+if (probe.status === 401 || probe.status === 403) { console.error(`URL นี้ตอบ HTTP ${probe.status} — น่าจะติด Vercel Deployment Protection (preview) bot เข้าไม่ได้`); process.exit(1); }
+const B26 = probe.status === 400;
+console.log(`client mode: ${B26 ? 'B26 (chance API · own-row mount · poll fallback)' : 'B25 (legacy)'}`);
 
 const bots = Array.from({ length: N }, (_, i) => new Bot(i));
 const tJoin = now();
@@ -292,7 +311,8 @@ async function report() {
   if (Object.keys(errs).length) { console.log('===== Errors (ตัวอย่าง) ====='); console.log(errs); }
   const dir = join(ROOT, 'scripts', 'bots', 'reports'); mkdirSync(dir, { recursive: true });
   const file = join(dir, `${ROOM}-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}.json`);
-  writeFileSync(file, JSON.stringify({ room: ROOM, url: BASE, n: N, joined: live.length, mc: MC_AUTO ? 'auto' : 'manual', speed: SPEED, at: new Date().toISOString(), table, realtime, integrity: { checked, bad }, errors: errs, profiles: live.reduce((a, b) => ((a[b.profile] = (a[b.profile] || 0) + 1), a), {}) }, null, 2));
+  writeFileSync(file, JSON.stringify({ client: B26 ? 'B26' : 'B25', room: ROOM, url: BASE, n: N, joined: live.length, mc: MC_AUTO ? 'auto' : 'manual', speed: SPEED, at: new Date().toISOString(), table, realtime, integrity: { checked, bad }, errors: errs, profiles: live.reduce((a, b) => ((a[b.profile] = (a[b.profile] || 0) + 1), a), {}) }, null, 2));
   console.log('\nรายงาน:', file);
+  live.forEach((b) => clearInterval(b.pollTimer));
   await Promise.all(live.map((b) => b.sb.removeAllChannels().catch(() => {})));
 }

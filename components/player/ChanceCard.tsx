@@ -1,11 +1,10 @@
 // FILE: components/player/ChanceCard.tsx — Chance Card mini-game
-// VERSION: B17-BATCH1-v1 — Bilingual: wrap card.text in <Bi> (th/en) on revealed card
-// LAST MODIFIED: 12 Jun 2026
-// HISTORY: B13 created (replacing B9 MarketFight) | B17-BATCH1 bilingual card.text via <Bi>
+// VERSION: B26-api — เปิดการ์ดผ่าน POST /api/players/chance (เลิกเขียน DB ตรงจาก client) | prev: B17-BATCH1-v1 — Bilingual: wrap card.text in <Bi> (th/en) on revealed card
+// LAST MODIFIED: 20 Nov 2026
+// HISTORY: B13 created (replacing B9 MarketFight) | B17-BATCH1 bilingual card.text via <Bi> | B26 server-side write via /api/players/chance
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { supabase } from '@/lib/supabase';
 import { getChanceCard } from '@/lib/constants';
 import Bi from '@/components/common/Bi';
 
@@ -54,19 +53,20 @@ export default function ChanceCard({ playerId, roomId, round, player }: ChanceCa
       setCardState('revealed');
     }, 1500);
 
-    // Write DB: update money + reuse duel columns
-    try {
-      const currentMoney = parseFloat(player.money) || 0;
-      await supabase
-        .from('players')
-        .update({
-          money: currentMoney + card.amount,
-          duel_money_change: card.amount,
-          duel_submitted_round: round,
-        })
-        .eq('id', playerId);
-    } catch (err) {
-      console.error('Chance card DB error:', err);
+    // ✅ B26: เขียนผ่าน API (server อ่านเงินสดจาก DB ก่อนบวก + กันเปิดซ้ำ) — เดิมเขียน money จาก state ในเครื่องตรงเข้า DB
+    // ลองซ้ำ 1 ครั้งถ้าเน็ตสะดุด (API idempotent ต่อรอบ)
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const res = await fetch('/api/players/chance', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ player_id: playerId, room_id: roomId, round }),
+        });
+        if (res.ok || res.status === 400) break; // 400 = ปิดรับแล้ว (ไม่ต้อง retry)
+      } catch (err) {
+        console.error('Chance card API error:', err);
+      }
+      await new Promise((r) => setTimeout(r, 1200));
     }
   }
 

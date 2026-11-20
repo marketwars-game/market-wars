@@ -1,7 +1,7 @@
 // FILE: app/play/[roomId]/page.tsx — Player game screen
-// VERSION: B25-title — browser tab title via usePageTitle | prev: B24-v1 — hide player header (name/money/refresh) at final_ranking so share-card screenshot is clean
+// VERSION: B26-perf — 148-player hardening: mount ดึงเฉพาะแถวตัวเอง · list fetch เฉพาะ leaderboard/final(prefetch)/final_ranking + jitter 2s · poll rooms 10s + refetch ตอนกลับเข้าแอป · refetch แถวตัวเองหลัง phase เปลี่ยน (realtime fallback) | prev: B25-title — browser tab title via usePageTitle | prev: B24-v1 — hide player header (name/money/refresh) at final_ranking so share-card screenshot is clean
 // LAST MODIFIED: 20 Nov 2026
-// HISTORY: B2 created | B3 phase sync + timer | B4 InvestmentPanel | B5 event_result + ResultsPanel | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components | B9 MarketFight | B12-UX mini step + year_intro + market_open | B13-BATCH3 ChanceCard + Realtime optimize + cut news/rebalance/attack | B16d final_* variants → FinalView | perf-v1 trim+jitter list fetch + debug badge | B18 quiz speed capture | B18-v2 select quiz fields for cascade | B22b FinalHold gating (reveal at final_ranking only) | B24 hide header at final_ranking (clean share-card) | B25 tab title (📱 name · room — no phase)
+// HISTORY: B2 created | B3 phase sync + timer | B4 InvestmentPanel | B5 event_result + ResultsPanel | B6 leaderboard | B7 final phase | B8 research quiz (v2: 3-phase) | B8R refactor to components | B9 MarketFight | B12-UX mini step + year_intro + market_open | B13-BATCH3 ChanceCard + Realtime optimize + cut news/rebalance/attack | B16d final_* variants → FinalView | perf-v1 trim+jitter list fetch + debug badge | B18 quiz speed capture | B18-v2 select quiz fields for cascade | B22b FinalHold gating (reveal at final_ranking only) | B24 hide header at final_ranking (clean share-card) | B25 tab title (📱 name · room — no phase) | B26 perf hardening (own-row mount, list trim, poll + own-row fallbacks)
 'use client';
 
 import { useEffect, useState, useRef, Suspense } from 'react';
@@ -67,19 +67,48 @@ function PlayerContent() {
     if (saved) { try { const parsed = JSON.parse(saved); setPlayer(parsed); playerIdRef.current = parsed.id; } catch {} }
   }, [roomId]);
 
+  // ✅ B26: เวลาที่ realtime event ล่าสุดมาถึง — ใช้กัน poll/refetch ที่ตอบช้าเขียนทับ state ที่ใหม่กว่า
+  const lastRoomEvtAt = useRef(0);
+  const lastMeEvtAt = useRef(0);
+  const listLoadedRef = useRef(false);
+  const listPhaseRef = useRef<string | null>(null);
+  const listEffectRan = useRef(false);
+
+  // ✅ B26: ดึงแถวตัวเองแถวเดียว (แทน select * ทั้งห้อง) — ใช้ตอน mount / refresh / fallback หลัง phase เปลี่ยน
+  const fetchMe = async () => {
+    const pid = playerIdRef.current;
+    if (!pid) return null;
+    const sentAt = dnow();
+    const { data: me } = await supabase.from('players').select('*').eq('id', pid).maybeSingle();
+    if (me && lastMeEvtAt.current <= sentAt) { setPlayer(me); localStorage.setItem(`mw_player_${roomId}`, JSON.stringify(me)); }
+    return me;
+  };
+
+  // ✅ B26: รายชื่อทั้งห้อง (trim columns) — ใช้เฉพาะ LeaderboardView / FinalView
+  const fetchList = async () => {
+    const t0 = dnow();
+    const { data } = await supabase
+      .from('players')
+      .select('id, name, money, round_returns, quiz_score, quiz_speed_ms')
+      .eq('room_id', roomId)
+      .order('joined_at', { ascending: true });
+    if (data) { setPlayers(data); listLoadedRef.current = true; }
+    dbg.current.listMs = Math.round(dnow() - t0);
+    dbg.current.listRows = data?.length || 0;
+    return data;
+  };
+
   // === Fetch data (reusable for refresh) ===
+  // ✅ B26: เดิมดึง players ทั้งห้อง select('*') ทุกครั้งที่ mount/refresh (148 แถว × round_returns) → เหลือ rooms + แถวตัวเอง
   const fetchData = async (showLoader = false) => {
     if (showLoader) setRefreshing(true);
     const { data: roomData } = await supabase.from('rooms').select('*').eq('id', roomId).single();
     setRoom(roomData);
     const t0 = dnow();
-    const { data: playerData } = await supabase.from('players').select('*').eq('room_id', roomId).order('joined_at', { ascending: true });
+    await fetchMe();
     dbg.current.mountMs = Math.round(dnow() - t0);
-    setPlayers(playerData || []);
-    if (playerIdRef.current && playerData) {
-      const me = playerData.find((p) => p.id === playerIdRef.current);
-      if (me) { setPlayer(me); localStorage.setItem(`mw_player_${roomId}`, JSON.stringify(me)); }
-    }
+    const ph = roomData?.current_phase;
+    if (showLoader && (ph === 'leaderboard' || ph === 'final_ranking')) await fetchList(); // ↻ บนจออันดับ = โหลดรายชื่อใหม่ด้วย
     setLoading(false);
     bumpDbg();
     if (showLoader) setTimeout(() => setRefreshing(false), 800);
@@ -92,6 +121,7 @@ function PlayerContent() {
     const roomChannel = supabase.channel(`player-room-${roomId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` }, (payload) => {
         dbg.current.phaseRecvAt = dnow(); // perf-v1: mark when phase event arrived (for fetch-gap)
+        lastRoomEvtAt.current = dnow();   // B26
         if (readDebugFlag()) console.log('[player] phase →', (payload.new as any)?.current_phase, 'at', Date.now());
         setRoom(payload.new);
       })
@@ -104,6 +134,7 @@ function PlayerContent() {
       playerChannel = supabase.channel(`player-me-${pid}`)
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'players', filter: `id=eq.${pid}` }, (payload) => {
           dbg.current.events += 1; meRate.current.push(); bumpDbg(); // perf-v1
+          lastMeEvtAt.current = dnow(); // B26
           const updated = payload.new;
           setPlayer(updated);
           localStorage.setItem(`mw_player_${roomId}`, JSON.stringify(updated));
@@ -117,30 +148,65 @@ function PlayerContent() {
     };
   }, [roomId, playerIdRef.current]);
 
-  // ✅ B13: Fetch players list เมื่อ phase เปลี่ยนเป็น leaderboard/final (ต้องการ players array)
-  // perf-v1: trim columns + B18 quiz_score/quiz_speed_ms (Leaderboard/FinalView + cascade ใช้)
-  //          + jitter 0-800ms กระจาย thundering-herd ตอน 60 client ยิงพร้อมกัน
+  // ✅ B13: Fetch players list เมื่อ phase ต้องใช้ players array
+  // perf-v1: trim columns + jitter กระจาย thundering-herd
+  // ✅ B26: ดึงเฉพาะ phase ที่จอมือถือใช้รายชื่อจริง — leaderboard · final (prefetch ให้ FinalView) · final_ranking (ถ้ายังไม่มี)
+  //         เดิมดึงที่ lobby + final ทั้ง 4 step ด้วย (148 เครื่อง × ~143kB ต่อครั้ง) · jitter 0.8s → 2s (final prefetch 3s)
+  //         mount/refresh กลางจออันดับ (ยังไม่มีรายชื่อ) → ไม่ jitter
   useEffect(() => {
     const phase = room?.current_phase;
-    if (!(phase === 'leaderboard' || (phase && phase.startsWith('final')) || phase === 'lobby')) return;
+    if (!phase) return;
+    const firstRun = !listEffectRan.current; // phase แรกที่เห็นหลัง mount/refresh (ไม่ใช่ phase เปลี่ยนพร้อมกันทั้งห้อง)
+    listEffectRan.current = true;
+    if (!(phase === 'leaderboard' || phase === 'final' || phase === 'final_ranking')) return;
+    if (phase === 'final_ranking' && listLoadedRef.current && listPhaseRef.current === 'final') return; // prefetch ไว้แล้วตอน final
     const recvAt = dbg.current.phaseRecvAt || dnow();
-    const jitter = Math.random() * 800;
+    const jitter = firstRun ? 0 : Math.random() * (phase === 'final' ? 3000 : 2000);
     const t = setTimeout(async () => {
-      const t0 = dnow();
-      const { data } = await supabase
-        .from('players')
-        .select('id, name, money, round_returns, quiz_score, quiz_speed_ms')
-        .eq('room_id', roomId)
-        .order('joined_at', { ascending: true });
-      if (data) setPlayers(data);
-      dbg.current.listMs = Math.round(dnow() - t0);
-      dbg.current.listRows = data?.length || 0;
+      const data = await fetchList();
+      if (data) listPhaseRef.current = phase;
       dbg.current.gapMs = Math.round(dnow() - recvAt);
       if (readDebugFlag()) console.log(`[player] list fetch ${dbg.current.listMs}ms rows=${dbg.current.listRows} gap=${dbg.current.gapMs}ms (jitter ${Math.round(jitter)}ms)`);
       bumpDbg();
     }, jitter);
     return () => clearTimeout(t);
   }, [room?.current_phase, roomId]);
+
+  // ✅ B26 (P3): Realtime fallback — poll rooms ทุก ~10s + ตอนกลับเข้าแอป/เน็ตกลับมา
+  // (load test 148 คน: phase event 3% มาช้ากว่า 4s · มือถือพัก/เน็ตหลุดจะไม่ได้ event ย้อนหลัง → เดิมค้างจนกด ↻)
+  useEffect(() => {
+    let stopped = false;
+    const pollRoom = async () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      const sentAt = dnow();
+      const { data } = await supabase.from('rooms').select('*').eq('id', roomId).single();
+      if (stopped || !data) return;
+      if (lastRoomEvtAt.current > sentAt) return; // realtime ใหม่กว่ามาถึงระหว่างรอ → ทิ้งคำตอบ poll
+      setRoom((prev: any) => (!prev || prev.current_phase !== data.current_phase || prev.current_round !== data.current_round || prev.status !== data.status) ? data : prev);
+    };
+    const id = setInterval(pollRoom, 9000 + Math.random() * 2000);
+    const onWake = () => { if (!document.hidden) { pollRoom(); fetchMe(); } };
+    document.addEventListener('visibilitychange', onWake);
+    window.addEventListener('online', onWake);
+    return () => { stopped = true; clearInterval(id); document.removeEventListener('visibilitychange', onWake); window.removeEventListener('online', onWake); };
+  }, [roomId]);
+
+  // ✅ B26 (P3/P4): หลัง phase เปลี่ยน → ดึงแถวตัวเองซ้ำ 1 ครั้ง (jitter 1.5–3s) เผื่อ realtime ของแถวตัวเองมาช้า/หาย
+  // results: ถ้าผลรอบนี้ยังไม่มา (server คำนวณทั้งห้อง ~5–10s) ลองซ้ำทุก 3s สูงสุด 5 ครั้ง
+  useEffect(() => {
+    const phase = room?.current_phase;
+    const r = room?.current_round;
+    if (!phase || phase === 'lobby' || !playerIdRef.current) return;
+    let tries = 0;
+    let t: NodeJS.Timeout;
+    const run = async () => {
+      const me = await fetchMe();
+      tries += 1;
+      if (phase === 'results' && tries < 6 && !(me?.round_returns && me.round_returns[String(r)])) t = setTimeout(run, 3000);
+    };
+    t = setTimeout(run, 1500 + Math.random() * 1500);
+    return () => clearTimeout(t);
+  }, [room?.current_phase, room?.current_round]);
 
   // === Timer ===
   useEffect(() => {
@@ -420,11 +486,15 @@ function PlayerContent() {
       {phase === 'results' && <ResultsPanel round={round} player={player} />}
 
       {/* === Leaderboard — Component === */}
-      {phase === 'leaderboard' && <LeaderboardView player={player} players={players} round={round} />}
+      {/* ✅ B26: รายชื่อโหลดตาม phase (ไม่ได้โหลดตอน mount แล้ว) → รอสั้นๆ ถ้ายังไม่มา */}
+      {(phase === 'leaderboard' || finalRevealed) && players.length === 0 && (
+        <div className="text-center text-[#00FFB2] text-lg animate-pulse py-10">Loading...</div>
+      )}
+      {phase === 'leaderboard' && players.length > 0 && <LeaderboardView player={player} players={players} round={round} />}
 
       {/* === Final — Component (B22b: hold จนกว่าจะถึง final_ranking) === */}
       {isFinal && (finalRevealed
-        ? <FinalView player={player} players={players} />
+        ? (players.length > 0 ? <FinalView player={player} players={players} /> : null)
         : <FinalHold phase={phase as 'final' | 'final_podium' | 'final_awards'} />
       )}
     </div>
