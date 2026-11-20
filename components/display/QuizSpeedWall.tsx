@@ -1,10 +1,11 @@
 // FILE: components/display/QuizSpeedWall.tsx — Speed name-wall for quiz reveal (projector)
 // VERSION: B18-v1 — dense chip grid of perfect-score players (ตอบถูกครบ 2 ข้อ), fastest first, cascade reveal
 // LAST MODIFIED: 12 Jun 2026
-// HISTORY: B18 created (Option D — speed name-wall: เน้นโชว์คนตอบถูกครบให้มากสุด เรียงตามความเร็ว)
+// HISTORY: [B26 FitName: คงท้าย ".X" ของชื่อเมื่อช่องแคบ] B18 created (Option D — speed name-wall: เน้นโชว์คนตอบถูกครบให้มากสุด เรียงตามความเร็ว)
 'use client';
 
 import { speedKey } from '@/lib/ranking';
+import FitName from '@/components/common/FitName';
 
 interface QuizSpeedWallProps {
   players: any[];
@@ -67,7 +68,7 @@ export default function QuizSpeedWall({ players, round }: QuizSpeedWallProps) {
               ) : (
                 <span style={{ flexShrink: 0, width: '24px', textAlign: 'center', color: 'rgba(255,255,255,0.5)', fontSize: '13px' }}>{i + 1}</span>
               )}
-              <span style={{ flex: 1, minWidth: 0, color: '#fff', fontSize: m ? '16px' : '15px', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
+              <FitName name={p.name} style={{ flex: 1, minWidth: 0, color: '#fff', fontSize: m ? '16px' : '15px', fontWeight: 500 }} />
               <span style={{ flexShrink: 0, color: '#7DE3FF', fontSize: '13px', fontWeight: 500 }}>{fmt(p.ms)}</span>
             </div>
           );

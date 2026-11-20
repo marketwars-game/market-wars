@@ -1,10 +1,11 @@
 // FILE: components/display/LeaderboardDisplay.tsx — Display Leaderboard (spectator)
 // VERSION: B26-dhfix — แก้ช่องม้ามืดในกริดอันดับ 9+ มองไม่เห็น (opacity ค้าง 0) | prev: B19-v2 — hold prev positions HOLD_MS before racing; right column minmax(0,1fr) fix name overflow; narrower top-8 column
 // LAST MODIFIED: 20 Nov 2026
-// HISTORY: B6 created | B8R extracted | B12-UX layout | v2-v4 podium fixes | v5 fix movement calc | B15 projector polish | B16c spectator: show max players, racing reorder, dark-horse highlight | B18 compareForRank | B19 hold-then-race + overflow fix + column rebalance | B26 dark-horse cell visibility fix
+// HISTORY: [B26 FitName: คงท้าย ".X" ของชื่อเมื่อช่องแคบ] B6 created | B8R extracted | B12-UX layout | v2-v4 podium fixes | v5 fix movement calc | B15 projector polish | B16c spectator: show max players, racing reorder, dark-horse highlight | B18 compareForRank | B19 hold-then-race + overflow fix + column rebalance | B26 dark-horse cell visibility fix
 'use client';
 
 import { useEffect, useState } from 'react';
+import FitName from '@/components/common/FitName';
 import { compareForRank } from '@/lib/ranking';
 
 interface LeaderboardDisplayProps {
@@ -120,9 +121,7 @@ export default function LeaderboardDisplay({ players, round }: LeaderboardDispla
                     {top3 ? MEDALS[i] : i + 1}
                   </span>
                   {isDH && <span style={{ fontSize: 22 }}>🐎</span>}
-                  <span style={{ flex: '0 1 auto', fontSize: top3 ? 24 : 20, fontWeight: 500, color: col, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {p.name}
-                  </span>
+                  <FitName name={p.name} style={{ flex: '0 1 auto', fontSize: top3 ? 24 : 20, fontWeight: 500, color: col }} />
                   {settled && <Arrow m={m} />}
                   <span style={{ marginLeft: 'auto', fontSize: top3 ? 22 : 18, fontWeight: 500, color: col, fontVariantNumeric: 'tabular-nums' }}>
                     ฿{money.toLocaleString()}
@@ -156,9 +155,7 @@ export default function LeaderboardDisplay({ players, round }: LeaderboardDispla
                   }}
                 >
                   <span style={{ minWidth: 24, fontSize: 13, color: 'rgba(255,255,255,0.4)', fontVariantNumeric: 'tabular-nums' }}>{rank}</span>
-                  <span style={{ flex: 1, fontSize: 14, color: 'rgba(255,255,255,0.82)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {isDH ? '🐎 ' : ''}{p.name}
-                  </span>
+                  <FitName name={(isDH ? '🐎 ' : '') + p.name} style={{ flex: 1, fontSize: 14, color: 'rgba(255,255,255,0.82)' }} />
                   <Arrow m={m} />
                 </div>
               );

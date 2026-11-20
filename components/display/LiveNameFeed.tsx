@@ -1,10 +1,11 @@
 // FILE: components/display/LiveNameFeed.tsx — Research sidebar live feed (newest on top)
 // VERSION: B16b-v1 — submitted names flow in from top, push older down, fade out at bottom
 // LAST MODIFIED: 11 Jun 2026
-// HISTORY: B16b created — replaces plain quiz-submitted counter in ResearchDisplay right column
+// HISTORY: [B26 FitName: คงท้าย ".X" ของชื่อเมื่อช่องแคบ] B16b created — replaces plain quiz-submitted counter in ResearchDisplay right column
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import FitName from '@/components/common/FitName';
 
 interface LiveNameFeedProps {
   players: any[];
@@ -84,9 +85,7 @@ export default function LiveNameFeed({ players, round }: LiveNameFeedProps) {
                 <div style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, background: `${c}22`, color: c, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 600 }}>
                   {(p.name || '?').charAt(0)}
                 </div>
-                <span style={{ color: '#eafff4', fontSize: 17, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {p.name}
-                </span>
+                <FitName name={p.name} style={{ color: '#eafff4', fontSize: 17, flex: 1 }} />
                 {newest ? (
                   <span style={{ fontSize: 12, color: '#86efac', background: 'rgba(34,197,94,0.18)', padding: '2px 8px', borderRadius: 7, flexShrink: 0 }}>เพิ่งส่ง</span>
                 ) : (

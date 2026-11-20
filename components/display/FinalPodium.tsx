@@ -1,10 +1,11 @@
 // FILE: components/display/FinalPodium.tsx — Final step ② Podium reveal (3→2→1)
 // VERSION: B21 — h-screen → h-full (fill FitStage box)
 // LAST MODIFIED: 10 Jul 2026
-// HISTORY: B16d created — split from FinalDisplay; reveal 3→2→1 + champion glow + confetti + SFX; settled on revisit | B18 compareForRank | B19 staged reveal + Card→renderCard (no remount) + tunable timeline | B21 FitStage fit-to-screen (h-full)
+// HISTORY: [B26 FitName: คงท้าย ".X" ของชื่อเมื่อช่องแคบ] B16d created — split from FinalDisplay; reveal 3→2→1 + champion glow + confetti + SFX; settled on revisit | B18 compareForRank | B19 staged reveal + Card→renderCard (no remount) + tunable timeline | B21 FitStage fit-to-screen (h-full)
 'use client';
 
 import { useEffect, useState } from 'react';
+import FitName from '@/components/common/FitName';
 import { compareForRank } from '@/lib/ranking';
 import { STARTING_MONEY } from '@/lib/constants';
 import { calculateAwards, getPlayerAwards } from '@/lib/awards';
@@ -82,7 +83,7 @@ export default function FinalPodium({ players, animate, playSfx }: FinalPodiumPr
         <div style={personAnim(rankIndex)} className="flex flex-col items-center">
           {isChamp && <div className="text-6xl mb-1" style={doAnim ? { animation: 'mwGlow 1.6s ease-in-out infinite', animationDelay: `${PODIUM_REVEAL.first + 0.6}s` } : {}}>👑</div>}
           <p className={isChamp ? 'text-5xl mb-2' : 'text-4xl mb-2'}>{medals[rankIndex]}</p>
-          <p className={`${isChamp ? 'text-3xl' : 'text-xl'} font-bold truncate max-w-[220px]`} style={{ color: nameColors[rankIndex] }}>{p.name}</p>
+          <p className={`${isChamp ? 'text-3xl' : 'text-xl'} font-bold max-w-[220px]`} style={{ color: nameColors[rankIndex] }}><FitName name={p.name} /></p>
           <p className={`${isChamp ? 'text-2xl' : 'text-lg'} mt-1`} style={{ color: 'rgba(255,255,255,0.85)' }}>฿{(parseFloat(p.money) || 0).toLocaleString()}</p>
           <p className={`${isChamp ? 'text-xl' : 'text-base'} mt-0.5`} style={{ color: getReturnColor(parseFloat(p.money)) }}>{getReturnPct(parseFloat(p.money))}%</p>
           {wonTwo(p.id) && (
