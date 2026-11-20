@@ -39,7 +39,9 @@ function isSubmitted(p: any, round: number, variant: 'invest' | 'chance') {
 
 function tierOf(n: number) {
   if (n <= COMPACT_OVER) return { cols: n <= 60 ? 6 : 7, detail: true, paginate: false, compact: false, pages: 1, perPage: n };
-  return { cols: n <= 168 ? 12 : 14, detail: true, paginate: false, compact: true, pages: 1, perPage: n };
+  // คอลัมน์ไล่ตามจำนวนคน: ห้อง 81–130 คนไม่ต้องบีบเป็น 12 คอลัมน์ (ช่องกว้างขึ้น ชื่อไม่ถูกตัด)
+  const cols = n <= 96 ? 8 : n <= 130 ? 10 : n <= 168 ? 12 : 14;
+  return { cols, detail: true, paginate: false, compact: true, pages: 1, perPage: n };
 }
 
 export default function LiveNameBoard({ players, round, variant }: LiveNameBoardProps) {
@@ -102,7 +104,7 @@ export default function LiveNameBoard({ players, round, variant }: LiveNameBoard
   }, [players, round, variant]);
 
   // ✅ B26-onepage: compact = ขนาดเดียวกับการ์ดจอ FinalRanking (ชื่อ 14 · บรรทัดสอง 13)
-  const nameSize = tier.compact ? (rows <= 10 ? 16 : 14) : (cols <= 6 ? 22 : 18);
+  const nameSize = tier.compact ? (cols <= 8 ? 16 : cols <= 10 ? 15 : 14) : (cols <= 6 ? 22 : 18);
   const amtSize = tier.compact ? 13 : (cols <= 6 ? 19 : 16);
   const barH = tier.compact ? 6 : (cols <= 6 ? 11 : 9);
   const barW = tier.compact ? '88%' : '80%';
