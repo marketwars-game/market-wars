@@ -1,10 +1,10 @@
 # Market Wars — File Registry
 
 **Location:** วางที่ root ของ repo (`/FILE_REGISTRY.md`) — version control โดย git
-**Last Updated:** B24 Done (Player final share-card — FinalView redesign · NEW lib/event-info.ts · play page header hide at final_ranking) — 11 Jul 2026 · Season 3 dev · (Season 2 CLOSED, 74 players)
+**Last Updated:** B25 Done (Phuket Edition branding — lib/event-info.ts only) — 20 Nov 2026 · Dime! Kids Camp Phuket Edition 21 Nov 2026 · prev: B24 Done (Player final share-card — FinalView redesign · NEW lib/event-info.ts · play page header hide at final_ranking) — 11 Jul 2026 · Season 3 dev · (Season 2 CLOSED, 74 players)
 **Repo:** https://github.com/marketwars-game/market-wars
 **Default branch:** `main`
-**Latest stable tag:** `B24-stable` (newest — Player share-card + registry) · `B23-stable` = balance pass · `B22b-stable` = B22 + B22b · `B22-stable` = sparkline only · `B21-stable` · `B20-stable` = Season 2 final · `Season1-stable` = `B15-stable`
+**Latest stable tag:** `B24-stable` (newest — Player share-card + registry · `B25-stable` pending user test) · `B23-stable` = balance pass · `B22b-stable` = B22 + B22b · `B22-stable` = sparkline only · `B21-stable` · `B20-stable` = Season 2 final · `Season1-stable` = `B15-stable`
 
 ---
 
@@ -81,7 +81,7 @@ https://raw.githubusercontent.com/marketwars-game/market-wars/Season1-stable/<pa
 | ResearchQuiz | ตอบ quiz (✅ B17 bilingual question/choices via `<Bi>`) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/player/ResearchQuiz.tsx |
 | ChanceCard | เปิดการ์ดโชคชะตา (✅ B17 bilingual card.text via `<Bi>`) | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/player/ChanceCard.tsx |
 | LeaderboardView | อันดับ + ตัวเอง | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/player/LeaderboardView.tsx |
-| FinalView | ✅ B24 — **share-card**: branding frame (MARKET WARS wordmark + Dime! Kids Camp · Season 3) · เหรียญ/อันดับ · award badges · **เส้นทางเงิน 6 ปี** (money_after เขียว/แดง/เทารายปี) · chips quiz/chance · footer `EVENT_INFO.venue · date` · AnimatedBackdrop · TOP5 ใต้ fold · แสดงเฉพาะ `final_ranking` | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/player/FinalView.tsx |
+| FinalView | ✅ B24 — **share-card**: branding frame (MARKET WARS wordmark + `EVENT_INFO.program · season` → B25: Dime! Kids Camp · Phuket Edition) · เหรียญ/อันดับ · award badges · **เส้นทางเงิน 6 ปี** (money_after เขียว/แดง/เทารายปี) · chips quiz/chance · footer `EVENT_INFO.venue · date` · AnimatedBackdrop · TOP5 ใต้ fold · แสดงเฉพาะ `final_ranking` | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/player/FinalView.tsx |
 | FinalHold | ✅ B22b — NEW จอลุ้นบนมือถือ (`final` / `final_podium` / `final_awards`) "👀 ดูจอใหญ่!" ไม่เผยเงิน/อันดับ | https://raw.githubusercontent.com/marketwars-game/market-wars/main/components/player/FinalHold.tsx |
 
 ---
@@ -127,7 +127,7 @@ https://raw.githubusercontent.com/marketwars-game/market-wars/Season1-stable/<pa
 | awards | calculateAwards, Quiz Master multi-winner | https://raw.githubusercontent.com/marketwars-game/market-wars/main/lib/awards.ts |
 | sound | registry 18 assets + PHASE_BGM map | https://raw.githubusercontent.com/marketwars-game/market-wars/main/lib/sound.ts |
 | ranking | ✅ B18 — comparator กลาง: `compareForRank` (money→quiz→speed→id) + `compareQuizMaster` + `speedKey` | https://raw.githubusercontent.com/marketwars-game/market-wars/main/lib/ranking.ts |
-| event-info | ✅ B24 — NEW `EVENT_INFO {program, season, venue, date}` — branding ของการ์ดจบ (FinalView) · แก้ season/สถานที่/วันที่ครั้งหน้าที่ไฟล์นี้ไฟล์เดียว | https://raw.githubusercontent.com/marketwars-game/market-wars/main/lib/event-info.ts |
+| event-info | ✅ B25 — Phuket Edition (season='Phuket Edition' · venue='Bhukitta Boutique Hotel' · date='21 Nov 2026') · B24 NEW `EVENT_INFO {program, season, venue, date}` — branding ของการ์ดจบ (FinalView) · แก้ season/สถานที่/วันที่ครั้งหน้าที่ไฟล์นี้ไฟล์เดียว | https://raw.githubusercontent.com/marketwars-game/market-wars/main/lib/event-info.ts |
 
 ---
 
