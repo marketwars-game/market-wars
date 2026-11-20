@@ -1,7 +1,7 @@
 // FILE: components/display/FinalRanking.tsx — Final step ④ Full ranking + teaching overview
-// VERSION: B23-v3 — fix legend ตกค้างจาก B20: "▢ กรอบฟ้า = ถ้าเล่นแบบนี้ (ตลาดล้วน ไม่รวมการ์ด/ควิซ)" → "ถ้าเล่นแบบนี้จะอยู่ประมาณนี้" (B23-v2 ghost รวมโบนัสเฉลี่ยห้องแล้ว คำเดิมผิดความหมาย)
-// LAST MODIFIED: 10 Jul 2026
-// HISTORY: B16d created — split from FinalDisplay; show all players for parents/photos | B16d-v2 responsive cols | B18 compareForRank | B20-v1 teaching redesign (cell green/red tint, header stats bar, strategy classify from portfolio_used, insight ranges, 🏅 diversifier badge, 2-line cards, removed photo wording) | B20-v2 fix insight text color | B20-v3 replace min–max insight with inline benchmark ghosts computed dynamically from RETURN_TABLE+COMPANIES (best/worst all-in, savings, equal-weight; ranked among real players; blue dashed, no rank #); scale-to-fit height so all N players always fit (useEffect measure + transform, independent of display zoom); Top-3 medal-colored glow + winner green glow override | B21 h-screen → h-full (fill FitStage box) | B23-v1 drop best/worst all-in ghosts, keep savings + equal-weight | B23-v2 ghost gets room-average bonus flows for fair position + name-only card | B23-v3 fix stale legend text (ghost includes avg bonus now)
+// VERSION: B26-fit — N > 110: 12 คอลัมน์ + การ์ด compact + ชดเชยความกว้างตอน scale (148 คนอ่านชื่อได้ ไม่ถูกตัดแถวล่าง) · N ≤ 110 เหมือนเดิม | prev: B23-v3 — fix legend ตกค้างจาก B20: "▢ กรอบฟ้า = ถ้าเล่นแบบนี้ (ตลาดล้วน ไม่รวมการ์ด/ควิซ)" → "ถ้าเล่นแบบนี้จะอยู่ประมาณนี้" (B23-v2 ghost รวมโบนัสเฉลี่ยห้องแล้ว คำเดิมผิดความหมาย)
+// LAST MODIFIED: 20 Nov 2026
+// HISTORY: B16d created — split from FinalDisplay; show all players for parents/photos | B16d-v2 responsive cols | B18 compareForRank | B20-v1 teaching redesign (cell green/red tint, header stats bar, strategy classify from portfolio_used, insight ranges, 🏅 diversifier badge, 2-line cards, removed photo wording) | B20-v2 fix insight text color | B20-v3 replace min–max insight with inline benchmark ghosts computed dynamically from RETURN_TABLE+COMPANIES (best/worst all-in, savings, equal-weight; ranked among real players; blue dashed, no rank #); scale-to-fit height so all N players always fit (useEffect measure + transform, independent of display zoom); Top-3 medal-colored glow + winner green glow override | B21 h-screen → h-full (fill FitStage box) | B23-v1 drop best/worst all-in ghosts, keep savings + equal-weight | B23-v2 ghost gets room-average bonus flows for fair position + name-only card | B23-v3 fix stale legend text (ghost includes avg bonus now) | B26 large-roster compact tier (>110) + width-compensated scale
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -153,7 +153,7 @@ export default function FinalRanking({ players, animate }: FinalRankingProps) {
     ];
     combined.sort((a, b) => b.money - a.money);
 
-    const cols = Math.min(n <= 10 ? 3 : n <= 24 ? 4 : n <= 48 ? 6 : n <= 80 ? 8 : 10, Math.max(1, n));
+    const cols = Math.min(n <= 10 ? 3 : n <= 24 ? 4 : n <= 48 ? 6 : n <= 80 ? 8 : n <= 110 ? 10 : 12, Math.max(1, n)); // ✅ B26: > 110 → 12 คอลัมน์
 
     return { combined, n, greenCount, redCount, avg, maxRet, minRet, stratOf, winnerIds, cols };
   }, [players]);
@@ -176,6 +176,8 @@ export default function FinalRanking({ players, animate }: FinalRankingProps) {
     return () => { cancelAnimationFrame(raf); clearTimeout(t); window.removeEventListener('resize', fit); };
   }, [combined, cols]);
 
+  // ✅ B26: > 110 คน — การ์ด compact (เดิม 10 คอลัมน์ × การ์ดสูง ~70px → scale ชนเพดานล่าง 0.5: ชื่อเหลือ 3 ตัวอักษร + แถวล่างถูกตัด)
+  const compact = n > 110;
   const waveTotal = 1100;
   const stEmoji = (s: Strat) => (s === 'allin' ? '🎯' : s === 'div' ? '🧺' : '');
   const cellBg = (i: number, profit: boolean) =>
@@ -205,8 +207,10 @@ export default function FinalRanking({ players, animate }: FinalRankingProps) {
 
       {/* grid (measured) — scale เพื่อ fit ความสูง ให้ทุกคนอยู่ครบ */}
       <div ref={boxRef} className="flex-1 overflow-hidden">
-        <div ref={gridRef} className="grid gap-2 content-start"
-          style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, transform: `scale(${scale})`, transformOrigin: 'top center' }}>
+        <div ref={gridRef} className="grid content-start"
+          style={compact
+            ? { gap: 4, gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, transform: `scale(${scale})`, transformOrigin: 'top left', width: `${100 / scale}%` }
+            : { gap: 8, gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, transform: `scale(${scale})`, transformOrigin: 'top center' }}>
           {combined.map((item, idx) => {
             // ---- benchmark ghost ----
             // ✅ B23-v2: แสดงแค่ไอคอน+ชื่อ — ไม่มี % (เงิน ghost รวมโบนัสเฉลี่ยห้อง ใช้ sort ตำแหน่งเท่านั้น
@@ -214,10 +218,10 @@ export default function FinalRanking({ players, animate }: FinalRankingProps) {
             if (item.kind === 'b') {
               const b: Bench = item.b;
               return (
-                <div key={b.id} className="rounded-lg px-3 py-2 flex items-center gap-2 min-w-0"
-                  style={{ border: '2px dashed #7DD3FC', background: 'rgba(125,211,252,0.08)' }}>
-                  <span className="flex-shrink-0" style={{ fontSize: '1rem' }}>{b.icon}</span>
-                  <span className="flex-1 min-w-0 font-bold truncate" style={{ fontSize: '1.05rem', color: '#BAE6FD' }}>{b.label}</span>
+                <div key={b.id} className={`rounded-lg flex items-center min-w-0 ${compact ? 'gap-1' : 'px-3 py-2 gap-2'}`}
+                  style={{ border: `${compact ? 1.5 : 2}px dashed #7DD3FC`, background: 'rgba(125,211,252,0.08)', padding: compact ? '1px 5px' : undefined }}>
+                  <span className="flex-shrink-0" style={{ fontSize: compact ? 12 : '1rem' }}>{b.icon}</span>
+                  <span className="flex-1 min-w-0 font-bold truncate" style={{ fontSize: compact ? 12 : '1.05rem', color: '#BAE6FD' }}>{b.label}</span>
                 </div>
               );
             }
@@ -236,24 +240,25 @@ export default function FinalRanking({ players, animate }: FinalRankingProps) {
             if (win) { border = '1.5px solid #00FFB2'; boxShadow = '0 0 16px rgba(0,255,178,0.6)'; } // winner เขียวชนะทุกกรณี
 
             return (
-              <div key={p.id} className="rounded-lg px-3 py-2 flex flex-col justify-center gap-0.5"
+              <div key={p.id} className={`rounded-lg flex flex-col justify-center min-w-0 ${compact ? '' : 'px-3 py-2 gap-0.5'}`}
                 style={{
+                  padding: compact ? '1px 5px' : undefined,
                   background: cellBg(i, profit),
                   border,
                   boxShadow,
                   animation: doAnim ? 'mwCellIn 0.4s ease-out both' : 'none',
                   animationDelay: doAnim ? `${(idx * (waveTotal / Math.max(1, combined.length))).toFixed(0)}ms` : '0ms',
                 }}>
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-bold flex-shrink-0" style={{ fontSize: i < 3 ? '1.15rem' : '0.95rem', color: i < 3 ? rankColors[i] : 'rgba(255,255,255,0.5)' }}>
+                <div className={`flex items-center min-w-0 ${compact ? 'gap-1' : 'gap-2'}`} style={compact ? { lineHeight: 1.3 } : undefined}>
+                  <span className="font-bold flex-shrink-0" style={{ fontSize: compact ? (i < 3 ? 13 : 10) : (i < 3 ? '1.15rem' : '0.95rem'), color: i < 3 ? rankColors[i] : 'rgba(255,255,255,0.5)' }}>
                     {i < 3 ? medals[i] : `#${i + 1}`}
                   </span>
-                  <span className="flex-1 min-w-0 font-bold text-lg truncate" style={{ color: i < 3 ? rankColors[i] : '#fff' }}>{p.name}</span>
-                  {win && <span className="flex-shrink-0" style={{ fontSize: '1.25rem', filter: 'drop-shadow(0 0 4px rgba(0,255,178,0.9))' }}>🏅</span>}
+                  <span className={`flex-1 min-w-0 font-bold truncate ${compact ? '' : 'text-lg'}`} style={{ fontSize: compact ? 13 : undefined, color: i < 3 ? rankColors[i] : '#fff' }}>{p.name}</span>
+                  {win && <span className="flex-shrink-0" style={{ fontSize: compact ? 12 : '1.25rem', filter: 'drop-shadow(0 0 4px rgba(0,255,178,0.9))' }}>🏅</span>}
                 </div>
-                <div className="flex items-center gap-2">
-                  {s && <span style={{ fontSize: '0.95rem' }}>{stEmoji(s)}</span>}
-                  <span className="font-semibold" style={{ fontSize: '0.95rem', color: profit ? '#22c55e' : '#ef4444', letterSpacing: '0.3px' }}>
+                <div className={`flex items-center ${compact ? 'gap-1' : 'gap-2'}`} style={compact ? { lineHeight: 1.25 } : undefined}>
+                  {s && <span style={{ fontSize: compact ? 10 : '0.95rem' }}>{stEmoji(s)}</span>}
+                  <span className="font-semibold" style={{ fontSize: compact ? 11 : '0.95rem', color: profit ? '#22c55e' : '#ef4444', letterSpacing: '0.3px' }}>
                     {profit ? '▲' : '▼'} {fmtPct(retOf(p))}
                   </span>
                 </div>

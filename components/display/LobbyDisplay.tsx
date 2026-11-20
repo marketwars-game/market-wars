@@ -1,15 +1,20 @@
 // FILE: components/display/LobbyDisplay.tsx — Display lobby (QR + joined players)
-// VERSION: B21 — drop zoom prop; fill FitStage box (h-screen style={{zoom}} → w-full h-full)
-// LAST MODIFIED: 10 Jul 2026
-// HISTORY: B16a-BATCH0 extracted inline lobby from display/page.tsx (qrOpen state moved local) | B19-BATCH2 AnimatedBackdrop | B21 FitStage fit-to-screen (retire CSS zoom)
+// VERSION: B26-fit — ชื่อผู้เล่นย่อขนาดตาม N (3 ระดับ) + scale-to-fit → 148 คนไม่ล้นจอ · N ≤ 40 เหมือนเดิม | prev: B21 — drop zoom prop; fill FitStage box (h-screen style={{zoom}} → w-full h-full)
+// LAST MODIFIED: 20 Nov 2026
+// HISTORY: B16a-BATCH0 extracted inline lobby from display/page.tsx (qrOpen state moved local) | B19-BATCH2 AnimatedBackdrop | B21 FitStage fit-to-screen (retire CSS zoom) | B26 large-roster fit (chip tiers + useFitScale)
 'use client';
 
 import { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import AnimatedBackdrop from '@/components/display/AnimatedBackdrop';
+import { useFitScale } from '@/hooks/useFitScale';
 
 export default function LobbyDisplay({ players, roomId, joinUrl }: { players: any[]; roomId: string; joinUrl: string }) {
   const [qrOpen, setQrOpen] = useState(false);
+  // ✅ B26: chip ย่อตามจำนวนคน (เดิมขนาดเดียว → 148 คน ~21 แถว ล้นกล่อง) + scale-to-fit กันล้นทุก N
+  const n = players.length;
+  const chip = n <= 40 ? { font: 18, pad: '8px 16px', gap: 8 } : n <= 80 ? { font: 15, pad: '4px 11px', gap: 6 } : { font: 13, pad: '2px 8px', gap: 4 };
+  const { boxRef, innerRef, scale } = useFitScale([n]);
   return (
     <div className="w-full h-full bg-[#0D1117] text-white overflow-hidden relative">
       <AnimatedBackdrop accent="#00FFB2" accent2="#00D4FF" />
@@ -35,7 +40,7 @@ export default function LobbyDisplay({ players, roomId, joinUrl }: { players: an
         <div className="w-px self-stretch" style={{ background: 'rgba(255,255,255,0.08)' }} />
 
         {/* Right: Title + Players */}
-        <div className="flex-1 flex flex-col justify-between px-12 py-10 h-full">
+        <div className="flex-1 flex flex-col justify-between px-12 py-10 h-full" style={{ minWidth: 0 }}>
           <div>
             <h1 className="font-black tracking-widest leading-tight mb-2" style={{ fontSize: '56px', fontFamily: 'monospace' }}>
               <span style={{ color: '#00FFB2' }}>MARKET</span>{' '}
@@ -44,17 +49,19 @@ export default function LobbyDisplay({ players, roomId, joinUrl }: { players: an
             <p className="text-xl tracking-[3px]" style={{ color: 'rgba(255,255,255,0.65)' }}>The Investment Game</p>
             <div className="mt-3 h-1 w-16 rounded-full" style={{ background: 'linear-gradient(90deg, #00FFB2, #00D4FF)' }} />
           </div>
-          <div>
-            <p className="text-sm tracking-[3px] mb-3" style={{ color: 'rgba(255,255,255,0.5)' }}>PLAYERS JOINED</p>
-            <div className="flex flex-wrap gap-2 mb-4">
-              {players.map((p) => (
-                <span key={p.id} className="px-4 py-2 rounded-full text-lg font-semibold" style={{ background: 'rgba(0,255,178,0.1)', border: '1px solid rgba(0,255,178,0.3)', color: '#00FFB2' }}>
-                  {p.name}
-                </span>
-              ))}
-              {players.length === 0 && <p className="text-lg" style={{ color: 'rgba(255,255,255,0.35)' }}>รอผู้เล่นเข้าร่วม...</p>}
+          <div className="flex flex-col" style={{ flex: 1, minHeight: 0, marginTop: 20 }}>
+            <p className="text-sm tracking-[3px] mb-3" style={{ color: 'rgba(255,255,255,0.5)' }}>PLAYERS JOINED · <span style={{ color: '#00FFB2', fontWeight: 700 }}>{n}</span></p>
+            <div ref={boxRef} className="overflow-hidden mb-3" style={{ flex: 1, minHeight: 0 }}>
+              <div ref={innerRef} className="flex flex-wrap content-start" style={{ gap: chip.gap, transform: `scale(${scale})`, transformOrigin: 'top left', width: `${100 / scale}%` }}>
+                {players.map((p) => (
+                  <span key={p.id} className="rounded-full font-semibold" style={{ fontSize: chip.font, padding: chip.pad, whiteSpace: 'nowrap', background: 'rgba(0,255,178,0.1)', border: '1px solid rgba(0,255,178,0.3)', color: '#00FFB2' }}>
+                    {p.name}
+                  </span>
+                ))}
+                {n === 0 && <p className="text-lg" style={{ color: 'rgba(255,255,255,0.35)' }}>รอผู้เล่นเข้าร่วม...</p>}
+              </div>
             </div>
-            <p className="text-base" style={{ color: 'rgba(255,255,255,0.5)' }}>{players.length} players joined</p>
+            <p className="text-base" style={{ color: 'rgba(255,255,255,0.5)' }}>{n} players joined</p>
           </div>
         </div>
       </div>

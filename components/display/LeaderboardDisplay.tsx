@@ -1,7 +1,7 @@
 // FILE: components/display/LeaderboardDisplay.tsx — Display Leaderboard (spectator)
-// VERSION: B19-v2 — hold prev positions HOLD_MS before racing; right column minmax(0,1fr) fix name overflow; narrower top-8 column
-// LAST MODIFIED: 13 Jun 2026
-// HISTORY: B6 created | B8R extracted | B12-UX layout | v2-v4 podium fixes | v5 fix movement calc | B15 projector polish | B16c spectator: show max players, racing reorder, dark-horse highlight | B18 compareForRank | B19 hold-then-race + overflow fix + column rebalance
+// VERSION: B26-dhfix — แก้ช่องม้ามืดในกริดอันดับ 9+ มองไม่เห็น (opacity ค้าง 0) | prev: B19-v2 — hold prev positions HOLD_MS before racing; right column minmax(0,1fr) fix name overflow; narrower top-8 column
+// LAST MODIFIED: 20 Nov 2026
+// HISTORY: B6 created | B8R extracted | B12-UX layout | v2-v4 podium fixes | v5 fix movement calc | B15 projector polish | B16c spectator: show max players, racing reorder, dark-horse highlight | B18 compareForRank | B19 hold-then-race + overflow fix + column rebalance | B26 dark-horse cell visibility fix
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -83,6 +83,7 @@ export default function LeaderboardDisplay({ players, round }: LeaderboardDispla
         @keyframes lbPulse { 0% { box-shadow: 0 0 0 0 rgba(34,197,94,0); } 35% { box-shadow: 0 0 22px 3px rgba(34,197,94,0.55); } 100% { box-shadow: 0 0 0 1.5px rgba(34,197,94,0.7); } }
         .lb-cell { opacity: 0; animation: lbFade 0.35s ease-out forwards; }
         .lb-dh { animation: lbPulse 1s ease-out 0.9s forwards; }
+        .lb-cell.lb-dh { opacity: 1; } /* B26: .lb-dh ทับ animation lbFade ของ .lb-cell → ช่องม้ามืดในอันดับ 9+ ค้าง opacity 0 (หายจากจอ) */
       `}</style>
 
       <div className="grid gap-6 flex-1 overflow-hidden" style={{ gridTemplateColumns: 'minmax(0, 0.85fr) minmax(0, 1.15fr)' }}>

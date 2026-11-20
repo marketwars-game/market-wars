@@ -1,10 +1,11 @@
 // FILE: components/display/ResultsDisplay.tsx — Display results phase (per-player P&L heatmap)
-// VERSION: B16c-v1 — heatmap grid of every player (this-round gain/loss), A-Z, relative intensity, wave reveal
-// LAST MODIFIED: 11 Jun 2026
-// HISTORY: B16a-BATCH0 extracted inline results block from display/page.tsx | B16c spectator heatmap (replace sector-pills + top-earners view)
+// VERSION: B26-fit — N > 110: 12 คอลัมน์ + ช่อง compact + scale-to-fit (148 คนไม่ถูกตัดแถวล่าง) · N ≤ 110 เหมือนเดิมทุกค่า | prev: B16c-v1 — heatmap grid of every player (this-round gain/loss), A-Z, relative intensity, wave reveal
+// LAST MODIFIED: 20 Nov 2026
+// HISTORY: B16a-BATCH0 extracted inline results block from display/page.tsx | B16c spectator heatmap (replace sector-pills + top-earners view) | B26 large-roster fit (compact tier > 110 + useFitScale safety)
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useFitScale } from '@/hooks/useFitScale';
 
 interface ResultsDisplayProps {
   players: any[];
@@ -53,7 +54,10 @@ export default function ResultsDisplay({ players, round }: ResultsDisplayProps) 
   }, [players, round]);
 
   // columns scale with headcount to keep cells readable but fit-all (no scroll)
-  const cols = data.count <= 48 ? 6 : data.count <= 80 ? 8 : 10;
+  // ✅ B26: > 110 คน → 12 คอลัมน์ + ช่อง compact (เดิม 10 คอลัมน์ × minHeight 44 → 148 คน = 15 แถว ~735px ล้นกล่อง ~570px แถวล่างถูกตัด)
+  const compact = data.count > 110;
+  const cols = data.count <= 48 ? 6 : data.count <= 80 ? 8 : compact ? 12 : 10;
+  const { boxRef, innerRef, scale } = useFitScale([data.count, cols]); // กันล้นทุก N (ปกติ scale = 1)
   const perCell = Math.max(4, Math.min(10, Math.round(700 / Math.max(1, data.count))));
 
   return (
@@ -68,9 +72,10 @@ export default function ResultsDisplay({ players, round }: ResultsDisplayProps) 
       </div>
 
       {/* ===== heatmap grid ===== */}
+      <div ref={boxRef} className="flex-1 overflow-hidden" style={{ minHeight: 0 }}>
       <div
-        className="flex-1 overflow-hidden"
-        style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 5, alignContent: 'start' }}
+        ref={innerRef}
+        style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gap: compact ? 4 : 5, alignContent: 'start', transform: `scale(${scale})`, transformOrigin: 'top center' }}
       >
         {data.azRows.map((r, i) => {
           const { bg, border } = bucket(r.chg, data.maxAbs);
@@ -80,7 +85,7 @@ export default function ResultsDisplay({ players, round }: ResultsDisplayProps) 
             <div
               key={r.id}
               style={{
-                minHeight: 44, padding: '5px 6px', borderRadius: 7, boxSizing: 'border-box',
+                minHeight: compact ? 36 : 44, padding: compact ? '2px 5px' : '5px 6px', borderRadius: 7, boxSizing: 'border-box',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                 overflow: 'hidden',
                 background: revealed ? bg : 'rgba(255,255,255,0.05)',
@@ -89,10 +94,10 @@ export default function ResultsDisplay({ players, round }: ResultsDisplayProps) 
                 transitionDelay: `${i * perCell}ms`,
               }}
             >
-              <span style={{ fontSize: 15, color: 'rgba(255,255,255,0.9)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{r.name}</span>
+              <span style={{ fontSize: compact ? 13 : 15, lineHeight: compact ? 1.25 : undefined, color: 'rgba(255,255,255,0.9)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{r.name}</span>
               <span
                 style={{
-                  fontSize: 14, fontWeight: 500, fontVariantNumeric: 'tabular-nums', marginTop: 1,
+                  fontSize: compact ? 12 : 14, lineHeight: compact ? 1.2 : undefined, fontWeight: 500, fontVariantNumeric: 'tabular-nums', marginTop: compact ? 0 : 1,
                   color: revealed ? amtCol : 'rgba(255,255,255,0.25)',
                   transition: 'color 0.45s ease', transitionDelay: `${i * perCell}ms`,
                 }}
@@ -102,6 +107,7 @@ export default function ResultsDisplay({ players, round }: ResultsDisplayProps) 
             </div>
           );
         })}
+      </div>
       </div>
 
       {/* ===== legend ===== */}
