@@ -1,0 +1,43 @@
+// ไฟล์ต้นแบบของหน้า preview (ไม่ใช่ route จริง) — run.sh จะ copy ไปไว้ที่ app/b26preview/page.tsx ชั่วคราวตอนรัน sweep แล้วลบทิ้ง
+'use client';
+import { useEffect, useState } from 'react';
+import FitStage from '@/components/display/FitStage';
+import LobbyDisplay from '@/components/display/LobbyDisplay';
+import ResultsDisplay from '@/components/display/ResultsDisplay';
+import InvestDisplay from '@/components/display/InvestDisplay';
+import ChanceCardDisplay from '@/components/display/ChanceCardDisplay';
+import LeaderboardDisplay from '@/components/display/LeaderboardDisplay';
+import FinalDisplay from '@/components/display/FinalDisplay';
+import DisplayHeader from '@/components/display/DisplayHeader';
+import { getStepGroupProgress } from '@/lib/game-engine';
+const NICK = ['Almond','Mint','Poon','Alex','Proud','Tonkla','Bambi','Kevin','Namcha','Leo','Pim','Oscar','Jinny','Max','Kaimook','Ryu','Guitar','Pleng','Captain','Stamp','Tonkhao','Khaohom','Punpun','Ingfah','Porjai','Phupha','Tawan','Namsai','Malee','Lookpeach','Cheetah','Garfield','Chopper','Maximilian','Kongphop','Nongmind'];
+const L = 'WSPKTCNAJRMBDH';
+const IDS = ['robosnack','zoomzoom','megafun','greenpower','piggybank','safegold'];
+function mock(n: number, round: number) {
+  let s = 11; const r = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+  return Array.from({ length: n }, (_, i) => {
+    const rr: any = {}; let money = 10000;
+    for (let k = 1; k <= round; k++) { const before = money + 100; const tr = Math.round((r() - 0.42) * 1700); money = before + tr; rr[k] = { money_before: before, money_after: money, total_return: tr, returns: {}, portfolio_used: i % 4 === 0 ? { [IDS[i % 4]]: 100 } : { [IDS[i % 6]]: 40, [IDS[(i + 2) % 6]]: 30, [IDS[(i + 3) % 6]]: 30 } }; }
+    const sub = r() < 0.82; const k = i % 5;
+    const pf: any = k === 0 ? { [IDS[i % 4]]: 100 } : k === 1 ? { piggybank: 60, safegold: 40 } : { [IDS[i % 6]]: 40, [IDS[(i + 1) % 6]]: 30, [IDS[(i + 3) % 6]]: 20, [IDS[(i + 4) % 6]]: 10 };
+    return { id: 'p' + i, name: NICK[Math.floor(r() * NICK.length)] + '.' + L[Math.floor(r() * L.length)], money, round_returns: rr, joined_at: new Date(1e12 + i * 1000).toISOString(), portfolio: pf, portfolio_submitted_round: sub ? round : round - 1, duel_submitted_round: sub ? round : round - 1, duel_money_change: (Math.round((r() - 0.5) * 10) * 50) || 50, quiz_score: Math.floor(r() * 12), quiz_speed_ms: 20000 + r() * 50000, quiz_answered_round: round, quiz_correct_this_round: 2 };
+  }).sort((a, b) => b.money - a.money);
+}
+export default function P() {
+  const [q, setQ] = useState<{ v: string; n: number } | null>(null);
+  useEffect(() => { const u = new URLSearchParams(location.search); setQ({ v: u.get('v') || 'lobby', n: parseInt(u.get('n') || '148', 10) }); }, []);
+  if (!q) return null;
+  const round = 3; const players = mock(q.n, q.v === 'final_ranking' ? 6 : round);
+  if (q.v === 'lobby') return <FitStage scale={1}><LobbyDisplay players={players} roomId="TEST" joinUrl="https://x.y/?room=TEST" /></FitStage>;
+  if (q.v.startsWith('final')) return <FitStage scale={1}><div className="w-full h-full bg-[#0D1117] text-white"><FinalDisplay players={players} phase={q.v as any} animate={false} playSfx={() => {}} /></div></FitStage>;
+  const phase = q.v;
+  return (<FitStage scale={1}><div className="w-full h-full bg-[#0D1117] text-white flex flex-col overflow-hidden">
+    <DisplayHeader steps={getStepGroupProgress(phase)} round={round} />
+    <div className="flex-1 flex flex-col items-center justify-center overflow-hidden px-6 py-3">
+      {(phase === 'invest' || phase === 'chance_card') && (<div className="flex items-center gap-4 mb-4 w-full max-w-2xl"><div className="flex-1 h-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.08)' }} /><span className="font-mono text-lg font-bold">1:20</span></div>)}
+      {phase === 'invest' && <InvestDisplay players={players} round={round} />}
+      {phase === 'chance_card' && <ChanceCardDisplay players={players} round={round} />}
+      {phase === 'results' && <ResultsDisplay players={players} round={round} />}
+      {phase === 'leaderboard' && <LeaderboardDisplay players={players} round={round} />}
+    </div></div></FitStage>);
+}

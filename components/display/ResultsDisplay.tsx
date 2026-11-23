@@ -1,5 +1,5 @@
 // FILE: components/display/ResultsDisplay.tsx — Display results phase (per-player P&L heatmap)
-// VERSION: B26-fit — N > 110: 12 คอลัมน์ + ช่อง compact + scale-to-fit (148 คนไม่ถูกตัดแถวล่าง) · N ≤ 110 เหมือนเดิมทุกค่า | prev: B16c-v1 — heatmap grid of every player (this-round gain/loss), A-Z, relative intensity, wave reveal
+// VERSION: B26-fit2 — เลือก compact จากการพอดีความสูง (ไม่ใช่ n > 110) + ชดเชยความกว้างเมื่อ scale < 1 → เต็มความกว้างทุกขนาดห้อง | prev: B26-fit
 // LAST MODIFIED: 20 Nov 2026
 // HISTORY: [B26 FitName: คงท้าย ".X" ของชื่อเมื่อช่องแคบ] B16a-BATCH0 extracted inline results block from display/page.tsx | B16c spectator heatmap (replace sector-pills + top-earners view) | B26 large-roster fit (compact tier > 110 + useFitScale safety)
 'use client';
@@ -55,9 +55,17 @@ export default function ResultsDisplay({ players, round }: ResultsDisplayProps) 
   }, [players, round]);
 
   // columns scale with headcount to keep cells readable but fit-all (no scroll)
-  // ✅ B26: > 110 คน → 12 คอลัมน์ + ช่อง compact (เดิม 10 คอลัมน์ × minHeight 44 → 148 คน = 15 แถว ~735px ล้นกล่อง ~570px แถวล่างถูกตัด)
-  const compact = data.count > 110;
-  const cols = data.count <= 48 ? 6 : data.count <= 80 ? 8 : compact ? 12 : 10;
+  // ✅ B26-fit2: เลือกคอลัมน์/ความหนาแน่นจาก "กี่แถว × สูงเท่าไหร่ พอดีกล่องไหม" (เดิมเกณฑ์ตายตัว n > 110 → ห้อง 73–80 และ 97–110 คน
+  //    สูงเกินกล่อง ถูกย่อ 84–93% ไปอยู่กลางจอ) · พื้นที่กริด ≈ 568px · ความสูงต่อแถว: ปกติ ~61 · compact ~41
+  const AVAIL = 560;
+  const cols0 = data.count <= 48 ? 6 : data.count <= 80 ? 8 : 10;
+  const rowsAt = (c: number) => Math.ceil(Math.max(1, data.count) / c);
+  let compact = false;
+  let cols = cols0;
+  if (rowsAt(cols0) * 61 > AVAIL) {
+    compact = true;
+    cols = [cols0, 8, 10, 12, 14, 16].find((c) => c >= cols0 && rowsAt(c) * 41 <= AVAIL) || 16;
+  }
   const { boxRef, innerRef, scale } = useFitScale([data.count, cols]); // กันล้นทุก N (ปกติ scale = 1)
   const perCell = Math.max(4, Math.min(10, Math.round(700 / Math.max(1, data.count))));
 
@@ -76,7 +84,7 @@ export default function ResultsDisplay({ players, round }: ResultsDisplayProps) 
       <div ref={boxRef} className="flex-1 overflow-hidden" style={{ minHeight: 0 }}>
       <div
         ref={innerRef}
-        style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gap: compact ? 4 : 5, alignContent: 'start', transform: `scale(${scale})`, transformOrigin: 'top center' }}
+        style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gap: compact ? 4 : 5, alignContent: 'start', transform: `scale(${scale})`, transformOrigin: scale < 1 ? 'top left' : 'top center', width: scale < 1 ? `${100 / scale}%` : undefined }}
       >
         {data.azRows.map((r, i) => {
           const { bg, border } = bucket(r.chg, data.maxAbs);
